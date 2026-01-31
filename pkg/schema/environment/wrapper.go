@@ -9,9 +9,6 @@ type environmentWrapper struct {
 	env *internal.InternalEnvironment
 }
 
-func (e *environmentWrapper) Name() string       { return e.env.Name }
-func (e *environmentWrapper) Datacenter() string { return e.env.Datacenter }
-
 func (e *environmentWrapper) Locals() map[string]interface{} {
 	return e.env.Locals
 }

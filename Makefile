@@ -36,6 +36,10 @@ test-coverage:
 	go test -v -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 
+## Run integration tests (requires CLERK_DOMAIN, CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY)
+test-integration:
+	go test -tags=integration -v -timeout=10m ./testdata/integration/...
+
 ## Run linter
 lint:
 	golangci-lint run ./...
@@ -69,6 +73,7 @@ help:
 	@echo "  clean       - Clean build artifacts"
 	@echo "  test        - Run tests"
 	@echo "  test-coverage - Run tests with coverage"
+	@echo "  test-integration - Run integration tests (requires Clerk env vars)"
 	@echo "  lint        - Run linter"
 	@echo "  install     - Install the binary"
 	@echo "  run         - Run the application"

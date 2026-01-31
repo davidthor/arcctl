@@ -7,10 +7,9 @@ import (
 func TestParser_ParseBytes(t *testing.T) {
 	parser := NewParser()
 
+	// Note: name and datacenter are not part of the config file anymore
+	// They are provided via CLI flags when creating/updating an environment
 	yaml := `
-name: staging
-datacenter: local
-
 locals:
   base_domain: example.com
   log_level: debug
@@ -43,14 +42,6 @@ components:
 	schema, err := parser.ParseBytes([]byte(yaml))
 	if err != nil {
 		t.Fatalf("failed to parse: %v", err)
-	}
-
-	if schema.Name != "staging" {
-		t.Errorf("expected name 'staging', got %q", schema.Name)
-	}
-
-	if schema.Datacenter != "local" {
-		t.Errorf("expected datacenter 'local', got %q", schema.Datacenter)
 	}
 
 	// Check locals
@@ -115,10 +106,6 @@ func TestParser_ParseBytes_Empty(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if schema.Name != "" {
-		t.Errorf("expected empty name, got %q", schema.Name)
-	}
-
 	if len(schema.Components) != 0 {
 		t.Errorf("expected 0 components, got %d", len(schema.Components))
 	}
@@ -128,7 +115,6 @@ func TestParser_ParseBytes_Invalid(t *testing.T) {
 	parser := NewParser()
 
 	invalidYAML := `
-name: test
 components:
   - invalid list format
 `

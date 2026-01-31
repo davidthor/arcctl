@@ -15,8 +15,6 @@ func NewTransformer() *Transformer {
 // Transform converts a v1 schema to the internal representation.
 func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalEnvironment, error) {
 	env := &internal.InternalEnvironment{
-		Name:          v1.Name,
-		Datacenter:    v1.Datacenter,
 		Locals:        v1.Locals,
 		Components:    make(map[string]internal.InternalComponentConfig),
 		SourceVersion: "v1",

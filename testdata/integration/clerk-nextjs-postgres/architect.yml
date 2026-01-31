@@ -1,0 +1,52 @@
+# Integration Test: Next.js with Clerk Authentication and PostgreSQL
+# This component demonstrates:
+# - Clerk auth dependency (configuration passthrough pattern)
+# - PostgreSQL database
+# - Protected API routes
+#
+# Dependencies are referenced by their component identifier.
+# The actual source (OCI registry or file path) is configured in environment.yml.
+
+dependencies:
+  clerk:
+    component: clerk
+
+databases:
+  main:
+    type: postgres:^16
+
+deployments:
+  app:
+    build:
+      context: ./app
+    environment:
+      # Database connection
+      DATABASE_URL: ${{ databases.main.url }}
+      # Clerk authentication (from dependency outputs)
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ dependencies.clerk.outputs.publishable_key }}
+      CLERK_SECRET_KEY: ${{ dependencies.clerk.outputs.secret_key }}
+    cpu: "0.5"
+    memory: "512Mi"
+    liveness_probe:
+      path: /api/health
+      port: 3000
+      initial_delay_seconds: 10
+
+services:
+  app:
+    deployment: app
+    port: 3000
+    protocol: http
+
+routes:
+  main:
+    type: http
+    rules:
+      - name: all-traffic
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: app
+            port: 3000

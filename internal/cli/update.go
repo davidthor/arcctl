@@ -132,10 +132,7 @@ func applyEnvironmentConfig(ctx context.Context, mgr state.Manager, env *types.E
 		return fmt.Errorf("failed to load environment config: %w", err)
 	}
 
-	// Verify the environment name matches
-	if envConfig.Name() != "" && envConfig.Name() != env.Name {
-		return fmt.Errorf("environment name in config file (%q) does not match target environment (%q)", envConfig.Name(), env.Name)
-	}
+	// Note: Name is a CLI parameter, not part of the config file
 
 	fmt.Printf("Environment: %s\n", env.Name)
 	fmt.Printf("Datacenter:  %s\n", env.Datacenter)
@@ -227,10 +224,7 @@ func applyEnvironmentConfig(ctx context.Context, mgr state.Manager, env *types.E
 	fmt.Println()
 	fmt.Printf("[update] Applying configuration to environment %q...\n", env.Name)
 
-	// Update datacenter if changed
-	if envConfig.Datacenter() != "" && envConfig.Datacenter() != env.Datacenter {
-		env.Datacenter = envConfig.Datacenter()
-	}
+	// Note: Datacenter is a CLI parameter (--datacenter flag), not part of the config file
 
 	// TODO: Implement actual component deployment/update/removal logic
 	// For now, just update the state to reflect the new components

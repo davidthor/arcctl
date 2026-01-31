@@ -2,11 +2,9 @@
 package internal
 
 // InternalEnvironment is the canonical internal representation for environment configurations.
+// Note: Name and Datacenter are not part of the config - they are provided via CLI
+// when creating/updating an environment.
 type InternalEnvironment struct {
-	// Metadata
-	Name       string
-	Datacenter string
-
 	// Reusable values
 	Locals map[string]interface{}
 

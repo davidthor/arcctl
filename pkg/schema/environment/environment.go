@@ -6,11 +6,9 @@ import (
 )
 
 // Environment represents a parsed and validated environment configuration.
+// Note: Name and Datacenter are not part of the config - they are provided via CLI
+// when creating/updating an environment.
 type Environment interface {
-	// Metadata
-	Name() string
-	Datacenter() string
-
 	// Locals
 	Locals() map[string]interface{}
 

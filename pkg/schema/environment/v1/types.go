@@ -2,10 +2,10 @@
 package v1
 
 // SchemaV1 represents the v1 environment schema.
+// Note: Name and Datacenter are not part of the config file - they are provided
+// via CLI flags when creating/updating an environment.
 type SchemaV1 struct {
-	Version    string `yaml:"version,omitempty" json:"version,omitempty"`
-	Name       string `yaml:"name,omitempty" json:"name,omitempty"`
-	Datacenter string `yaml:"datacenter,omitempty" json:"datacenter,omitempty"`
+	Version string `yaml:"version,omitempty" json:"version,omitempty"`
 
 	// Reusable values
 	Locals map[string]interface{} `yaml:"locals,omitempty" json:"locals,omitempty"`

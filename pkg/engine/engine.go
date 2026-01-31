@@ -251,13 +251,8 @@ func (e *Engine) DeployFromEnvironmentFile(ctx context.Context, envPath string, 
 		return nil, fmt.Errorf("failed to load environment file: %w", err)
 	}
 
-	// Override options from environment file
-	if env.Name() != "" && opts.Environment == "" {
-		opts.Environment = env.Name()
-	}
-	if env.Datacenter() != "" && opts.Datacenter == "" {
-		opts.Datacenter = env.Datacenter()
-	}
+	// Note: Name and Datacenter are CLI parameters, not part of the config file
+	// They must be provided via opts.Environment and opts.Datacenter
 
 	// Build components map from environment
 	if opts.Components == nil {

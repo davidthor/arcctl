@@ -199,10 +199,8 @@ func TestValidateEnvironmentCmd_Flags(t *testing.T) {
 }
 
 func TestValidateEnvironmentCmd_ValidEnvironment(t *testing.T) {
+	// Note: name and datacenter are CLI parameters, not part of the config file
 	envYAML := `
-name: staging
-datacenter: aws-production
-
 components:
   ghcr.io/myorg/web-app:
     source: v1.0.0
