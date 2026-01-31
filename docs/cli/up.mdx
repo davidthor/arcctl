@@ -1,0 +1,144 @@
+---
+title: "arcctl up"
+description: "Quick start command for local development"
+---
+
+# arcctl up
+
+The `up` command provides a streamlined experience for local development. It deploys your component with all its dependencies to a local environment with minimal configuration.
+
+## Synopsis
+
+```bash
+arcctl up [path] [options]
+```
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `[path]` | Path to the component directory (defaults to current directory) |
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `-f, --file <path>` | Path to architect.yml if not in default location |
+| `-n, --name <name>` | Environment name (default: auto-generated from component name) |
+| `--var <key=value>` | Set a component variable (repeatable) |
+| `--var-file <path>` | Load variables from a file |
+| `--detach, -d` | Run in background (don't watch for changes) |
+| `--no-open` | Don't open browser to application URL |
+| `--port <port>` | Override the port for local access |
+
+## Description
+
+The `up` command is designed for rapid local development. It:
+
+1. **Parses** your `architect.yml` file
+2. **Creates** a local development environment
+3. **Provisions** all required resources (databases, etc.)
+4. **Builds** and deploys your application
+5. **Watches** for file changes and auto-reloads
+6. **Exposes** routes for local access
+
+## Examples
+
+### Basic Usage
+
+```bash
+# Start from current directory
+arcctl up
+
+# Start from specific path
+arcctl up ./services/api
+```
+
+### With Variables
+
+```bash
+# Set variables inline
+arcctl up --var log_level=debug --var api_key=test123
+
+# Load variables from file
+arcctl up --var-file .env.local
+```
+
+### Named Environment
+
+```bash
+# Create a named environment (useful for multiple instances)
+arcctl up --name my-feature-branch
+```
+
+### Background Mode
+
+```bash
+# Run in background without watching for changes
+arcctl up --detach
+
+# Later, stop the environment
+arcctl env destroy my-app-dev
+```
+
+## Output
+
+When you run `arcctl up`, you'll see progress for each resource:
+
+```
+$ arcctl up
+
+Component: my-app
+Environment: my-app-dev (local)
+
+[provision] Creating database "main"...
+[provision] Creating database "cache"...
+[build] Building deployment "api"...
+[deploy] Starting deployment "api"...
+[expose] Route "main" available at http://localhost:8080
+
+✓ Application running at http://localhost:8080
+
+Watching for changes... (Ctrl+C to stop)
+```
+
+## File Watching
+
+In the default interactive mode, `arcctl up` watches your source files and automatically:
+
+- **Rebuilds** container images when source files change
+- **Restarts** deployments with the new images
+- **Preserves** database data across restarts
+
+The watch behavior respects `.dockerignore` and common ignore patterns.
+
+## Local Environment
+
+The local environment uses:
+
+- **Docker** for running containers
+- **Local volumes** for database persistence
+- **Port forwarding** for accessing services
+
+Resources are cleaned up when you stop the `up` command (Ctrl+C), unless using `--detach`.
+
+## Comparison with deploy
+
+| Feature | `arcctl up` | `arcctl component deploy` |
+|---------|-------------|---------------------------|
+| Target | Local development | Any environment |
+| Configuration | Minimal | Full control |
+| File watching | Yes | No |
+| State backend | Local only | Configurable |
+| Use case | Development | Staging/Production |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Component Commands" icon="cube" href="/cli/component/build">
+    Full component CLI reference
+  </Card>
+  <Card title="Developer Workflow" icon="code" href="/guides/developer-workflow">
+    Best practices for development
+  </Card>
+</CardGroup>

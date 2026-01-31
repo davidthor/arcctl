@@ -1,0 +1,201 @@
+---
+title: "Datacenters Overview"
+description: "Platform engineer-focused infrastructure templates in arcctl"
+---
+
+# Datacenters
+
+Datacenters are platform engineer-focused infrastructure templates defined in HCL (HashiCorp Configuration Language). They define how component resource requirements get fulfilled using Infrastructure-as-Code modules.
+
+## File Structure
+
+```hcl
+# datacenter.hcl
+
+# Variables for datacenter configuration
+variable "cluster_name" {
+  description = "Kubernetes cluster name"
+  type        = string
+}
+
+# Datacenter-level modules (shared across all environments)
+module "k8s" {
+  build = "./modules/k8s-cluster"
+  inputs = {
+    name = variable.cluster_name
+  }
+}
+
+# Environment configuration with hooks
+environment {
+  # Environment-level modules
+  module "namespace" {
+    build = "./modules/k8s-namespace"
+    inputs = {
+      name = environment.name
+    }
+  }
+
+  # Resource hooks
+  database { ... }
+  deployment { ... }
+  service { ... }
+  ingress { ... }
+}
+```
+
+## Key Concepts
+
+<CardGroup cols={2}>
+  <Card title="Variables" icon="sliders" href="/datacenters/variables">
+    Datacenter-level configuration inputs
+  </Card>
+  <Card title="Modules" icon="cube" href="/datacenters/modules">
+    IaC templates for infrastructure provisioning
+  </Card>
+</CardGroup>
+
+## Resource Hooks
+
+Hooks define how each resource type from components gets fulfilled:
+
+<CardGroup cols={2}>
+  <Card title="Database Hook" icon="database" href="/datacenters/database-hook">
+    Provision databases (PostgreSQL, MySQL, Redis)
+  </Card>
+  <Card title="Deployment Hook" icon="server" href="/datacenters/deployment-hook">
+    Create container deployments
+  </Card>
+  <Card title="Function Hook" icon="bolt" href="/datacenters/function-hook">
+    Deploy serverless functions
+  </Card>
+  <Card title="Service Hook" icon="network-wired" href="/datacenters/service-hook">
+    Configure internal networking
+  </Card>
+  <Card title="Ingress Hook" icon="globe" href="/datacenters/ingress-hook">
+    Set up external traffic routing
+  </Card>
+  <Card title="Bucket Hook" icon="bucket" href="/datacenters/bucket-hook">
+    Provision object storage
+  </Card>
+  <Card title="Encryption Key Hook" icon="key" href="/datacenters/encryption-key-hook">
+    Generate cryptographic keys
+  </Card>
+  <Card title="SMTP Hook" icon="envelope" href="/datacenters/smtp-hook">
+    Provision email sending capabilities
+  </Card>
+  <Card title="Docker Build Hook" icon="docker" href="/datacenters/docker-build-hook">
+    Build and push container images
+  </Card>
+  <Card title="Cronjob Hook" icon="clock" href="/datacenters/cronjob-hook">
+    Configure scheduled tasks
+  </Card>
+</CardGroup>
+
+## Expression Context
+
+Datacenter expressions have access to:
+
+| Expression | Description |
+|------------|-------------|
+| `variable.<name>` | Datacenter variables |
+| `datacenter.name` | Datacenter name |
+| `environment.name` | Current environment name |
+| `environment.nodes` | Array of all nodes in the environment |
+| `node.name` | Current resource name (in hooks) |
+| `node.component` | Component the resource belongs to |
+| `node.inputs.<field>` | Resource input values |
+| `module.<name>.<output>` | Module output values |
+
+See [Expressions](/datacenters/expressions) for more details.
+
+## Complete Example
+
+```hcl
+variable "cluster_name" {
+  type = string
+}
+
+variable "region" {
+  type    = string
+  default = "us-east-1"
+}
+
+module "k8s" {
+  build = "./modules/eks-cluster"
+  inputs = {
+    name   = variable.cluster_name
+    region = variable.region
+  }
+}
+
+environment {
+  module "namespace" {
+    build = "./modules/k8s-namespace"
+    inputs = {
+      name       = environment.name
+      kubeconfig = module.k8s.kubeconfig
+    }
+  }
+
+  database {
+    when = node.inputs.databaseType == "postgres"
+    
+    module "rds" {
+      build = "./modules/rds-postgres"
+      inputs = {
+        name   = "${environment.name}-${node.component}-${node.name}"
+        region = variable.region
+      }
+    }
+
+    outputs = {
+      host     = module.rds.endpoint
+      port     = module.rds.port
+      database = module.rds.database_name
+      url      = module.rds.connection_url
+    }
+  }
+
+  deployment {
+    module "deployment" {
+      build = "./modules/k8s-deployment"
+      inputs = merge(node.inputs, {
+        namespace  = module.namespace.id
+        kubeconfig = module.k8s.kubeconfig
+      })
+    }
+
+    outputs = {
+      id = module.deployment.deployment_id
+    }
+  }
+
+  service {
+    module "service" {
+      build = "./modules/k8s-service"
+      inputs = merge(node.inputs, {
+        namespace  = module.namespace.id
+        kubeconfig = module.k8s.kubeconfig
+      })
+    }
+
+    outputs = {
+      host = module.service.cluster_ip
+      port = module.service.port
+      url  = "http://${module.service.cluster_ip}:${module.service.port}"
+    }
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Variables" icon="sliders" href="/datacenters/variables">
+    Start with variables
+  </Card>
+  <Card title="Platform Engineer Guide" icon="book" href="/guides/platform-engineer-workflow">
+    Complete guide for building datacenters
+  </Card>
+</CardGroup>

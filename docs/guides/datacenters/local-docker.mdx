@@ -1,0 +1,338 @@
+---
+title: "Local Docker"
+description: "Fast local development datacenter using Docker and the native plugin"
+---
+
+# Local Docker Datacenter
+
+This guide shows how to build a lightweight datacenter for local development using arcctl's native plugin. It's optimized for fast startup with minimal overhead.
+
+<Info>
+Example source: `examples/datacenters/local-docker/`
+</Info>
+
+## Overview
+
+This datacenter provides:
+- **Native Plugin**: Built-in execution without Terraform/Pulumi overhead
+- **Docker-based**: Databases and deployments run as containers
+- **Process-based Functions**: Run dev servers as local processes
+- **Fast Startup**: No IaC tool initialization or state refresh
+
+## Why a Local Datacenter?
+
+Cloud datacenters (AWS ECS, DigitalOcean K8s, etc.) use IaC tools like Pulumi or OpenTofu that:
+- Initialize on every operation
+- Refresh state against cloud APIs
+- Perform drift detection
+
+For local development, this overhead is unnecessary. The native plugin:
+- Executes Docker/process commands directly
+- Stores outputs in state (for dependency wiring)
+- Skips drift detection (trusts stored state)
+- Starts in milliseconds, not seconds
+
+## The Native Plugin
+
+The `native` plugin is a lightweight IaC plugin built into arcctl:
+
+```hcl
+module "postgres" {
+  plugin = "native"           # Use native plugin instead of pulumi/opentofu
+  build  = "./modules/docker-postgres"
+  inputs = {
+    name    = "${environment.name}-${node.name}"
+    version = "16"
+  }
+}
+```
+
+### Native Module Format
+
+Native modules use a declarative YAML format:
+
+```yaml
+# modules/docker-postgres/module.yml
+plugin: native
+type: docker
+
+inputs:
+  name:
+    type: string
+    required: true
+  version:
+    type: string
+    default: "16"
+
+resources:
+  container:
+    type: docker:container
+    properties:
+      image: "postgres:${inputs.version}"
+      name: "${inputs.name}"
+      environment:
+        POSTGRES_PASSWORD: "${random_password(16)}"
+      ports:
+        - container: 5432
+          host: auto
+
+outputs:
+  port:
+    value: "${resources.container.ports[0].host}"
+  password:
+    value: "${resources.container.environment.POSTGRES_PASSWORD}"
+    sensitive: true
+```
+
+### Native Resource Types
+
+| Type | Description |
+|------|-------------|
+| `docker:container` | Run a Docker container |
+| `docker:network` | Create a Docker network |
+| `docker:volume` | Create a Docker volume |
+| `process` | Run a local process |
+| `exec` | Execute a one-time command |
+
+## Datacenter Configuration
+
+```hcl
+# datacenter.hcl
+
+variable "network_name" {
+  description = "Docker network for service communication"
+  default     = "arcctl-local"
+}
+
+# Shared Docker network
+module "network" {
+  plugin = "native"
+  build  = "./modules/docker-network"
+  inputs = {
+    name = variable.network_name
+  }
+}
+
+environment {
+  # PostgreSQL using Docker
+  database {
+    when = node.inputs.databaseType == "postgres"
+    
+    module "postgres" {
+      plugin = "native"
+      build  = "./modules/docker-postgres"
+      inputs = {
+        name     = "${environment.name}-${node.name}"
+        version  = node.inputs.databaseVersion
+        network  = variable.network_name
+      }
+    }
+    
+    outputs = {
+      host = "localhost"
+      port = module.postgres.port
+      url  = module.postgres.url
+    }
+  }
+  
+  # Functions run as local processes
+  function {
+    module "process" {
+      plugin = "native"
+      build  = "./modules/process-function"
+      inputs = {
+        context   = node.inputs.context
+        framework = node.inputs.framework
+      }
+    }
+    
+    outputs = {
+      endpoint = module.process.endpoint
+    }
+  }
+  
+  # Deployments run as Docker containers
+  deployment {
+    module "container" {
+      plugin = "native"
+      build  = "./modules/docker-deployment"
+      inputs = {
+        image       = node.inputs.image
+        environment = node.inputs.environment
+      }
+    }
+    
+    outputs = {
+      id = module.container.container_id
+    }
+  }
+}
+```
+
+## Resource Implementations
+
+### Databases
+
+| Type | Implementation |
+|------|----------------|
+| PostgreSQL | `postgres:16` Docker container |
+| MySQL | `mysql:8` Docker container |
+| Redis | `redis:7-alpine` Docker container |
+
+Databases get auto-assigned ports and persist data in Docker volumes.
+
+### Storage (Buckets)
+
+S3-compatible storage uses MinIO:
+
+```yaml
+# modules/docker-bucket/module.yml
+resources:
+  container:
+    type: docker:container
+    properties:
+      image: "minio/minio:latest"
+      command: ["server", "/data"]
+      ports:
+        - container: 9000
+          host: auto
+```
+
+### Functions (Dev Servers)
+
+Functions run as local processes for fast iteration:
+
+```yaml
+# modules/process-function/module.yml
+resources:
+  process:
+    type: process
+    properties:
+      working_dir: "${inputs.context}"
+      command: "${framework_command(inputs.framework)}"
+      environment:
+        PORT: auto
+      readiness:
+        type: http
+        endpoint: "http://localhost:${self.environment.PORT}"
+```
+
+File changes are immediately reflected - no container rebuilds needed.
+
+## Usage
+
+### With arcctl up
+
+```bash
+# From your component directory
+arcctl up --datacenter local-docker
+
+# Or set as default
+export ARCCTL_DATACENTER=local-docker
+arcctl up
+```
+
+### Manual Management
+
+```bash
+# Deploy the datacenter
+arcctl dc deploy local-dev --config ./local-docker
+
+# Create environment
+arcctl env create my-env --datacenter local-dev
+
+# Deploy component
+arcctl component deploy my-app -e my-env --config ./
+```
+
+## State Management
+
+Despite being lightweight, state IS persisted:
+
+```
+~/.arcctl/state/
+└── datacenters/
+    └── local-dev/
+        └── environments/
+            └── my-env/
+                └── resources/
+                    └── my-app/
+                        ├── database-main.state.json
+                        └── deployment-api.state.json
+```
+
+This enables:
+- **Dependency wiring** - Database URLs passed to deployments
+- **Clean shutdown** - Container IDs tracked for removal
+- **Incremental deploys** - Only changed resources updated
+
+## Trade-offs
+
+| Aspect | Native Plugin | Pulumi/OpenTofu |
+|--------|---------------|-----------------|
+| **Startup Time** | Milliseconds | Seconds |
+| **Drift Detection** | No | Yes |
+| **State Refresh** | No | Yes |
+| **Robustness** | Lower | Higher |
+| **Use Case** | Local dev | Production |
+
+The native plugin is **not recommended** for production - use cloud datacenters with proper IaC for durability and drift detection.
+
+## Customization
+
+### Adding a MongoDB Module
+
+```yaml
+# modules/docker-mongodb/module.yml
+plugin: native
+type: docker
+
+inputs:
+  name:
+    type: string
+    required: true
+
+resources:
+  container:
+    type: docker:container
+    properties:
+      image: "mongo:7"
+      name: "${inputs.name}"
+      ports:
+        - container: 27017
+          host: auto
+      volumes:
+        - name: "${inputs.name}-data"
+          path: /data/db
+
+outputs:
+  url:
+    value: "mongodb://localhost:${resources.container.ports[0].host}"
+```
+
+Then add to `datacenter.hcl`:
+
+```hcl
+database {
+  when = node.inputs.databaseType == "mongodb"
+  
+  module "mongodb" {
+    plugin = "native"
+    build  = "./modules/docker-mongodb"
+    inputs = { name = "${environment.name}-${node.name}" }
+  }
+  
+  outputs = { url = module.mongodb.url }
+}
+```
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="IaC Plugins" href="/advanced/iac-plugins">
+    Learn about IaC plugin options
+  </Card>
+  <Card title="AWS ECS" href="/guides/datacenters/aws-ecs">
+    Production datacenter example
+  </Card>
+</CardGroup>

@@ -1,0 +1,241 @@
+---
+title: "Variables"
+description: "Define configurable inputs for arcctl components"
+---
+
+# Variables
+
+Define configurable inputs for your component. Variables allow operators to customize component behavior without modifying the component definition.
+
+## Basic Usage
+
+```yaml
+variables:
+  log_level:
+    default: "info"
+
+  api_key:
+    required: true
+    sensitive: true
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `description` | string | Human-readable description |
+| `default` | any | Default value |
+| `required` | boolean | Whether value must be provided |
+| `sensitive` | boolean | Mark as sensitive (masks in output) |
+
+## Variable Types
+
+### Optional with Default
+
+```yaml
+variables:
+  log_level:
+    description: "Application log level"
+    default: "info"
+```
+
+### Required
+
+```yaml
+variables:
+  database_password:
+    description: "Database password"
+    required: true
+```
+
+### Sensitive
+
+Sensitive values are masked in logs and CLI output:
+
+```yaml
+variables:
+  stripe_secret_key:
+    description: "Stripe API secret key"
+    required: true
+    sensitive: true
+```
+
+## Using Variables
+
+Reference variables using the expression syntax:
+
+```yaml
+variables:
+  log_level:
+    default: "info"
+  api_key:
+    required: true
+    sensitive: true
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      LOG_LEVEL: ${{ variables.log_level }}
+      API_KEY: ${{ variables.api_key }}
+```
+
+## Setting Variables
+
+### CLI
+
+```bash
+arcctl component deploy my-app -e staging \
+  --config ghcr.io/myorg/my-app:v1.0.0 \
+  --var log_level=debug \
+  --var api_key=sk-xxx
+```
+
+### Variable File
+
+Create a `.dcvars` file:
+
+```
+# staging.dcvars
+log_level=debug
+api_key=sk-xxx-staging
+```
+
+```bash
+arcctl component deploy my-app -e staging \
+  --config ghcr.io/myorg/my-app:v1.0.0 \
+  --var-file ./staging.dcvars
+```
+
+### Environment Configuration
+
+In an environment file:
+
+```yaml
+# environment.yml
+name: staging
+datacenter: aws-production
+
+components:
+  my-app:
+    component: ghcr.io/myorg/my-app:v1.0.0
+    variables:
+      log_level: debug
+      api_key: ${{ secrets.stripe_key }}
+```
+
+## Variable Validation
+
+Variables are validated at deployment time:
+
+- Required variables must be provided
+- Type coercion is attempted for non-string values
+- Missing required variables cause deployment to fail
+
+## Best Practices
+
+### Use Descriptive Names
+
+```yaml
+variables:
+  # Good
+  stripe_publishable_key:
+    description: "Stripe publishable API key for frontend"
+    required: true
+
+  # Avoid
+  key1:
+    required: true
+```
+
+### Document Variables
+
+```yaml
+variables:
+  max_upload_size_mb:
+    description: "Maximum file upload size in megabytes"
+    default: 10
+
+  enable_debug_logging:
+    description: "Enable verbose debug logging (not recommended for production)"
+    default: false
+```
+
+### Mark Sensitive Data
+
+```yaml
+variables:
+  # Always mark secrets as sensitive
+  database_password:
+    required: true
+    sensitive: true
+
+  api_secret:
+    required: true
+    sensitive: true
+
+  # Non-sensitive configuration
+  log_level:
+    default: "info"
+```
+
+## Complete Example
+
+```yaml
+name: my-app
+description: A sample application with configurable variables
+
+variables:
+  # Environment configuration
+  log_level:
+    description: "Application log level (debug, info, warn, error)"
+    default: "info"
+
+  environment:
+    description: "Deployment environment name"
+    default: "development"
+
+  # Feature flags
+  enable_metrics:
+    description: "Enable Prometheus metrics endpoint"
+    default: true
+
+  enable_tracing:
+    description: "Enable distributed tracing"
+    default: false
+
+  # External service configuration
+  stripe_publishable_key:
+    description: "Stripe publishable API key"
+    required: true
+
+  stripe_secret_key:
+    description: "Stripe secret API key"
+    required: true
+    sensitive: true
+
+  sentry_dsn:
+    description: "Sentry DSN for error reporting"
+    required: false
+    sensitive: true
+
+  # Resource limits
+  max_upload_size_mb:
+    description: "Maximum file upload size in megabytes"
+    default: 10
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      NODE_ENV: ${{ variables.environment }}
+      LOG_LEVEL: ${{ variables.log_level }}
+      ENABLE_METRICS: ${{ variables.enable_metrics }}
+      ENABLE_TRACING: ${{ variables.enable_tracing }}
+      STRIPE_PUBLISHABLE_KEY: ${{ variables.stripe_publishable_key }}
+      STRIPE_SECRET_KEY: ${{ variables.stripe_secret_key }}
+      SENTRY_DSN: ${{ variables.sentry_dsn }}
+      MAX_UPLOAD_SIZE: ${{ variables.max_upload_size_mb }}
+```

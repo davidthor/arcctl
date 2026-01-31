@@ -1,0 +1,269 @@
+---
+title: "API with Background Workers"
+description: "Build a NestJS API with background job processing using Redis"
+---
+
+# API with Background Workers
+
+This guide shows how to build an API with background worker processes using Redis for job queues and pub/sub communication.
+
+<Info>
+Example source: `examples/components/nestjs-worker/`
+</Info>
+
+## Overview
+
+This component demonstrates:
+- NestJS API deployment
+- Separate worker deployment for background jobs
+- Redis for message queue and pub/sub
+- Multi-stage Docker builds
+- Independent scaling of API and workers
+
+## Component Definition
+
+```yaml
+name: nestjs-worker
+description: NestJS API with a background worker communicating via Redis pub/sub
+
+variables:
+  log_level:
+    description: "Application log level"
+    default: "info"
+  
+  worker_concurrency:
+    description: "Number of concurrent jobs per worker"
+    default: "5"
+
+databases:
+  queue:
+    type: redis:^7
+
+deployments:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    environment:
+      REDIS_URL: ${{ databases.queue.url }}
+      LOG_LEVEL: ${{ variables.log_level }}
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 2
+    liveness_probe:
+      path: /health
+      port: 3000
+    readiness_probe:
+      path: /ready
+      port: 3000
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    environment:
+      REDIS_URL: ${{ databases.queue.url }}
+      LOG_LEVEL: ${{ variables.log_level }}
+      WORKER_CONCURRENCY: ${{ variables.worker_concurrency }}
+    cpu: "1"
+    memory: "1Gi"
+    replicas: 3
+
+services:
+  api:
+    deployment: api
+    port: 3000
+    protocol: http
+
+routes:
+  api:
+    type: http
+    rules:
+      - name: all-traffic
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: api
+            port: 3000
+        timeouts:
+          request: 30s
+```
+
+## Key Concepts
+
+### Multi-Stage Docker Builds
+
+Use Docker build targets to create different images from one Dockerfile:
+
+```yaml
+deployments:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api      # Build the 'api' stage
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker   # Build the 'worker' stage
+```
+
+### Dockerfile Example
+
+```dockerfile
+# Shared base
+FROM node:20-alpine AS base
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+# API target
+FROM base AS api
+COPY src/api ./src/api
+CMD ["node", "src/api/main.js"]
+
+# Worker target
+FROM base AS worker
+COPY src/worker ./src/worker
+CMD ["node", "src/worker/main.js"]
+```
+
+### Independent Scaling
+
+Scale API and workers independently based on load:
+
+```yaml
+deployments:
+  api:
+    replicas: 2       # Handle HTTP requests
+    cpu: "0.5"
+    memory: "512Mi"
+
+  worker:
+    replicas: 3       # Process background jobs
+    cpu: "1"          # More CPU for processing
+    memory: "1Gi"     # More memory for batch jobs
+```
+
+In environments, you can override scaling:
+
+```yaml
+# production.yml
+components:
+  nestjs-worker:
+    scaling:
+      api:
+        replicas: 10
+      worker:
+        replicas: 20
+```
+
+### Shared Redis Connection
+
+Both deployments share the same Redis instance:
+
+```yaml
+databases:
+  queue:
+    type: redis:^7
+
+deployments:
+  api:
+    environment:
+      REDIS_URL: ${{ databases.queue.url }}
+  
+  worker:
+    environment:
+      REDIS_URL: ${{ databases.queue.url }}
+```
+
+## Project Structure
+
+```
+nestjs-worker/
+├── architect.yml
+├── Dockerfile
+├── src/
+│   ├── api/
+│   │   ├── main.ts
+│   │   ├── app.module.ts
+│   │   └── jobs/
+│   │       └── job.producer.ts
+│   └── worker/
+│       ├── main.ts
+│       ├── worker.module.ts
+│       └── jobs/
+│           └── job.processor.ts
+└── package.json
+```
+
+## Application Code Example
+
+### Job Producer (API)
+
+```typescript
+// src/api/jobs/job.producer.ts
+import { Injectable } from '@nestjs/common';
+import { Queue } from 'bull';
+import { InjectQueue } from '@nestjs/bull';
+
+@Injectable()
+export class JobProducer {
+  constructor(@InjectQueue('jobs') private jobQueue: Queue) {}
+
+  async addJob(data: any) {
+    await this.jobQueue.add('process', data, {
+      attempts: 3,
+      backoff: 5000,
+    });
+  }
+}
+```
+
+### Job Processor (Worker)
+
+```typescript
+// src/worker/jobs/job.processor.ts
+import { Processor, Process } from '@nestjs/bull';
+import { Job } from 'bull';
+
+@Processor('jobs')
+export class JobProcessor {
+  @Process('process')
+  async handleJob(job: Job) {
+    console.log(`Processing job ${job.id}`, job.data);
+    // Do heavy processing here
+    await this.processData(job.data);
+  }
+}
+```
+
+## Deploying
+
+```bash
+# Build (creates both api and worker images)
+arcctl component build . -t ghcr.io/myorg/nestjs-worker:v1.0.0
+arcctl component push ghcr.io/myorg/nestjs-worker:v1.0.0
+
+# Deploy
+arcctl component deploy nestjs-worker -e production \
+  --config ghcr.io/myorg/nestjs-worker:v1.0.0 \
+  --var worker_concurrency=10
+```
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="React + Hono" href="/guides/components/react-hono-app">
+    Frontend with API backend
+  </Card>
+  <Card title="DigitalOcean K8s" href="/guides/datacenters/digitalocean-k8s">
+    Deploy to DigitalOcean
+  </Card>
+</CardGroup>

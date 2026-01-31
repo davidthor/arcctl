@@ -1,0 +1,55 @@
+# Native module for running functions as local processes
+# Ideal for fast local development iteration
+plugin: native
+type: process
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: Process identifier
+  context:
+    type: string
+    required: true
+    description: Working directory (source code location)
+  command:
+    type: list
+    description: Command to run (defaults based on framework)
+  environment:
+    type: map
+    default: {}
+    description: Environment variables
+  framework:
+    type: string
+    description: Framework hint (nextjs, react, node, python, etc.)
+
+resources:
+  process:
+    type: process
+    properties:
+      name: "${inputs.name}"
+      working_dir: "${inputs.context}"
+      # Determine command based on framework if not specified
+      command: "${coalesce(inputs.command, framework_command(inputs.framework))}"
+      environment: "${merge(inputs.environment, { PORT: 'auto' })}"
+      # Readiness check for the dev server
+      readiness:
+        type: http
+        endpoint: "http://localhost:${self.environment.PORT}"
+        interval: 2s
+        timeout: 120s  # Dev servers can take a while to start
+      # Graceful shutdown
+      graceful_stop:
+        signal: SIGTERM
+        timeout: 10s
+
+outputs:
+  pid:
+    value: "${resources.process.pid}"
+    description: Process ID
+  port:
+    value: "${resources.process.environment.PORT}"
+    description: Assigned port
+  endpoint:
+    value: "http://localhost:${resources.process.environment.PORT}"
+    description: Local endpoint URL

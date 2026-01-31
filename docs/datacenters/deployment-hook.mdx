@@ -1,0 +1,245 @@
+---
+title: "Deployment Hook"
+description: "Create container deployments for components"
+---
+
+# Deployment Hook
+
+The deployment hook creates long-running container workloads when components declare deployments. It receives the deployment specification and creates the appropriate infrastructure.
+
+## Basic Usage
+
+```hcl
+deployment {
+  module "deployment" {
+    build = "./modules/k8s-deployment"
+    inputs = merge(node.inputs, {
+      name       = "${environment.name}-${node.component}-${node.name}"
+      namespace  = module.namespace.id
+      kubeconfig = module.k8s.kubeconfig
+    })
+  }
+
+  outputs = {
+    id = module.deployment.deployment_id
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Deployment name |
+| `image` | string | Container image |
+| `command` | string[] | Container command |
+| `entrypoint` | string[] | Container entrypoint |
+| `environment` | map | Environment variables |
+| `cpu` | string | CPU allocation |
+| `memory` | string | Memory allocation |
+| `replicas` | number | Replica count |
+| `liveness_probe` | object | Liveness configuration |
+| `readiness_probe` | object | Readiness configuration |
+
+## Required Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique deployment identifier |
+
+## Example Pulumi Module
+
+```typescript
+// modules/k8s-deployment/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as k8s from "@pulumi/kubernetes";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+const namespace = config.require("namespace");
+const image = config.require("image");
+const replicas = config.getNumber("replicas") || 1;
+const cpu = config.get("cpu") || "100m";
+const memory = config.get("memory") || "128Mi";
+const environment = config.getObject<Record<string, string>>("environment") || {};
+
+const deployment = new k8s.apps.v1.Deployment("deployment", {
+  metadata: {
+    name: name,
+    namespace: namespace,
+  },
+  spec: {
+    replicas: replicas,
+    selector: {
+      matchLabels: { app: name },
+    },
+    template: {
+      metadata: {
+        labels: { app: name },
+      },
+      spec: {
+        containers: [{
+          name: "main",
+          image: image,
+          resources: {
+            requests: { cpu, memory },
+            limits: { cpu, memory },
+          },
+          env: Object.entries(environment).map(([name, value]) => ({
+            name,
+            value,
+          })),
+        }],
+      },
+    },
+  },
+});
+
+export const deployment_id = deployment.metadata.name;
+```
+
+## Example OpenTofu Module
+
+```hcl
+# modules/k8s-deployment/main.tf
+variable "name" {
+  type = string
+}
+
+variable "namespace" {
+  type = string
+}
+
+variable "image" {
+  type = string
+}
+
+variable "replicas" {
+  type    = number
+  default = 1
+}
+
+variable "cpu" {
+  type    = string
+  default = "100m"
+}
+
+variable "memory" {
+  type    = string
+  default = "128Mi"
+}
+
+variable "environment" {
+  type    = map(string)
+  default = {}
+}
+
+resource "kubernetes_deployment" "deployment" {
+  metadata {
+    name      = var.name
+    namespace = var.namespace
+  }
+
+  spec {
+    replicas = var.replicas
+
+    selector {
+      match_labels = {
+        app = var.name
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = var.name
+        }
+      }
+
+      spec {
+        container {
+          name  = "main"
+          image = var.image
+
+          resources {
+            requests = {
+              cpu    = var.cpu
+              memory = var.memory
+            }
+            limits = {
+              cpu    = var.cpu
+              memory = var.memory
+            }
+          }
+
+          dynamic "env" {
+            for_each = var.environment
+            content {
+              name  = env.key
+              value = env.value
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+output "deployment_id" {
+  value = kubernetes_deployment.deployment.metadata[0].name
+}
+```
+
+## Health Checks
+
+Handle health check configuration:
+
+```hcl
+deployment {
+  module "deployment" {
+    build = "./modules/k8s-deployment"
+    inputs = {
+      name           = "${environment.name}-${node.component}-${node.name}"
+      namespace      = module.namespace.id
+      image          = node.inputs.image
+      replicas       = node.inputs.replicas
+      cpu            = node.inputs.cpu
+      memory         = node.inputs.memory
+      environment    = node.inputs.environment
+      liveness_probe = node.inputs.liveness_probe
+      readiness_probe = node.inputs.readiness_probe
+    }
+  }
+
+  outputs = {
+    id = module.deployment.deployment_id
+  }
+}
+```
+
+## AWS ECS Example
+
+For ECS-based datacenters:
+
+```hcl
+deployment {
+  module "ecs_service" {
+    build = "./modules/ecs-service"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      cluster_arn = module.ecs_cluster.cluster_arn
+      image       = node.inputs.image
+      cpu         = node.inputs.cpu
+      memory      = node.inputs.memory
+      replicas    = node.inputs.replicas
+      environment = node.inputs.environment
+    }
+  }
+
+  outputs = {
+    id = module.ecs_service.service_arn
+  }
+}
+```

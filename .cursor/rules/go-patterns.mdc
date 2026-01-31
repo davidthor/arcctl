@@ -1,0 +1,115 @@
+---
+description: Go code patterns and conventions for arcctl
+globs: "**/*.go"
+alwaysApply: false
+---
+
+# Go Code Patterns for arcctl
+
+## Interface Design
+
+Define interfaces where used, keep them small and focused:
+
+```go
+// ✅ Good - small, focused interfaces
+type StateReader interface {
+    Read(ctx context.Context, path string) (io.ReadCloser, error)
+}
+
+type StateWriter interface {
+    Write(ctx context.Context, path string, data io.Reader) error
+}
+
+type Backend interface {
+    StateReader
+    StateWriter
+    Delete(ctx context.Context, path string) error
+}
+```
+
+## Schema Versioning
+
+All schemas use version-specific parsers transforming to internal representations:
+
+```go
+// External schema (pkg/schema/component/v1/types.go)
+type SchemaV1 struct {
+    Name      string              `yaml:"name"`
+    Databases map[string]DatabaseV1 `yaml:"databases,omitempty"`
+}
+
+// Internal representation (pkg/schema/component/internal/types.go)
+type InternalComponent struct {
+    Name      string
+    Databases []InternalDatabase
+    SourceVersion string  // Track original version
+}
+```
+
+## Adding New Resource Types
+
+1. Add internal type in `pkg/schema/component/internal/types.go`
+2. Add public interface in `pkg/schema/component/component.go`
+3. Add schema type in `pkg/schema/component/v1/types.go`
+4. Update transformer in `pkg/schema/component/v1/transformer.go`
+5. Add validation in `pkg/schema/component/v1/validator.go`
+6. Update expression evaluator in `pkg/engine/expression/evaluator.go`
+
+## Table-Driven Tests
+
+```go
+func TestParser_Parse(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   string
+        want    *Result
+        wantErr bool
+    }{
+        {
+            name:  "valid input",
+            input: "...",
+            want:  &Result{Name: "test"},
+        },
+        {
+            name:    "invalid input",
+            input:   "...",
+            wantErr: true,
+        },
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result, err := Parse(tt.input)
+            if tt.wantErr {
+                assert.Error(t, err)
+                return
+            }
+            require.NoError(t, err)
+            assert.Equal(t, tt.want, result)
+        })
+    }
+}
+```
+
+## CLI Commands (Cobra)
+
+```go
+func NewDeployCmd() *cobra.Command {
+    var environment string
+    
+    cmd := &cobra.Command{
+        Use:   "deploy <name>",
+        Short: "Deploy a component",
+        Args:  cobra.ExactArgs(1),
+        RunE: func(cmd *cobra.Command, args []string) error {
+            // Implementation
+            return nil
+        },
+    }
+    
+    cmd.Flags().StringVarP(&environment, "environment", "e", "", "Target environment")
+    cmd.MarkFlagRequired("environment")
+    
+    return cmd
+}
+```

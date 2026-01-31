@@ -1,0 +1,161 @@
+---
+title: "Databases"
+description: "Declare database requirements in arcctl components"
+---
+
+# Databases
+
+Declare database requirements for your component. The datacenter determines how databases are provisioned—you just specify what you need.
+
+## Basic Usage
+
+```yaml
+databases:
+  main:
+    type: postgres:^15
+
+  cache:
+    type: redis:^7
+```
+
+## Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `type` | string | Yes | Database type with optional semver constraint |
+| `migrations` | object | No | Migration/seeding configuration |
+| `migrations.build` | object | No | Build config for migration container |
+| `migrations.image` | string | No | Pre-built migration image (alternative to build) |
+| `migrations.command` | string[] | No | Command to run migrations |
+| `migrations.environment` | map | No | Additional environment variables |
+
+## Supported Types
+
+| Type | Description |
+|------|-------------|
+| `postgres` | PostgreSQL database |
+| `mysql` | MySQL database |
+| `mariadb` | MariaDB database |
+| `mongodb` | MongoDB database |
+| `redis` | Redis key-value store |
+| `cockroachdb` | CockroachDB distributed SQL |
+| `clickhouse` | ClickHouse OLAP database |
+
+## Version Constraints
+
+Use semver constraints to specify compatible versions:
+
+```yaml
+databases:
+  main:
+    type: postgres:^15    # Any 15.x version
+  
+  legacy:
+    type: mysql:~8.0      # 8.0.x only
+  
+  cache:
+    type: redis           # Any version (datacenter default)
+```
+
+## Outputs
+
+Access database connection information in other resources:
+
+| Output | Description |
+|--------|-------------|
+| `${{ databases.<name>.url }}` | Full connection URL |
+| `${{ databases.<name>.host }}` | Database hostname |
+| `${{ databases.<name>.port }}` | Database port |
+| `${{ databases.<name>.database }}` | Database name |
+| `${{ databases.<name>.username }}` | Username |
+| `${{ databases.<name>.password }}` | Password |
+
+### Example Usage
+
+```yaml
+deployments:
+  api:
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      DB_HOST: ${{ databases.main.host }}
+      DB_PORT: ${{ databases.main.port }}
+      DB_NAME: ${{ databases.main.database }}
+      DB_USER: ${{ databases.main.username }}
+      DB_PASS: ${{ databases.main.password }}
+```
+
+## Database Migrations
+
+Configure automatic migrations that run when the database is provisioned:
+
+### Build from Source
+
+```yaml
+databases:
+  main:
+    type: postgres:^15
+    migrations:
+      build:
+        context: ./database/migrations
+        dockerfile: Dockerfile
+      command: ["npm", "run", "migrate:up"]
+      environment:
+        MIGRATION_DIR: /migrations
+```
+
+### Pre-built Image
+
+```yaml
+databases:
+  main:
+    type: postgres:^15
+    migrations:
+      image: ghcr.io/myorg/migrations:v1.0.0
+      command: ["flyway", "migrate"]
+```
+
+### Migration with Database URL
+
+The database URL is automatically injected:
+
+```yaml
+databases:
+  main:
+    type: postgres:^15
+    migrations:
+      build:
+        context: ./migrations
+      command: ["npx", "prisma", "migrate", "deploy"]
+      environment:
+        # DATABASE_URL is automatically set to the provisioned database
+        PRISMA_SCHEMA: /app/prisma/schema.prisma
+```
+
+## Complete Example
+
+```yaml
+name: my-app
+
+databases:
+  main:
+    type: postgres:^15
+    migrations:
+      build:
+        context: ./database
+      command: ["npm", "run", "migrate"]
+
+  cache:
+    type: redis:^7
+
+  analytics:
+    type: postgres:^15
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      ANALYTICS_DB_URL: ${{ databases.analytics.url }}
+```

@@ -1,0 +1,66 @@
+# Native module for running deployments as Docker containers
+plugin: native
+type: docker
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: Container name
+  image:
+    type: string
+    required: true
+    description: Docker image to run
+  command:
+    type: list
+    description: Override container command
+  entrypoint:
+    type: list
+    description: Override container entrypoint
+  environment:
+    type: map
+    default: {}
+    description: Environment variables
+  cpu:
+    type: string
+    description: CPU limit (e.g., "0.5")
+  memory:
+    type: string
+    description: Memory limit (e.g., "512Mi")
+  network:
+    type: string
+    required: true
+    description: Docker network to join
+  liveness_probe:
+    type: map
+    description: Health check configuration
+
+resources:
+  container:
+    type: docker:container
+    properties:
+      image: "${inputs.image}"
+      name: "${inputs.name}"
+      network: "${inputs.network}"
+      command: "${inputs.command}"
+      entrypoint: "${inputs.entrypoint}"
+      environment: "${inputs.environment}"
+      # Map cpu/memory to Docker resource constraints
+      resources:
+        cpu: "${inputs.cpu}"
+        memory: "${inputs.memory}"
+      # Convert liveness_probe to Docker healthcheck
+      healthcheck:
+        command: ["curl", "-f", "http://localhost:${inputs.liveness_probe.port}${inputs.liveness_probe.path}"]
+        interval: 10s
+        timeout: 5s
+        retries: 3
+      restart: unless-stopped
+
+outputs:
+  container_id:
+    value: "${resources.container.id}"
+    description: Docker container ID
+  container_name:
+    value: "${inputs.name}"
+    description: Container name

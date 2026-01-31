@@ -1,0 +1,236 @@
+---
+title: "Bucket Hook"
+description: "Provision object storage for components"
+---
+
+# Bucket Hook
+
+The bucket hook provisions object storage when components declare bucket requirements. It creates storage buckets and returns credentials for access.
+
+## Basic Usage
+
+```hcl
+bucket {
+  module "s3" {
+    build = "./modules/s3-bucket"
+    inputs = {
+      name       = "${environment.name}-${node.component}-${node.name}"
+      versioning = node.inputs.versioning
+      public     = node.inputs.public
+      region     = variable.region
+    }
+  }
+
+  outputs = {
+    endpoint        = module.s3.endpoint
+    bucket          = module.s3.bucket_name
+    region          = module.s3.region
+    accessKeyId     = module.s3.access_key_id
+    secretAccessKey = module.s3.secret_access_key
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Bucket identifier |
+| `type` | string | Storage type (s3, gcs, azure-blob) |
+| `versioning` | boolean | Enable object versioning |
+| `public` | boolean | Allow public read access |
+
+## Required Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `endpoint` | string | S3-compatible endpoint URL |
+| `bucket` | string | Bucket name |
+| `region` | string | Bucket region |
+| `accessKeyId` | string | Access key ID |
+| `secretAccessKey` | string | Secret access key |
+
+## AWS S3 Example
+
+```hcl
+bucket {
+  module "s3" {
+    build = "./modules/s3-bucket"
+    inputs = {
+      name       = "${environment.name}-${node.component}-${node.name}"
+      versioning = node.inputs.versioning
+      public     = node.inputs.public
+      region     = variable.region
+    }
+  }
+
+  outputs = {
+    endpoint        = "https://s3.${variable.region}.amazonaws.com"
+    bucket          = module.s3.bucket_name
+    region          = variable.region
+    accessKeyId     = module.s3.access_key_id
+    secretAccessKey = module.s3.secret_access_key
+  }
+}
+```
+
+### Pulumi Module
+
+```typescript
+// modules/s3-bucket/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+const versioning = config.getBoolean("versioning") || false;
+const isPublic = config.getBoolean("public") || false;
+
+const bucket = new aws.s3.Bucket("bucket", {
+  bucket: name,
+  versioning: {
+    enabled: versioning,
+  },
+});
+
+// Block public access unless explicitly public
+const publicAccessBlock = new aws.s3.BucketPublicAccessBlock("public-access", {
+  bucket: bucket.id,
+  blockPublicAcls: !isPublic,
+  blockPublicPolicy: !isPublic,
+  ignorePublicAcls: !isPublic,
+  restrictPublicBuckets: !isPublic,
+});
+
+// Create IAM user for bucket access
+const user = new aws.iam.User("bucket-user", {
+  name: `${name}-user`,
+});
+
+const accessKey = new aws.iam.AccessKey("bucket-access-key", {
+  user: user.name,
+});
+
+const policy = new aws.iam.UserPolicy("bucket-policy", {
+  user: user.name,
+  policy: bucket.arn.apply(arn => JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [{
+      Effect: "Allow",
+      Action: ["s3:*"],
+      Resource: [arn, `${arn}/*`],
+    }],
+  })),
+});
+
+export const bucket_name = bucket.bucket;
+export const access_key_id = accessKey.id;
+export const secret_access_key = accessKey.secret;
+```
+
+## Google Cloud Storage Example
+
+```hcl
+bucket {
+  when = node.inputs.type == "gcs"
+
+  module "gcs" {
+    build = "./modules/gcs-bucket"
+    inputs = {
+      name       = "${environment.name}-${node.component}-${node.name}"
+      versioning = node.inputs.versioning
+      public     = node.inputs.public
+      project    = variable.gcp_project
+    }
+  }
+
+  outputs = {
+    endpoint        = "https://storage.googleapis.com"
+    bucket          = module.gcs.bucket_name
+    region          = module.gcs.location
+    accessKeyId     = module.gcs.hmac_access_id
+    secretAccessKey = module.gcs.hmac_secret
+  }
+}
+```
+
+## MinIO (Local Development)
+
+For local development with MinIO:
+
+```hcl
+bucket {
+  module "minio" {
+    build = "./modules/docker-minio"
+    inputs = {
+      name       = "${node.component}-${node.name}"
+      versioning = node.inputs.versioning
+    }
+  }
+
+  outputs = {
+    endpoint        = module.minio.endpoint
+    bucket          = module.minio.bucket_name
+    region          = "us-east-1"
+    accessKeyId     = module.minio.access_key
+    secretAccessKey = module.minio.secret_key
+  }
+}
+```
+
+## Public Bucket Configuration
+
+Handle public buckets with appropriate policies:
+
+```hcl
+bucket {
+  module "s3" {
+    build = "./modules/s3-bucket"
+    inputs = {
+      name       = "${environment.name}-${node.component}-${node.name}"
+      versioning = node.inputs.versioning
+      public     = node.inputs.public
+      region     = variable.region
+      
+      # Enable static website hosting for public buckets
+      website_enabled = node.inputs.public
+    }
+  }
+
+  outputs = {
+    endpoint        = node.inputs.public ? module.s3.website_endpoint : "https://s3.${variable.region}.amazonaws.com"
+    bucket          = module.s3.bucket_name
+    region          = variable.region
+    accessKeyId     = module.s3.access_key_id
+    secretAccessKey = module.s3.secret_access_key
+  }
+}
+```
+
+## Cross-Account Access
+
+For buckets that need cross-account access:
+
+```hcl
+bucket {
+  module "s3" {
+    build = "./modules/s3-bucket-cross-account"
+    inputs = {
+      name             = "${environment.name}-${node.component}-${node.name}"
+      versioning       = node.inputs.versioning
+      region           = variable.region
+      allowed_accounts = variable.allowed_aws_accounts
+    }
+  }
+
+  outputs = {
+    endpoint        = "https://s3.${variable.region}.amazonaws.com"
+    bucket          = module.s3.bucket_name
+    region          = variable.region
+    accessKeyId     = module.s3.access_key_id
+    secretAccessKey = module.s3.secret_access_key
+  }
+}
+```

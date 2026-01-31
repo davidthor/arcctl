@@ -1,0 +1,191 @@
+---
+title: "CLI Overview"
+description: "arcctl command reference"
+---
+
+# CLI Overview
+
+arcctl provides a comprehensive CLI for building, pushing, and deploying components and datacenters.
+
+## Installation
+
+```bash
+# Install arcctl
+go install github.com/architect-io/arcctl@latest
+
+# Verify installation
+arcctl --version
+```
+
+## Command Structure
+
+```
+arcctl [command] [subcommand] [arguments] [flags]
+```
+
+### Global Flags
+
+| Flag | Description |
+|------|-------------|
+| `--backend <type>` | State backend type (`local`, `s3`, `gcs`, `azurerm`) |
+| `--backend-config <key=value>` | Backend-specific configuration (repeatable) |
+| `--help, -h` | Show help for command |
+| `--version` | Show version information |
+
+## Commands
+
+### Quick Start
+
+| Command | Description |
+|---------|-------------|
+| [`arcctl up`](/cli/up) | Quick start for local development |
+
+### Component Commands
+
+| Command | Description |
+|---------|-------------|
+| [`arcctl component build`](/cli/component/build) | Build a component into OCI artifacts |
+| [`arcctl component tag`](/cli/component/tag) | Tag component artifacts |
+| [`arcctl component push`](/cli/component/push) | Push component artifacts to registry |
+| [`arcctl component deploy`](/cli/component/deploy) | Deploy a component to an environment |
+| [`arcctl component destroy`](/cli/component/destroy) | Destroy a deployed component |
+| [`arcctl component list`](/cli/component/list) | List deployed components |
+| [`arcctl component get`](/cli/component/get) | Get component details |
+
+### Datacenter Commands
+
+| Command | Description |
+|---------|-------------|
+| [`arcctl datacenter build`](/cli/datacenter/build) | Build a datacenter into OCI artifacts |
+| [`arcctl datacenter tag`](/cli/datacenter/tag) | Tag datacenter artifacts |
+| [`arcctl datacenter push`](/cli/datacenter/push) | Push datacenter artifacts to registry |
+| [`arcctl datacenter deploy`](/cli/datacenter/deploy) | Deploy/update a datacenter |
+| [`arcctl datacenter list`](/cli/datacenter/list) | List deployed datacenters |
+| [`arcctl datacenter get`](/cli/datacenter/get) | Get datacenter details |
+| [`arcctl datacenter destroy`](/cli/datacenter/destroy) | Destroy a datacenter |
+
+### Environment Commands
+
+| Command | Description |
+|---------|-------------|
+| [`arcctl environment create`](/cli/environment/create) | Create an environment |
+| [`arcctl environment list`](/cli/environment/list) | List environments |
+| [`arcctl environment get`](/cli/environment/get) | Get environment details |
+| [`arcctl environment update`](/cli/environment/update) | Update environment configuration |
+| [`arcctl environment apply`](/cli/environment/apply) | Apply environment configuration file |
+| [`arcctl environment destroy`](/cli/environment/destroy) | Destroy an environment |
+
+## Command Aliases
+
+For convenience, arcctl supports shorthand aliases:
+
+| Full Command | Alias |
+|--------------|-------|
+| `arcctl datacenter` | `arcctl dc` |
+| `arcctl environment` | `arcctl env` |
+
+```bash
+# These are equivalent:
+arcctl datacenter build . -t ghcr.io/myorg/dc:v1.0.0
+arcctl dc build . -t ghcr.io/myorg/dc:v1.0.0
+
+# These are equivalent:
+arcctl environment list
+arcctl env list
+```
+
+## State Backends
+
+arcctl supports multiple state backends for storing deployment state:
+
+### Local Backend (Default)
+
+```bash
+arcctl component deploy my-app -e staging --config ./
+```
+
+State is stored in `~/.arcctl/state/`.
+
+### S3 Backend
+
+```bash
+arcctl component deploy my-app -e staging --config ./ \
+  --backend s3 \
+  --backend-config bucket=my-arcctl-state \
+  --backend-config region=us-east-1 \
+  --backend-config key=arcctl
+```
+
+### GCS Backend
+
+```bash
+arcctl component deploy my-app -e staging --config ./ \
+  --backend gcs \
+  --backend-config bucket=my-arcctl-state \
+  --backend-config prefix=arcctl
+```
+
+### Azure Backend
+
+```bash
+arcctl component deploy my-app -e staging --config ./ \
+  --backend azurerm \
+  --backend-config storage_account_name=myaccount \
+  --backend-config container_name=arcctl-state \
+  --backend-config key=arcctl
+```
+
+### Environment Variables
+
+Backend configuration can also be provided via environment variables:
+
+```bash
+export ARCCTL_BACKEND=s3
+export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
+export ARCCTL_BACKEND_S3_REGION=us-east-1
+
+arcctl component deploy my-app -e staging --config ./
+```
+
+## Output Formats
+
+Many commands support different output formats:
+
+```bash
+# Default table format
+arcctl component list -e staging
+
+# JSON output (for scripting)
+arcctl component list -e staging --output json
+
+# YAML output
+arcctl component list -e staging --output yaml
+```
+
+## Exit Codes
+
+| Code | Description |
+|------|-------------|
+| `0` | Success |
+| `1` | General error |
+| `2` | Invalid arguments |
+| `3` | State locked |
+| `4` | Validation error |
+| `5` | Resource not found |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="component build" icon="cube" href="/cli/component/build">
+    Build components into OCI artifacts
+  </Card>
+  <Card title="component deploy" icon="rocket" href="/cli/component/deploy">
+    Deploy components to environments
+  </Card>
+  <Card title="datacenter build" icon="server" href="/cli/datacenter/build">
+    Build datacenter infrastructure
+  </Card>
+  <Card title="Up Command" icon="play" href="/cli/up">
+    Quick local development
+  </Card>
+</CardGroup>

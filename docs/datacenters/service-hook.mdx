@@ -1,0 +1,218 @@
+---
+title: "Service Hook"
+description: "Configure internal networking for components"
+---
+
+# Service Hook
+
+The service hook creates internal network endpoints when components declare services. It enables service-to-service communication within and across components.
+
+## Basic Usage
+
+```hcl
+service {
+  module "service" {
+    build = "./modules/k8s-service"
+    inputs = merge(node.inputs, {
+      name       = "${node.component}--${node.name}"
+      namespace  = module.namespace.id
+      kubeconfig = module.k8s.kubeconfig
+    })
+  }
+
+  outputs = {
+    protocol = node.inputs.protocol != null ? node.inputs.protocol : "http"
+    host     = module.service.host
+    port     = module.service.port
+    url      = "${node.inputs.protocol}://${module.service.host}:${module.service.port}"
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Service name |
+| `deployment` | string | Target deployment name |
+| `function` | string | Target function name |
+| `port` | number | Service port |
+| `protocol` | string | Protocol (http, https, tcp, grpc) |
+
+## Required Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `host` | string | Service hostname |
+| `port` | number | Service port |
+| `url` | string | Full service URL |
+
+## Example Pulumi Module
+
+```typescript
+// modules/k8s-service/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as k8s from "@pulumi/kubernetes";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+const namespace = config.require("namespace");
+const port = config.requireNumber("port");
+const targetDeployment = config.get("deployment");
+
+const service = new k8s.core.v1.Service("service", {
+  metadata: {
+    name: name,
+    namespace: namespace,
+  },
+  spec: {
+    selector: {
+      app: targetDeployment || name,
+    },
+    ports: [{
+      port: port,
+      targetPort: port,
+    }],
+  },
+});
+
+export const host = pulumi.interpolate`${name}.${namespace}.svc.cluster.local`;
+export const port_out = port;
+```
+
+## Example OpenTofu Module
+
+```hcl
+# modules/k8s-service/main.tf
+variable "name" {
+  type = string
+}
+
+variable "namespace" {
+  type = string
+}
+
+variable "port" {
+  type = number
+}
+
+variable "deployment" {
+  type    = string
+  default = null
+}
+
+resource "kubernetes_service" "service" {
+  metadata {
+    name      = var.name
+    namespace = var.namespace
+  }
+
+  spec {
+    selector = {
+      app = coalesce(var.deployment, var.name)
+    }
+
+    port {
+      port        = var.port
+      target_port = var.port
+    }
+  }
+}
+
+output "host" {
+  value = "${var.name}.${var.namespace}.svc.cluster.local"
+}
+
+output "port" {
+  value = var.port
+}
+```
+
+## Function Services
+
+Handle services that target functions:
+
+```hcl
+service {
+  # For deployment-backed services
+  when = node.inputs.deployment != null
+
+  module "service" {
+    build = "./modules/k8s-service"
+    inputs = {
+      name       = "${node.component}--${node.name}"
+      namespace  = module.namespace.id
+      deployment = node.inputs.deployment
+      port       = node.inputs.port
+    }
+  }
+
+  outputs = {
+    host = module.service.host
+    port = module.service.port
+    url  = "http://${module.service.host}:${module.service.port}"
+  }
+}
+
+service {
+  # For function-backed services
+  when = node.inputs.function != null
+
+  # Functions already have endpoints, just pass through
+  outputs = {
+    host = node.inputs.functionEndpoint
+    port = 443
+    url  = node.inputs.functionEndpoint
+  }
+}
+```
+
+## AWS ECS Service Discovery
+
+For ECS-based datacenters:
+
+```hcl
+service {
+  module "service_discovery" {
+    build = "./modules/ecs-service-discovery"
+    inputs = {
+      name         = "${node.component}--${node.name}"
+      namespace_id = module.service_namespace.id
+      port         = node.inputs.port
+    }
+  }
+
+  outputs = {
+    host = module.service_discovery.dns_name
+    port = node.inputs.port
+    url  = "http://${module.service_discovery.dns_name}:${node.inputs.port}"
+  }
+}
+```
+
+## Protocol Handling
+
+Handle different protocols appropriately:
+
+```hcl
+service {
+  module "service" {
+    build = "./modules/k8s-service"
+    inputs = {
+      name      = "${node.component}--${node.name}"
+      namespace = module.namespace.id
+      port      = node.inputs.port
+      protocol  = node.inputs.protocol
+    }
+  }
+
+  outputs = {
+    host     = module.service.host
+    port     = module.service.port
+    protocol = node.inputs.protocol != null ? node.inputs.protocol : "http"
+    url      = "${node.inputs.protocol != null ? node.inputs.protocol : "http"}://${module.service.host}:${module.service.port}"
+  }
+}
+```

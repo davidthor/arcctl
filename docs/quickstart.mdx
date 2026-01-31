@@ -1,0 +1,234 @@
+---
+title: "Quickstart"
+description: "Get started with arcctl in 5 minutes"
+---
+
+# Quickstart
+
+This guide will help you create and deploy your first arcctl component.
+
+## Prerequisites
+
+- Go 1.22 or later
+- Docker (for building container images)
+- An OCI-compatible registry (Docker Hub, GitHub Container Registry, etc.) for pushing artifacts
+
+## Installation
+
+```bash
+# Install arcctl
+go install github.com/architect-io/arcctl@latest
+
+# Verify installation
+arcctl --version
+```
+
+## Create Your First Component
+
+### 1. Initialize a Project
+
+Create a new directory for your project:
+
+```bash
+mkdir my-app && cd my-app
+```
+
+### 2. Create the Component File
+
+Create an `architect.yml` file that describes your application:
+
+```yaml architect.yml
+# Declare a PostgreSQL database
+databases:
+  main:
+    type: postgres:^15
+
+# Define your application deployment
+deployments:
+  api:
+    build:
+      context: .
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      PORT: "8080"
+    liveness_probe:
+      path: /health
+      port: 8080
+
+# Expose the deployment as an internal service
+services:
+  api:
+    deployment: api
+    port: 8080
+
+# Create an external route
+routes:
+  main:
+    type: http
+    service: api
+```
+
+### 3. Create a Simple Application
+
+Create a basic application. Here's an example using Node.js:
+
+```json package.json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "pg": "^8.11.0"
+  }
+}
+```
+
+```javascript server.js
+const express = require('express');
+const { Pool } = require('pg');
+
+const app = express();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+app.get('/', async (req, res) => {
+  const result = await pool.query('SELECT NOW()');
+  res.json({ time: result.rows[0].now });
+});
+
+app.listen(process.env.PORT || 8080, () => {
+  console.log(`Server running on port ${process.env.PORT || 8080}`);
+});
+```
+
+```dockerfile Dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
+COPY . .
+CMD ["npm", "start"]
+```
+
+## Quick Development Start
+
+For rapid local development, use the `up` command:
+
+```bash
+arcctl up
+```
+
+This will:
+1. Parse your `architect.yml`
+2. Create a local development environment
+3. Build and deploy your application with all dependencies
+4. Watch for changes and auto-reload
+
+## Build and Push
+
+When you're ready to share or deploy to cloud environments:
+
+### 1. Build the Component
+
+```bash
+arcctl component build . -t ghcr.io/myorg/my-app:v1.0.0
+```
+
+This creates OCI artifacts for:
+- The component manifest
+- Container images for all deployments, functions, and cronjobs
+
+### 2. Push to Registry
+
+```bash
+arcctl component push ghcr.io/myorg/my-app:v1.0.0
+```
+
+## Deploy to an Environment
+
+### 1. Create an Environment
+
+```bash
+arcctl env create staging
+```
+
+### 2. Deploy the Component
+
+```bash
+arcctl component deploy my-app \
+  -e staging \
+  --config ghcr.io/myorg/my-app:v1.0.0
+```
+
+### 3. Check Status
+
+```bash
+# List deployed components
+arcctl component list -e staging
+
+# Get detailed component info
+arcctl component get my-app -e staging
+```
+
+## Understanding the Output
+
+When you deploy, arcctl shows you what's happening:
+
+```
+Component:   my-app
+Environment: staging
+Source:      ghcr.io/myorg/my-app:v1.0.0
+
+Execution Plan:
+
+  database "main" (postgres:^15)
+    + create: PostgreSQL database "staging-my-app-main"
+    
+  deployment "api"
+    + create: Deployment "staging-my-app-api"
+    
+  service "api"
+    + create: Service "staging-my-app-api"
+    
+  route "main"
+    + create: Route "staging-my-app-main"
+
+Plan: 4 to create, 0 to update, 0 to destroy
+
+Proceed with deployment? [Y/n]:
+```
+
+## Cleanup
+
+To remove the deployment:
+
+```bash
+arcctl component destroy my-app -e staging
+```
+
+To delete the environment:
+
+```bash
+arcctl env destroy staging
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book" href="/concepts/overview">
+    Understand components, datacenters, and environments in depth
+  </Card>
+  <Card title="Component Reference" icon="cube" href="/components/overview">
+    Full component specification documentation
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Complete command reference
+  </Card>
+  <Card title="Developer Workflow" icon="code" href="/guides/developer-workflow">
+    Best practices for developing with arcctl
+  </Card>
+</CardGroup>

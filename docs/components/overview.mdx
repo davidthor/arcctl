@@ -1,0 +1,140 @@
+---
+title: "Components Overview"
+description: "Developer-focused application bundles in arcctl"
+---
+
+# Components
+
+Components are developer-focused application bundles defined in an `architect.yml` file. They describe what your application needs without specifying how infrastructure should be provisioned.
+
+## File Structure
+
+```yaml
+# architect.yml
+# Component name is determined by the OCI tag at build time
+# README.md (if present) is bundled into the artifact for registry documentation
+
+# Application resources
+databases: map<string, Database>
+buckets: map<string, Bucket>
+encryptionKeys: map<string, EncryptionKey>
+smtp: map<string, SMTP>
+deployments: map<string, Deployment>
+functions: map<string, Function>
+services: map<string, Service>
+routes: map<string, Route>
+cronjobs: map<string, Cronjob>
+
+# Configuration
+variables: map<string, Variable>
+dependencies: map<string, Dependency>
+```
+
+## Resource Types
+
+Components support a variety of resource types to define your application:
+
+<CardGroup cols={2}>
+  <Card title="Databases" icon="database" href="/components/databases">
+    PostgreSQL, MySQL, MongoDB, Redis
+  </Card>
+  <Card title="Buckets" icon="bucket" href="/components/buckets">
+    S3-compatible object storage
+  </Card>
+  <Card title="Encryption Keys" icon="key" href="/components/encryption-keys">
+    RSA, ECDSA, symmetric keys, and salts
+  </Card>
+  <Card title="SMTP" icon="envelope" href="/components/smtp">
+    Email sending capabilities
+  </Card>
+  <Card title="Deployments" icon="server" href="/components/deployments">
+    Long-running container workloads
+  </Card>
+  <Card title="Functions" icon="bolt" href="/components/functions">
+    Serverless auto-scaling workloads
+  </Card>
+  <Card title="Services" icon="network-wired" href="/components/services">
+    Internal networking and service mesh
+  </Card>
+  <Card title="Routes" icon="route" href="/components/routes">
+    External traffic routing (Gateway API)
+  </Card>
+  <Card title="Cronjobs" icon="clock" href="/components/cronjobs">
+    Scheduled tasks
+  </Card>
+  <Card title="Variables" icon="sliders" href="/components/variables">
+    Configurable inputs
+  </Card>
+</CardGroup>
+
+## Expression System
+
+Components use the `${{ ... }}` expression syntax to reference values:
+
+```yaml
+deployments:
+  api:
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      LOG_LEVEL: ${{ variables.log_level }}
+      API_URL: ${{ services.api.url }}
+```
+
+## Complete Example
+
+```yaml
+# my-app/architect.yml
+
+variables:
+  log_level:
+    default: "info"
+  stripe_key:
+    required: true
+    sensitive: true
+
+databases:
+  main:
+    type: postgres:^15
+  cache:
+    type: redis
+
+buckets:
+  uploads:
+    type: s3
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+
+functions:
+  web:
+    build:
+      context: ./web
+    framework: nextjs
+
+services:
+  api:
+    deployment: api
+    port: 8080
+
+routes:
+  main:
+    type: http
+    service: api
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Databases" icon="database" href="/components/databases">
+    Start with database configuration
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Build your first component
+  </Card>
+</CardGroup>

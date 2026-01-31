@@ -1,0 +1,200 @@
+---
+title: "Next.js with Database & Storage"
+description: "Build a Next.js application with PostgreSQL and S3 file storage"
+---
+
+# Next.js with Database & Storage
+
+This guide shows how to build a full-stack Next.js application with PostgreSQL for data persistence and S3-compatible storage for file uploads.
+
+<Info>
+Example source: `examples/components/nextjs-app/`
+</Info>
+
+## Overview
+
+This component demonstrates:
+- Next.js deployed as a serverless function
+- PostgreSQL database for persistent data
+- S3-compatible bucket for file uploads
+- Framework-specific optimizations with the `framework: nextjs` hint
+
+## Component Definition
+
+```yaml
+name: nextjs-app
+description: A Next.js application with PostgreSQL database and S3 file storage
+
+variables:
+  log_level:
+    description: "Application log level"
+    default: "info"
+  
+  upload_max_size:
+    description: "Maximum file upload size in MB"
+    default: "10"
+
+databases:
+  main:
+    type: postgres:^16
+
+buckets:
+  uploads:
+    type: s3
+    versioning: true
+    public: false
+
+functions:
+  web:
+    build:
+      context: .
+    framework: nextjs
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      S3_ENDPOINT: ${{ buckets.uploads.endpoint }}
+      S3_BUCKET: ${{ buckets.uploads.bucket }}
+      S3_REGION: ${{ buckets.uploads.region }}
+      S3_ACCESS_KEY_ID: ${{ buckets.uploads.accessKeyId }}
+      S3_SECRET_ACCESS_KEY: ${{ buckets.uploads.secretAccessKey }}
+      UPLOAD_MAX_SIZE_MB: ${{ variables.upload_max_size }}
+      LOG_LEVEL: ${{ variables.log_level }}
+    memory: "1024Mi"
+    timeout: 30
+
+services:
+  web:
+    function: web
+
+routes:
+  main:
+    type: http
+    rules:
+      - name: all-traffic
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: web
+```
+
+## Key Concepts
+
+### Serverless Functions with Framework Hints
+
+The `framework: nextjs` hint tells the datacenter to use Next.js-optimized deployment:
+
+```yaml
+functions:
+  web:
+    build:
+      context: .
+    framework: nextjs  # Enables Next.js-specific optimizations
+```
+
+Datacenters like Vercel can use this to deploy with native Next.js support, while Kubernetes-based datacenters might use a container-based approach.
+
+### S3 Bucket Configuration
+
+Declare storage needs without specifying the provider:
+
+```yaml
+buckets:
+  uploads:
+    type: s3
+    versioning: true   # Keep file history
+    public: false      # Require authentication
+```
+
+The datacenter provisions the actual storage (AWS S3, MinIO, DigitalOcean Spaces, etc.) and provides credentials.
+
+### Using Bucket Outputs
+
+Access bucket credentials in your application:
+
+```yaml
+environment:
+  S3_ENDPOINT: ${{ buckets.uploads.endpoint }}
+  S3_BUCKET: ${{ buckets.uploads.bucket }}
+  S3_ACCESS_KEY_ID: ${{ buckets.uploads.accessKeyId }}
+  S3_SECRET_ACCESS_KEY: ${{ buckets.uploads.secretAccessKey }}
+```
+
+## Project Structure
+
+```
+nextjs-app/
+├── architect.yml
+├── app/
+│   ├── page.tsx
+│   ├── api/
+│   │   └── upload/
+│   │       └── route.ts
+│   └── ...
+├── package.json
+└── next.config.js
+```
+
+## Deploying
+
+### Local Development
+
+```bash
+arcctl up
+```
+
+### Production
+
+```bash
+# Build and push
+arcctl component build . -t ghcr.io/myorg/nextjs-app:v1.0.0
+arcctl component push ghcr.io/myorg/nextjs-app:v1.0.0
+
+# Deploy
+arcctl component deploy nextjs-app -e production \
+  --config ghcr.io/myorg/nextjs-app:v1.0.0 \
+  --var log_level=warn
+```
+
+## Application Code Example
+
+```typescript
+// app/api/upload/route.ts
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+const s3 = new S3Client({
+  endpoint: process.env.S3_ENDPOINT,
+  region: process.env.S3_REGION,
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+  },
+});
+
+export async function POST(request: Request) {
+  const formData = await request.formData();
+  const file = formData.get('file') as File;
+  
+  const buffer = Buffer.from(await file.arrayBuffer());
+  
+  await s3.send(new PutObjectCommand({
+    Bucket: process.env.S3_BUCKET,
+    Key: `uploads/${Date.now()}-${file.name}`,
+    Body: buffer,
+    ContentType: file.type,
+  }));
+  
+  return Response.json({ success: true });
+}
+```
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="React + Hono" href="/guides/components/react-hono-app">
+    Separate frontend and backend
+  </Card>
+  <Card title="Vercel Datacenter" href="/guides/datacenters/vercel-functions">
+    Deploy to Vercel
+  </Card>
+</CardGroup>

@@ -1,0 +1,271 @@
+---
+title: "AWS ECS Fargate"
+description: "Deploy to AWS ECS with RDS, ElastiCache, and S3"
+---
+
+# AWS ECS Fargate Datacenter
+
+This guide shows how to build a datacenter that deploys components to AWS ECS Fargate with managed services for databases, caching, and storage.
+
+<Info>
+Example source: `examples/datacenters/aws-ecs/`
+</Info>
+
+## Overview
+
+This datacenter provides:
+- **Compute**: ECS Fargate (serverless containers)
+- **Databases**: RDS for PostgreSQL/MySQL, ElastiCache for Redis
+- **Storage**: S3 buckets
+- **Networking**: VPC, ALB, Route53
+- **Functions**: AWS Lambda
+- **Scheduling**: EventBridge scheduled tasks
+
+## Configuration Variables
+
+```hcl
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "vpc_id" {
+  description = "VPC ID for deployment"
+  type        = string
+}
+
+variable "cluster_name" {
+  description = "ECS cluster name"
+  type        = string
+}
+
+variable "domain" {
+  description = "Base domain for environments"
+  type        = string
+}
+
+variable "hosted_zone_id" {
+  description = "Route53 hosted zone ID"
+  type        = string
+}
+
+variable "certificate_arn" {
+  description = "ACM certificate ARN for TLS"
+  type        = string
+}
+```
+
+## Shared Infrastructure
+
+Resources created once and shared across environments:
+
+```hcl
+# ECS Cluster
+module "ecs_cluster" {
+  build = "./modules/ecs-cluster"
+  inputs = {
+    name   = variable.cluster_name
+    region = variable.aws_region
+    vpc_id = variable.vpc_id
+  }
+}
+
+# Application Load Balancer
+module "alb" {
+  build = "./modules/alb"
+  inputs = {
+    name            = "${variable.cluster_name}-alb"
+    vpc_id          = variable.vpc_id
+    certificate_arn = variable.certificate_arn
+  }
+}
+```
+
+## Environment Configuration
+
+```hcl
+environment {
+  # Per-environment resources
+  module "target_group" {
+    build = "./modules/alb-target-group"
+    inputs = {
+      name    = environment.name
+      vpc_id  = variable.vpc_id
+      alb_arn = module.alb.arn
+    }
+  }
+
+  module "log_group" {
+    build = "./modules/cloudwatch-logs"
+    inputs = {
+      name           = "/ecs/${variable.cluster_name}/${environment.name}"
+      retention_days = 30
+    }
+  }
+
+  module "security_group" {
+    build = "./modules/security-group"
+    inputs = {
+      name   = "${environment.name}-sg"
+      vpc_id = variable.vpc_id
+    }
+  }
+}
+```
+
+## Resource Hooks
+
+### Database Hook (RDS)
+
+```hcl
+database {
+  module "rds_database" {
+    build = "./modules/rds-database"
+    inputs = {
+      name              = "${environment.name}-${node.name}"
+      type              = node.inputs.databaseType
+      version           = node.inputs.databaseVersion
+      region            = variable.aws_region
+      vpc_id            = variable.vpc_id
+      instance_class    = "db.t3.micro"
+      allocated_storage = 20
+      security_group_id = module.security_group.id
+    }
+  }
+
+  outputs = {
+    host     = module.rds_database.endpoint
+    port     = module.rds_database.port
+    database = module.rds_database.database_name
+    url      = module.rds_database.connection_url
+  }
+}
+```
+
+### Deployment Hook (ECS Service)
+
+```hcl
+deployment {
+  module "ecs_service" {
+    build = "./modules/ecs-service"
+    inputs = merge(node.inputs, {
+      cluster           = variable.cluster_name
+      vpc_id            = variable.vpc_id
+      security_group_id = module.security_group.id
+      log_group         = module.log_group.name
+    })
+  }
+
+  outputs = {
+    id = module.ecs_service.service_id
+  }
+}
+```
+
+### Function Hook (Lambda)
+
+```hcl
+function {
+  module "lambda" {
+    build = "./modules/lambda-function"
+    inputs = merge(node.inputs, {
+      name              = "${environment.name}-${node.name}"
+      vpc_id            = variable.vpc_id
+      security_group_id = module.security_group.id
+    })
+  }
+
+  outputs = {
+    id       = module.lambda.function_arn
+    endpoint = module.lambda.function_url
+  }
+}
+```
+
+### Ingress Hook (ALB)
+
+```hcl
+ingress {
+  module "alb_listener_rule" {
+    build = "./modules/alb-listener-rule"
+    inputs = merge(node.inputs, {
+      alb_arn          = module.alb.arn
+      target_group_arn = module.target_group.arn
+      domain           = "${environment.name}.${variable.domain}"
+    })
+  }
+
+  outputs = {
+    url   = "https://${environment.name}.${variable.domain}"
+    hosts = ["${environment.name}.${variable.domain}"]
+  }
+}
+```
+
+### Docker Build Hook (ECR)
+
+```hcl
+dockerBuild {
+  module "ecr_build" {
+    build = "./modules/ecr-build"
+    inputs = {
+      context    = node.inputs.context
+      dockerfile = node.inputs.dockerfile
+      target     = node.inputs.target
+      args       = node.inputs.args
+      region     = variable.aws_region
+    }
+  }
+
+  outputs = {
+    image = module.ecr_build.image_uri
+  }
+}
+```
+
+## Deploying the Datacenter
+
+```bash
+# Build the datacenter
+arcctl dc build . -t ghcr.io/myorg/aws-ecs-dc:v1.0.0
+arcctl dc push ghcr.io/myorg/aws-ecs-dc:v1.0.0
+
+# Deploy with variables
+arcctl dc deploy aws-production \
+  --config ghcr.io/myorg/aws-ecs-dc:v1.0.0 \
+  --var cluster_name=prod-cluster \
+  --var vpc_id=vpc-12345 \
+  --var domain=app.example.com \
+  --var hosted_zone_id=Z123456 \
+  --var certificate_arn=arn:aws:acm:...
+```
+
+## Creating Environments
+
+```bash
+# Create staging environment
+arcctl env create staging --datacenter aws-production
+
+# Deploy components
+arcctl component deploy my-app -e staging \
+  --config ghcr.io/myorg/my-app:v1.0.0
+```
+
+## Cost Optimization
+
+- Use Fargate Spot for non-critical workloads
+- RDS t3.micro for development environments
+- CloudWatch log retention to control costs
+- S3 lifecycle policies for object storage
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="DigitalOcean K8s" href="/guides/datacenters/digitalocean-k8s">
+    Alternative Kubernetes deployment
+  </Card>
+  <Card title="NestJS Worker" href="/guides/components/nestjs-worker">
+    Background workers on ECS
+  </Card>
+</CardGroup>

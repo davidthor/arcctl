@@ -1,0 +1,157 @@
+---
+title: "Buckets"
+description: "Declare blob storage requirements in arcctl components"
+---
+
+# Buckets
+
+Declare blob storage requirements for your component. Buckets provide S3-compatible object storage that your applications can use for file uploads, static assets, backups, and more.
+
+## Basic Usage
+
+```yaml
+buckets:
+  uploads:
+    type: s3
+```
+
+## Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `type` | string | required | Storage type (`s3`, `gcs`, `azure-blob`) |
+| `versioning` | boolean | `false` | Enable object versioning |
+| `public` | boolean | `false` | Allow public read access |
+
+## Supported Types
+
+| Type | Description |
+|------|-------------|
+| `s3` | S3-compatible storage (AWS S3, MinIO, etc.) |
+| `gcs` | Google Cloud Storage |
+| `azure-blob` | Azure Blob Storage |
+
+## Configuration Options
+
+### Versioning
+
+Enable versioning to keep historical versions of objects:
+
+```yaml
+buckets:
+  documents:
+    type: s3
+    versioning: true
+```
+
+### Public Access
+
+Allow public read access for static assets:
+
+```yaml
+buckets:
+  static-assets:
+    type: s3
+    public: true
+```
+
+## Outputs
+
+Access bucket connection information in other resources:
+
+| Output | Description |
+|--------|-------------|
+| `${{ buckets.<name>.endpoint }}` | S3-compatible endpoint URL |
+| `${{ buckets.<name>.bucket }}` | Bucket name |
+| `${{ buckets.<name>.region }}` | Bucket region |
+| `${{ buckets.<name>.accessKeyId }}` | Access key ID |
+| `${{ buckets.<name>.secretAccessKey }}` | Secret access key |
+
+### Example Usage
+
+```yaml
+deployments:
+  api:
+    environment:
+      S3_ENDPOINT: ${{ buckets.uploads.endpoint }}
+      S3_BUCKET: ${{ buckets.uploads.bucket }}
+      S3_REGION: ${{ buckets.uploads.region }}
+      S3_ACCESS_KEY_ID: ${{ buckets.uploads.accessKeyId }}
+      S3_SECRET_ACCESS_KEY: ${{ buckets.uploads.secretAccessKey }}
+```
+
+## Complete Example
+
+```yaml
+name: file-service
+
+buckets:
+  uploads:
+    type: s3
+    versioning: true
+
+  static:
+    type: s3
+    public: true
+
+  backups:
+    type: s3
+    versioning: true
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      # User uploads bucket
+      UPLOADS_ENDPOINT: ${{ buckets.uploads.endpoint }}
+      UPLOADS_BUCKET: ${{ buckets.uploads.bucket }}
+      UPLOADS_ACCESS_KEY: ${{ buckets.uploads.accessKeyId }}
+      UPLOADS_SECRET_KEY: ${{ buckets.uploads.secretAccessKey }}
+      
+      # Static assets bucket
+      STATIC_BUCKET: ${{ buckets.static.bucket }}
+      STATIC_PUBLIC_URL: ${{ buckets.static.endpoint }}/${{ buckets.static.bucket }}
+
+cronjobs:
+  backup:
+    schedule: "0 0 * * *"
+    build:
+      context: ./backup
+    environment:
+      BACKUP_BUCKET: ${{ buckets.backups.bucket }}
+      BACKUP_ENDPOINT: ${{ buckets.backups.endpoint }}
+```
+
+## SDK Integration
+
+Most S3 SDKs work seamlessly with the bucket outputs:
+
+### Node.js (AWS SDK v3)
+
+```javascript
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+const s3 = new S3Client({
+  endpoint: process.env.S3_ENDPOINT,
+  region: process.env.S3_REGION,
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY_ID,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+  },
+});
+```
+
+### Python (boto3)
+
+```python
+import boto3
+
+s3 = boto3.client(
+    's3',
+    endpoint_url=os.environ['S3_ENDPOINT'],
+    region_name=os.environ['S3_REGION'],
+    aws_access_key_id=os.environ['S3_ACCESS_KEY_ID'],
+    aws_secret_access_key=os.environ['S3_SECRET_ACCESS_KEY'],
+)
+```

@@ -1,0 +1,226 @@
+# n8n - Open Source Workflow Automation
+# https://docs.n8n.io/hosting/installation/docker/
+#
+# This component deploys n8n using the official Docker image.
+# n8n is a powerful workflow automation tool that connects apps
+# and services to automate tasks without writing code.
+
+variables:
+  # Timezone configuration
+  timezone:
+    description: "Timezone for the n8n instance (e.g., America/New_York, Europe/London)"
+    default: "UTC"
+
+  # Webhook URL (for external webhook triggers)
+  webhook_url:
+    description: "Public URL for webhooks (auto-configured from route if not set)"
+    default: ""
+
+  # Execution settings
+  executions_data_prune:
+    description: "Enable automatic pruning of old execution data"
+    default: "true"
+
+  executions_data_max_age:
+    description: "Maximum age of execution data in hours before pruning"
+    default: "336"
+
+  executions_data_save_on_error:
+    description: "Save execution data on error (all, none)"
+    default: "all"
+
+  executions_data_save_on_success:
+    description: "Save execution data on success (all, none)"
+    default: "all"
+
+  executions_data_save_manual:
+    description: "Save execution data for manual executions"
+    default: "true"
+
+  # Workflow settings
+  workflow_caller_policy_default:
+    description: "Default policy for workflow callers (workflowsFromSameOwner, any, none)"
+    default: "workflowsFromSameOwner"
+
+  # Logging
+  log_level:
+    description: "Log level (debug, info, warn, error)"
+    default: "info"
+
+  log_output:
+    description: "Log output destination (console, file)"
+    default: "console"
+
+  # Security
+  secure_cookie:
+    description: "Use secure cookies (set to true for HTTPS)"
+    default: "true"
+
+  # User management
+  user_management_disabled:
+    description: "Disable user management (single user mode)"
+    default: "false"
+
+  # External hooks (optional)
+  external_hook_files:
+    description: "Comma-separated paths to external hook files"
+    default: ""
+
+  # Templates
+  templates_enabled:
+    description: "Enable workflow templates"
+    default: "true"
+
+  templates_host:
+    description: "Host for workflow templates"
+    default: "https://api.n8n.io/api/"
+
+  # Diagnostics
+  diagnostics_enabled:
+    description: "Enable diagnostics and telemetry"
+    default: "true"
+
+  # Version notifications
+  version_notifications_enabled:
+    description: "Enable version update notifications"
+    default: "true"
+
+# Encryption key for securing credentials and sensitive data
+encryptionKeys:
+  encryption-key:
+    type: symmetric
+    bytes: 32
+
+# Databases
+databases:
+  # PostgreSQL - recommended for production
+  postgres:
+    type: postgres:^15
+
+# Deployments
+deployments:
+  # Main n8n application
+  app:
+    image: docker.n8n.io/n8nio/n8n:2.4.7
+    environment:
+      # Timezone configuration
+      GENERIC_TIMEZONE: ${{ variables.timezone }}
+      TZ: ${{ variables.timezone }}
+      # Security settings
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_ENCRYPTION_KEY: ${{ encryptionKeys.encryption-key.keyBase64 }}
+      N8N_SECURE_COOKIE: ${{ variables.secure_cookie }}
+      # Database configuration (PostgreSQL)
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: ${{ databases.postgres.host }}
+      DB_POSTGRESDB_PORT: ${{ databases.postgres.port }}
+      DB_POSTGRESDB_DATABASE: ${{ databases.postgres.database }}
+      DB_POSTGRESDB_USER: ${{ databases.postgres.username }}
+      DB_POSTGRESDB_PASSWORD: ${{ databases.postgres.password }}
+      # Webhook URL configuration
+      WEBHOOK_URL: ${{ variables.webhook_url }}
+      N8N_EDITOR_BASE_URL: ${{ routes.public.url }}
+      # Execution settings
+      EXECUTIONS_DATA_PRUNE: ${{ variables.executions_data_prune }}
+      EXECUTIONS_DATA_MAX_AGE: ${{ variables.executions_data_max_age }}
+      EXECUTIONS_DATA_SAVE_ON_ERROR: ${{ variables.executions_data_save_on_error }}
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: ${{ variables.executions_data_save_on_success }}
+      EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: ${{ variables.executions_data_save_manual }}
+      # Workflow settings
+      N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION: ${{ variables.workflow_caller_policy_default }}
+      # Logging
+      N8N_LOG_LEVEL: ${{ variables.log_level }}
+      N8N_LOG_OUTPUT: ${{ variables.log_output }}
+      # User management
+      N8N_USER_MANAGEMENT_DISABLED: ${{ variables.user_management_disabled }}
+      # External hooks
+      EXTERNAL_HOOK_FILES: ${{ variables.external_hook_files }}
+      # Templates
+      N8N_TEMPLATES_ENABLED: ${{ variables.templates_enabled }}
+      N8N_TEMPLATES_HOST: ${{ variables.templates_host }}
+      # Diagnostics
+      N8N_DIAGNOSTICS_ENABLED: ${{ variables.diagnostics_enabled }}
+      # Version notifications
+      N8N_VERSION_NOTIFICATIONS_ENABLED: ${{ variables.version_notifications_enabled }}
+    cpu: "1"
+    memory: "2Gi"
+    replicas: 1
+    liveness_probe:
+      path: /healthz
+      port: 5678
+      initial_delay_seconds: 30
+    readiness_probe:
+      path: /healthz
+      port: 5678
+      initial_delay_seconds: 15
+
+# Services
+services:
+  app:
+    deployment: app
+    port: 5678
+    protocol: http
+
+# Routes for external access
+routes:
+  public:
+    type: http
+    rules:
+      # Health check endpoint
+      - name: health
+        matches:
+          - path:
+              type: Exact
+              value: /healthz
+        backendRefs:
+          - service: app
+            port: 5678
+
+      # Webhook endpoints
+      - name: webhooks
+        matches:
+          - path:
+              type: PathPrefix
+              value: /webhook
+        backendRefs:
+          - service: app
+            port: 5678
+        timeouts:
+          request: 120s
+          backendRequest: 115s
+
+      # Webhook test endpoints
+      - name: webhooks-test
+        matches:
+          - path:
+              type: PathPrefix
+              value: /webhook-test
+        backendRefs:
+          - service: app
+            port: 5678
+        timeouts:
+          request: 120s
+
+      # REST API
+      - name: api
+        matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: app
+            port: 5678
+        timeouts:
+          request: 60s
+          backendRequest: 55s
+
+      # Main application (editor UI)
+      - name: editor
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: app
+            port: 5678

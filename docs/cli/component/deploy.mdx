@@ -1,0 +1,111 @@
+---
+title: "component deploy"
+description: "Deploy a component to an environment"
+---
+
+# arcctl component deploy
+
+Deploy a component to an environment.
+
+## Synopsis
+
+```bash
+arcctl component deploy <name> -e <environment> -c <config> [options]
+```
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `<name>` | Name for the component deployment |
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `-e, --environment <name>` | Target environment (required) |
+| `-c, --config <config-ref>` | Component config: OCI image or local path (required) |
+| `--var <key=value>` | Set a component variable (repeatable) |
+| `--var-file <path>` | Load variables from file |
+| `--auto-approve` | Skip confirmation prompt |
+| `--target <resource>` | Target specific resource (repeatable) |
+| `--backend <type>` | State backend type |
+| `--backend-config <key=value>` | Backend configuration |
+
+## Config Reference Formats
+
+The `--config` flag accepts two formats:
+
+**OCI Image Reference:**
+
+```bash
+arcctl component deploy web-app -e staging --config ghcr.io/myorg/web-app:v1.5.0
+```
+
+**Local Path (for development):**
+
+```bash
+arcctl component deploy web-app -e staging --config ./services/web-app
+```
+
+When deploying from local source, arcctl invokes the datacenter's `dockerBuild` hook to build and push container images.
+
+## Examples
+
+```bash
+# Deploy from OCI image
+arcctl component deploy web-app -e staging --config ghcr.io/myorg/web-app:v1.5.0
+
+# Deploy from local source
+arcctl component deploy web-app -e staging --config ./services/web-app
+
+# Deploy with variables
+arcctl component deploy web-app -e staging \
+  --config ghcr.io/myorg/web-app:v1.5.0 \
+  --var log_level=debug \
+  --var-file ./vars/staging.dcvars
+
+# Deploy with auto-approval (CI/CD)
+arcctl component deploy web-app -e staging \
+  --config ghcr.io/myorg/web-app:v1.5.0 \
+  --auto-approve
+
+# Deploy with S3 backend
+arcctl component deploy web-app -e staging \
+  --config ghcr.io/myorg/web-app:v1.5.0 \
+  --backend s3 \
+  --backend-config bucket=my-arcctl-state
+
+# Target specific resource
+arcctl component deploy web-app -e staging \
+  --config ghcr.io/myorg/web-app:v1.5.0 \
+  --target deployment.api
+```
+
+## Execution Plan Output
+
+```
+$ arcctl component deploy web-app -e staging --config ghcr.io/myorg/web-app:v1.5.0
+
+Component:   web-app
+Environment: staging
+Source:      ghcr.io/myorg/web-app:v1.5.0
+
+Execution Plan:
+
+  database "main" (postgres:^15)
+    + create: PostgreSQL database "staging-web-app-main"
+    
+  deployment "api"
+    + create: Deployment "staging-web-app-api"
+    
+  service "api"
+    + create: Service "staging-web-app-api"
+    
+  route "main"
+    + create: Route "staging-web-app-main"
+
+Plan: 4 to create, 0 to update, 0 to destroy
+
+Proceed with deployment? [Y/n]:
+```

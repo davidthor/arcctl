@@ -1,0 +1,86 @@
+# Native module for running MinIO as local S3-compatible storage
+plugin: native
+type: docker
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: Bucket name (also used for container name)
+  versioning:
+    type: boolean
+    default: false
+    description: Enable object versioning
+  public:
+    type: boolean
+    default: false
+    description: Allow public read access
+  network:
+    type: string
+    required: true
+    description: Docker network to join
+
+resources:
+  volume:
+    type: docker:volume
+    properties:
+      name: "${inputs.name}-data"
+  
+  container:
+    type: docker:container
+    depends_on: [volume]
+    properties:
+      image: "minio/minio:latest"
+      name: "minio-${inputs.name}"
+      network: "${inputs.network}"
+      command: ["server", "/data", "--console-address", ":9001"]
+      environment:
+        MINIO_ROOT_USER: "${random_string(12)}"
+        MINIO_ROOT_PASSWORD: "${random_password(20)}"
+      ports:
+        - container: 9000
+          host: auto
+        - container: 9001
+          host: auto
+      volumes:
+        - name: "${inputs.name}-data"
+          path: /data
+      healthcheck:
+        command: ["curl", "-f", "http://localhost:9000/minio/health/live"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+      restart: unless-stopped
+  
+  # Create the bucket using mc (MinIO client) as a one-time exec
+  bucket:
+    type: exec
+    depends_on: [container]
+    properties:
+      image: "minio/mc:latest"
+      network: "${inputs.network}"
+      environment:
+        MC_HOST_local: "http://${resources.container.environment.MINIO_ROOT_USER}:${resources.container.environment.MINIO_ROOT_PASSWORD}@minio-${inputs.name}:9000"
+      command: ["mc", "mb", "--ignore-existing", "local/${inputs.name}"]
+
+outputs:
+  endpoint:
+    value: "http://localhost:${resources.container.ports[0].host}"
+    description: S3-compatible endpoint URL
+  bucket:
+    value: "${inputs.name}"
+    description: Bucket name
+  region:
+    value: "us-east-1"
+    description: Region (MinIO uses us-east-1 by default)
+  access_key_id:
+    value: "${resources.container.environment.MINIO_ROOT_USER}"
+    sensitive: true
+    description: Access key ID
+  secret_access_key:
+    value: "${resources.container.environment.MINIO_ROOT_PASSWORD}"
+    sensitive: true
+    description: Secret access key
+  console_url:
+    value: "http://localhost:${resources.container.ports[1].host}"
+    description: MinIO console URL for debugging

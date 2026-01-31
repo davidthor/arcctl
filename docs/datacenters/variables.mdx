@@ -1,0 +1,236 @@
+---
+title: "Variables"
+description: "Datacenter-level configuration inputs"
+---
+
+# Variables
+
+Declare datacenter-level configuration inputs. Variables allow operators to customize datacenter behavior at deployment time.
+
+## Basic Usage
+
+```hcl
+variable "cluster_name" {
+  description = "Kubernetes cluster name"
+  type        = string
+}
+
+variable "region" {
+  description = "Cloud region"
+  type        = string
+  default     = "us-east-1"
+}
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `description` | string | Human-readable description |
+| `type` | string | Variable type (`string`, `number`, `bool`, `list`, `map`) |
+| `default` | any | Default value |
+| `sensitive` | boolean | Mark as sensitive (masks in output) |
+
+## Variable Types
+
+### String
+
+```hcl
+variable "cluster_name" {
+  type = string
+}
+```
+
+### Number
+
+```hcl
+variable "node_count" {
+  type    = number
+  default = 3
+}
+```
+
+### Boolean
+
+```hcl
+variable "enable_monitoring" {
+  type    = bool
+  default = true
+}
+```
+
+### List
+
+```hcl
+variable "availability_zones" {
+  type    = list(string)
+  default = ["us-east-1a", "us-east-1b", "us-east-1c"]
+}
+```
+
+### Map
+
+```hcl
+variable "tags" {
+  type = map(string)
+  default = {
+    environment = "production"
+    team        = "platform"
+  }
+}
+```
+
+## Sensitive Variables
+
+Mark secrets and credentials as sensitive:
+
+```hcl
+variable "database_password" {
+  description = "Database admin password"
+  type        = string
+  sensitive   = true
+}
+
+variable "api_token" {
+  description = "Cloud provider API token"
+  type        = string
+  sensitive   = true
+}
+```
+
+## Using Variables
+
+Reference variables in modules and hooks:
+
+```hcl
+variable "region" {
+  type    = string
+  default = "us-east-1"
+}
+
+variable "cluster_name" {
+  type = string
+}
+
+module "k8s" {
+  build = "./modules/eks-cluster"
+  inputs = {
+    name   = variable.cluster_name
+    region = variable.region
+  }
+}
+
+environment {
+  database {
+    module "rds" {
+      build = "./modules/rds-postgres"
+      inputs = {
+        name   = "${variable.cluster_name}-${node.name}"
+        region = variable.region
+      }
+    }
+  }
+}
+```
+
+## Setting Variables
+
+### CLI
+
+```bash
+arcctl dc deploy my-datacenter \
+  --config ghcr.io/myorg/datacenter:v1.0.0 \
+  --var cluster_name=prod-cluster \
+  --var region=us-west-2
+```
+
+### Variable File
+
+Create a `.dcvars` file:
+
+```
+# production.dcvars
+cluster_name=prod-cluster
+region=us-west-2
+node_count=5
+enable_monitoring=true
+```
+
+```bash
+arcctl dc deploy my-datacenter \
+  --config ghcr.io/myorg/datacenter:v1.0.0 \
+  --var-file ./production.dcvars
+```
+
+## Complete Example
+
+```hcl
+# Cloud provider configuration
+variable "cloud_provider" {
+  description = "Cloud provider (aws, gcp, azure)"
+  type        = string
+  default     = "aws"
+}
+
+variable "region" {
+  description = "Cloud region"
+  type        = string
+  default     = "us-east-1"
+}
+
+# Kubernetes configuration
+variable "cluster_name" {
+  description = "Kubernetes cluster name"
+  type        = string
+}
+
+variable "node_count" {
+  description = "Number of worker nodes"
+  type        = number
+  default     = 3
+}
+
+variable "node_instance_type" {
+  description = "Instance type for worker nodes"
+  type        = string
+  default     = "t3.medium"
+}
+
+# Networking
+variable "domain" {
+  description = "Base domain for environments"
+  type        = string
+}
+
+variable "enable_private_endpoints" {
+  description = "Enable private endpoints for cloud services"
+  type        = bool
+  default     = true
+}
+
+# Credentials
+variable "cloud_credentials" {
+  description = "Cloud provider credentials"
+  type        = string
+  sensitive   = true
+}
+
+# Tags
+variable "tags" {
+  description = "Tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+}
+
+# Use variables in modules
+module "k8s" {
+  build = "./modules/eks-cluster"
+  inputs = {
+    name          = variable.cluster_name
+    region        = variable.region
+    node_count    = variable.node_count
+    instance_type = variable.node_instance_type
+    tags          = variable.tags
+  }
+}
+```

@@ -1,0 +1,109 @@
+---
+description: Guidelines for authoring arcctl datacenter configurations (datacenter.dc/hcl)
+globs: "**/*.dc,**/datacenter.hcl,**/datacenters/**/*.dc,**/datacenters/**/*.hcl"
+alwaysApply: false
+---
+
+# Datacenter Authoring Guidelines
+
+Datacenters are platform engineer-focused infrastructure templates in HCL that define how component resources get fulfilled using IaC modules.
+
+## File Structure
+
+```hcl
+# Variables for datacenter configuration
+variable "cluster_name" {
+  type        = string
+  description = "Kubernetes cluster name"
+  default     = "my-cluster"  # Optional
+}
+
+# Datacenter-level modules (shared across environments)
+module "network" {
+  plugin = "native"           # or "pulumi", "opentofu"
+  build  = "./modules/network"
+  inputs = {
+    name = variable.cluster_name
+  }
+}
+
+# Environment configuration with hooks
+environment {
+  # Environment-level modules
+  module "namespace" { ... }
+  
+  # Resource hooks
+  database { ... }
+  deployment { ... }
+  service { ... }
+  ingress { ... }
+}
+```
+
+## Hook Types
+
+Each hook handles a component resource type:
+
+| Hook | Purpose | Required Outputs |
+|------|---------|-----------------|
+| `database` | Provision databases | `host`, `port`, `url`, `username`, `password` |
+| `databaseMigration` | Run migrations | `id`, `status` |
+| `bucket` | Object storage | `endpoint`, `bucket`, `accessKeyId`, `secretAccessKey` |
+| `deployment` | Container workloads | `id` |
+| `function` | Serverless functions | `id`, `endpoint` |
+| `service` | Internal networking | `host`, `port`, `url` |
+| `ingress` | External routing | `url`, `host`, `port` |
+| `dockerBuild` | Build images | `image` |
+| `cronjob` | Scheduled tasks | `id` |
+
+## Expression Context
+
+| Expression | Description |
+|------------|-------------|
+| `variable.<name>` | Datacenter variables |
+| `environment.name` | Current environment name |
+| `node.name` | Resource name (in hooks) |
+| `node.component` | Component the resource belongs to |
+| `node.inputs.<field>` | Resource input values |
+| `module.<name>.<output>` | Module output values |
+
+## Hook Pattern
+
+```hcl
+database {
+  # Conditional - which database types this hook handles
+  when = node.inputs.databaseType == "postgres"
+  
+  module "postgres" {
+    plugin = "native"
+    build  = "./modules/docker-postgres"
+    inputs = {
+      name     = "${environment.name}-${node.component}-${node.name}"
+      version  = coalesce(node.inputs.databaseVersion, "16")
+      database = node.name
+    }
+  }
+  
+  # Map module outputs to hook outputs
+  outputs = {
+    host     = module.postgres.host
+    port     = module.postgres.port
+    url      = module.postgres.url
+    username = module.postgres.username
+    password = module.postgres.password
+  }
+}
+```
+
+## IaC Plugins
+
+- `native` - Lightweight execution (Docker, processes) for local dev
+- `pulumi` - Pulumi IaC modules
+- `opentofu` - OpenTofu/Terraform modules
+
+## Built-in Functions
+
+- `coalesce(a, b)` - First non-null value
+- `merge(map1, map2)` - Merge maps
+- `tostring(value)` - Convert to string
+- `format(fmt, args...)` - String formatting

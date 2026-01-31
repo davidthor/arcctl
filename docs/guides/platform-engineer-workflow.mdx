@@ -1,0 +1,507 @@
+---
+title: "Platform Engineer Workflow"
+description: "Building and managing datacenters with arcctl"
+---
+
+# Platform Engineer Workflow
+
+This guide covers how platform engineers create datacenters to enable self-service deployments for developers.
+
+## Overview
+
+Platform engineers create datacenters that:
+
+1. **Abstract infrastructure complexity** - Developers don't need to learn IaC
+2. **Enforce organizational standards** - Consistent security, networking, tagging
+3. **Enable self-service** - Developers create environments without platform team involvement
+4. **Maintain control** - Platform team defines how resources are provisioned
+
+## Creating a Datacenter
+
+### Basic Structure
+
+Start with a minimal datacenter:
+
+```hcl
+# datacenter.hcl
+
+variable "region" {
+  type    = string
+  default = "us-east-1"
+}
+
+variable "cluster_name" {
+  type = string
+}
+
+# Shared infrastructure
+module "k8s" {
+  build = "./modules/k8s-cluster"
+  inputs = {
+    name   = variable.cluster_name
+    region = variable.region
+  }
+}
+
+# Environment configuration
+environment {
+  module "namespace" {
+    build = "./modules/k8s-namespace"
+    inputs = {
+      name       = environment.name
+      kubeconfig = module.k8s.kubeconfig
+    }
+  }
+
+  # Resource hooks
+  deployment { ... }
+  service { ... }
+  database { ... }
+}
+```
+
+### Project Structure
+
+Organize your datacenter project:
+
+```
+aws-datacenter/
+├── datacenter.hcl              # Main configuration
+├── modules/
+│   ├── k8s-cluster/            # EKS/GKE cluster module
+│   │   ├── Pulumi.yaml
+│   │   └── index.ts
+│   ├── k8s-namespace/
+│   ├── k8s-deployment/
+│   ├── k8s-service/
+│   ├── rds-postgres/
+│   ├── s3-bucket/
+│   └── ingress-rule/
+└── vars/
+    ├── staging.dcvars
+    └── production.dcvars
+```
+
+## Implementing Resource Hooks
+
+### Database Hook
+
+Handle database provisioning for components:
+
+```hcl
+environment {
+  database {
+    # Match PostgreSQL requests
+    when = node.inputs.databaseType == "postgres"
+
+    module "rds" {
+      build = "./modules/rds-postgres"
+      inputs = {
+        name            = "${environment.name}-${node.component}-${node.name}"
+        instance_class  = "db.t3.micro"    # Can be made configurable
+        engine_version  = node.inputs.databaseVersion
+        region          = variable.region
+        vpc_id          = module.vpc.id
+        subnet_ids      = module.vpc.private_subnet_ids
+      }
+    }
+
+    outputs = {
+      host     = module.rds.endpoint
+      port     = module.rds.port
+      database = module.rds.database_name
+      username = module.rds.username
+      password = module.rds.password
+      url      = module.rds.connection_url
+    }
+  }
+
+  # Handle Redis separately
+  database {
+    when = node.inputs.databaseType == "redis"
+
+    module "elasticache" {
+      build = "./modules/elasticache-redis"
+      inputs = {
+        name    = "${environment.name}-${node.component}-${node.name}"
+        region  = variable.region
+      }
+    }
+
+    outputs = {
+      host = module.elasticache.endpoint
+      port = module.elasticache.port
+      url  = "redis://${module.elasticache.endpoint}:${module.elasticache.port}"
+    }
+  }
+}
+```
+
+### Deployment Hook
+
+Handle container deployments:
+
+```hcl
+environment {
+  deployment {
+    module "k8s_deployment" {
+      build = "./modules/k8s-deployment"
+      inputs = merge(node.inputs, {
+        name       = "${node.component}--${node.name}"
+        namespace  = module.namespace.id
+        kubeconfig = module.k8s.kubeconfig
+        
+        # Apply organizational defaults
+        resource_limits = {
+          cpu    = coalesce(node.inputs.cpu, "500m")
+          memory = coalesce(node.inputs.memory, "512Mi")
+        }
+        
+        # Add standard labels
+        labels = merge(node.inputs.labels, {
+          "app.kubernetes.io/managed-by" = "arcctl"
+          "environment"                   = environment.name
+          "component"                     = node.component
+        })
+      })
+    }
+
+    outputs = {
+      id = module.k8s_deployment.deployment_id
+    }
+  }
+}
+```
+
+### Service Hook
+
+Expose deployments internally:
+
+```hcl
+environment {
+  service {
+    module "k8s_service" {
+      build = "./modules/k8s-service"
+      inputs = merge(node.inputs, {
+        name       = "${node.component}--${node.name}"
+        namespace  = module.namespace.id
+        kubeconfig = module.k8s.kubeconfig
+        selector = {
+          app = "${node.component}--${node.inputs.target}"
+        }
+      })
+    }
+
+    outputs = {
+      host = module.k8s_service.cluster_ip
+      port = module.k8s_service.port
+      url  = "http://${module.k8s_service.cluster_ip}:${module.k8s_service.port}"
+    }
+  }
+}
+```
+
+### Ingress Hook
+
+Handle external traffic routing:
+
+```hcl
+environment {
+  # Create gateway once per environment (if routes exist)
+  module "gateway" {
+    build = "./modules/gateway"
+    when  = length(environment.resources.routes) > 0
+    inputs = {
+      name       = "${environment.name}-gateway"
+      namespace  = module.namespace.id
+      kubeconfig = module.k8s.kubeconfig
+    }
+  }
+
+  ingress {
+    module "ingress_rule" {
+      build = "./modules/ingress-rule"
+      inputs = merge(node.inputs, {
+        name          = "${node.component}--${node.name}"
+        namespace     = module.namespace.id
+        kubeconfig    = module.k8s.kubeconfig
+        gateway_name  = module.gateway.name
+        domain        = "${environment.name}.${variable.domain}"
+      })
+    }
+
+    module "dns_record" {
+      build = "./modules/dns-record"
+      inputs = {
+        zone      = variable.dns_zone_id
+        name      = "${environment.name}.${variable.domain}"
+        type      = "A"
+        value     = module.gateway.load_balancer_ip
+      }
+    }
+
+    outputs = {
+      url   = "https://${environment.name}.${variable.domain}"
+      host  = "${environment.name}.${variable.domain}"
+      hosts = [module.ingress_rule.host]
+    }
+  }
+}
+```
+
+### Docker Build Hook
+
+Handle local source deployments by building and pushing to registry:
+
+```hcl
+environment {
+  dockerBuild {
+    module "build_and_push" {
+      build = "./modules/docker-build-ecr"
+
+      volume {
+        host_path  = "/var/run/docker.sock"
+        mount_path = "/var/run/docker.sock"
+      }
+
+      inputs = merge(node.inputs, {
+        # Organize images by environment
+        image = "${variable.ecr_registry}/${environment.name}/${node.component}--${node.name}:${node.inputs.hash}"
+        
+        # ECR authentication
+        aws_region     = variable.region
+        aws_account_id = variable.aws_account_id
+        
+        # Create repo if needed
+        create_repository = true
+      })
+    }
+
+    outputs = {
+      image = module.build_and_push.image
+    }
+  }
+}
+```
+
+## Writing IaC Modules
+
+Modules contain the actual infrastructure code. arcctl supports Pulumi and OpenTofu.
+
+### Pulumi Module Example
+
+```typescript
+// modules/k8s-deployment/index.ts
+import * as k8s from "@pulumi/kubernetes";
+import * as pulumi from "@pulumi/pulumi";
+
+const config = new pulumi.Config();
+
+const name = config.require("name");
+const namespace = config.require("namespace");
+const image = config.require("image");
+const replicas = config.getNumber("replicas") ?? 1;
+const environment = config.getObject<Record<string, string>>("environment") ?? {};
+
+const deployment = new k8s.apps.v1.Deployment("deployment", {
+  metadata: {
+    name: name,
+    namespace: namespace,
+  },
+  spec: {
+    replicas: replicas,
+    selector: {
+      matchLabels: { app: name },
+    },
+    template: {
+      metadata: {
+        labels: { app: name },
+      },
+      spec: {
+        containers: [{
+          name: name,
+          image: image,
+          env: Object.entries(environment).map(([k, v]) => ({
+            name: k,
+            value: v,
+          })),
+        }],
+      },
+    },
+  },
+});
+
+export const deployment_id = deployment.metadata.name;
+```
+
+### OpenTofu Module Example
+
+```hcl
+# modules/rds-postgres/main.tf
+
+variable "name" {
+  type = string
+}
+
+variable "instance_class" {
+  type    = string
+  default = "db.t3.micro"
+}
+
+variable "engine_version" {
+  type    = string
+  default = "15"
+}
+
+resource "aws_db_instance" "postgres" {
+  identifier           = var.name
+  engine               = "postgres"
+  engine_version       = var.engine_version
+  instance_class       = var.instance_class
+  allocated_storage    = 20
+  
+  db_name  = replace(var.name, "-", "_")
+  username = "admin"
+  password = random_password.db_password.result
+  
+  skip_final_snapshot = true
+}
+
+resource "random_password" "db_password" {
+  length  = 32
+  special = false
+}
+
+output "endpoint" {
+  value = aws_db_instance.postgres.endpoint
+}
+
+output "port" {
+  value = aws_db_instance.postgres.port
+}
+
+output "database_name" {
+  value = aws_db_instance.postgres.db_name
+}
+
+output "connection_url" {
+  value     = "postgres://${aws_db_instance.postgres.username}:${random_password.db_password.result}@${aws_db_instance.postgres.endpoint}/${aws_db_instance.postgres.db_name}"
+  sensitive = true
+}
+```
+
+## Building and Deploying Datacenters
+
+### Build the Datacenter
+
+```bash
+# Build datacenter with all modules
+arcctl dc build . -t ghcr.io/myorg/aws-datacenter:v1.0.0
+
+# View what will be built
+arcctl dc build . -t ghcr.io/myorg/aws-datacenter:v1.0.0 --dry-run
+```
+
+### Push to Registry
+
+```bash
+arcctl dc push ghcr.io/myorg/aws-datacenter:v1.0.0
+```
+
+### Deploy the Datacenter
+
+```bash
+# Deploy with variables
+arcctl dc deploy aws-production \
+  --config ghcr.io/myorg/aws-datacenter:v1.0.0 \
+  --var cluster_name=prod-cluster \
+  --var region=us-east-1 \
+  --var domain=prod.example.com
+
+# Deploy with variable file
+arcctl dc deploy aws-production \
+  --config ghcr.io/myorg/aws-datacenter:v1.0.0 \
+  --var-file ./vars/production.dcvars
+```
+
+## Best Practices
+
+### Security
+
+<AccordionGroup>
+  <Accordion title="Use sensitive variables for secrets">
+    Mark sensitive variables appropriately:
+    ```hcl
+    variable "db_password" {
+      type      = string
+      sensitive = true
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Implement least privilege">
+    Create dedicated IAM roles per environment, not shared credentials.
+  </Accordion>
+  
+  <Accordion title="Encrypt sensitive outputs">
+    Use secrets managers for sensitive values like database passwords.
+  </Accordion>
+</AccordionGroup>
+
+### Reliability
+
+<AccordionGroup>
+  <Accordion title="Apply organizational defaults">
+    Set sensible defaults so developers don't need to specify everything:
+    ```hcl
+    cpu    = coalesce(node.inputs.cpu, "500m")
+    memory = coalesce(node.inputs.memory, "512Mi")
+    ```
+  </Accordion>
+  
+  <Accordion title="Add resource limits">
+    Enforce resource limits to prevent runaway costs.
+  </Accordion>
+  
+  <Accordion title="Use conditional modules">
+    Only create resources when needed:
+    ```hcl
+    module "gateway" {
+      when = length(environment.resources.routes) > 0
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Maintainability
+
+<AccordionGroup>
+  <Accordion title="Version your datacenters">
+    Use semantic versioning for datacenter releases.
+  </Accordion>
+  
+  <Accordion title="Test modules independently">
+    Test each IaC module before integrating into the datacenter.
+  </Accordion>
+  
+  <Accordion title="Document variables">
+    Add descriptions to all variables:
+    ```hcl
+    variable "cluster_name" {
+      description = "Name for the Kubernetes cluster"
+      type        = string
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Datacenter Reference" icon="server" href="/datacenters/overview">
+    Full datacenter specification
+  </Card>
+  <Card title="IaC Plugins" icon="puzzle-piece" href="/architecture/iac-plugins">
+    Learn about Pulumi and OpenTofu integration
+  </Card>
+</CardGroup>

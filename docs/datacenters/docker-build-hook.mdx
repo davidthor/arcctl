@@ -1,0 +1,255 @@
+---
+title: "Docker Build Hook"
+description: "Build and push container images from component source"
+---
+
+# Docker Build Hook
+
+The dockerBuild hook handles container image building when deploying components from local source (not pre-built OCI artifacts). It builds images and pushes them to a registry accessible by the target environment.
+
+## Basic Usage
+
+```hcl
+dockerBuild {
+  module "build" {
+    build = "./modules/docker-build-push"
+
+    volume {
+      host_path  = "/var/run/docker.sock"
+      mount_path = "/var/run/docker.sock"
+    }
+
+    inputs = merge(node.inputs, {
+      image = "${variable.registry_url}/${environment.name}/${node.component}--${node.name}:${node.inputs.hash}"
+      
+      registry_url      = variable.registry_url
+      registry_username = variable.registry_username
+      registry_password = variable.registry_password
+      push              = true
+    })
+  }
+
+  outputs = {
+    image = module.build.image
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `context` | string | Build context path |
+| `dockerfile` | string | Dockerfile path within context |
+| `target` | string | Build target for multi-stage builds |
+| `args` | map | Build arguments |
+| `hash` | string | Content hash for cache-busting tags |
+
+## Required Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `image` | string | Final image reference (must be pullable by target environment) |
+
+## Docker Socket Access
+
+The dockerBuild hook typically needs Docker socket access to build images:
+
+```hcl
+dockerBuild {
+  module "build" {
+    build = "./modules/docker-build"
+
+    volume {
+      host_path  = "/var/run/docker.sock"
+      mount_path = "/var/run/docker.sock"
+    }
+
+    inputs = {
+      context    = node.inputs.context
+      dockerfile = node.inputs.dockerfile
+      image      = "${variable.registry}/${node.component}--${node.name}:${node.inputs.hash}"
+    }
+  }
+
+  outputs = {
+    image = module.build.image
+  }
+}
+```
+
+## AWS ECR Example
+
+Build and push to Amazon ECR:
+
+```hcl
+dockerBuild {
+  module "ecr_build" {
+    build = "./modules/docker-build-ecr"
+
+    volume {
+      host_path  = "/var/run/docker.sock"
+      mount_path = "/var/run/docker.sock"
+    }
+
+    environment = {
+      AWS_REGION     = variable.region
+      AWS_ACCOUNT_ID = variable.aws_account_id
+    }
+
+    inputs = merge(node.inputs, {
+      image = "${variable.aws_account_id}.dkr.ecr.${variable.region}.amazonaws.com/${environment.name}/${node.component}--${node.name}:${node.inputs.hash}"
+    })
+  }
+
+  outputs = {
+    image = module.ecr_build.image
+  }
+}
+```
+
+### Pulumi Module
+
+```typescript
+// modules/docker-build-ecr/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
+import * as docker from "@pulumi/docker";
+
+const config = new pulumi.Config();
+const context = config.require("context");
+const dockerfile = config.get("dockerfile") || "Dockerfile";
+const imageName = config.require("image");
+
+// Ensure ECR repository exists
+const repoName = imageName.split("/").slice(1, -1).join("/");
+const repo = new aws.ecr.Repository("repo", {
+  name: repoName,
+  imageTagMutability: "MUTABLE",
+});
+
+// Get ECR credentials
+const authToken = aws.ecr.getAuthorizationTokenOutput({});
+
+// Build and push image
+const image = new docker.Image("image", {
+  imageName: imageName,
+  build: {
+    context: context,
+    dockerfile: `${context}/${dockerfile}`,
+    platform: "linux/amd64",
+  },
+  registry: {
+    server: authToken.proxyEndpoint,
+    username: "AWS",
+    password: authToken.password,
+  },
+});
+
+export const image_out = image.imageName;
+```
+
+## GitHub Container Registry Example
+
+```hcl
+dockerBuild {
+  module "ghcr_build" {
+    build = "./modules/docker-build-ghcr"
+
+    volume {
+      host_path  = "/var/run/docker.sock"
+      mount_path = "/var/run/docker.sock"
+    }
+
+    inputs = merge(node.inputs, {
+      image    = "ghcr.io/${variable.github_org}/${environment.name}/${node.component}--${node.name}:${node.inputs.hash}"
+      username = variable.github_username
+      password = variable.github_token
+    })
+  }
+
+  outputs = {
+    image = module.ghcr_build.image
+  }
+}
+```
+
+## Local Development (No Push)
+
+For local development, you might just build without pushing:
+
+```hcl
+dockerBuild {
+  module "local_build" {
+    build = "./modules/docker-build-local"
+
+    volume {
+      host_path  = "/var/run/docker.sock"
+      mount_path = "/var/run/docker.sock"
+    }
+
+    inputs = {
+      context    = node.inputs.context
+      dockerfile = node.inputs.dockerfile
+      image      = "${node.component}--${node.name}:${node.inputs.hash}"
+      push       = false
+    }
+  }
+
+  outputs = {
+    image = module.local_build.image
+  }
+}
+```
+
+## Multi-Platform Builds
+
+Build for multiple platforms:
+
+```hcl
+dockerBuild {
+  module "build" {
+    build = "./modules/docker-buildx"
+
+    volume {
+      host_path  = "/var/run/docker.sock"
+      mount_path = "/var/run/docker.sock"
+    }
+
+    inputs = merge(node.inputs, {
+      image     = "${variable.registry}/${node.component}--${node.name}:${node.inputs.hash}"
+      platforms = ["linux/amd64", "linux/arm64"]
+    })
+  }
+
+  outputs = {
+    image = module.build.image
+  }
+}
+```
+
+## Build Arguments
+
+Pass build arguments from component configuration:
+
+```hcl
+dockerBuild {
+  module "build" {
+    build = "./modules/docker-build"
+
+    inputs = {
+      context    = node.inputs.context
+      dockerfile = node.inputs.dockerfile
+      target     = node.inputs.target
+      args       = node.inputs.args
+      image      = "${variable.registry}/${node.component}--${node.name}:${node.inputs.hash}"
+    }
+  }
+
+  outputs = {
+    image = module.build.image
+  }
+}
+```

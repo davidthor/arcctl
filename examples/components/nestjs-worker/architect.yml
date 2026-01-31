@@ -1,0 +1,69 @@
+# Example: NestJS API with background worker using Redis pub/sub
+# Demonstrates async job processing pattern with Redis as message broker
+
+variables:
+  log_level:
+    description: "Application log level"
+    default: "info"
+  
+  worker_concurrency:
+    description: "Number of concurrent jobs per worker"
+    default: "5"
+
+databases:
+  queue:
+    type: redis:^7
+
+deployments:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    environment:
+      REDIS_URL: ${{ databases.queue.url }}
+      LOG_LEVEL: ${{ variables.log_level }}
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 2
+    liveness_probe:
+      path: /health
+      port: 3000
+    readiness_probe:
+      path: /ready
+      port: 3000
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    environment:
+      REDIS_URL: ${{ databases.queue.url }}
+      LOG_LEVEL: ${{ variables.log_level }}
+      WORKER_CONCURRENCY: ${{ variables.worker_concurrency }}
+    cpu: "1"
+    memory: "1Gi"
+    replicas: 3
+
+services:
+  api:
+    deployment: api
+    port: 3000
+    protocol: http
+
+routes:
+  api:
+    type: http
+    rules:
+      - name: all-traffic
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: api
+            port: 3000
+        timeouts:
+          request: 30s
+          backendRequest: 25s

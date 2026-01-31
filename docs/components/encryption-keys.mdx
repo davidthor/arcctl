@@ -1,0 +1,222 @@
+---
+title: "Encryption Keys"
+description: "Declare cryptographic key requirements in arcctl components"
+---
+
+# Encryption Keys
+
+Declare cryptographic key requirements for your component. The datacenter is responsible for generating and securely managing these keys—you just specify what type of keys you need.
+
+## Basic Usage
+
+```yaml
+encryptionKeys:
+  # RSA key pair for signatures
+  webhook-signing:
+    type: rsa
+    bits: 2048
+
+  # Symmetric key for encryption
+  session-secret:
+    type: symmetric
+    bytes: 64
+```
+
+## Supported Key Types
+
+| Type | Description | Use Cases |
+|------|-------------|-----------|
+| `rsa` | RSA asymmetric key pair | Webhook signatures, JWT signing, encryption |
+| `ecdsa` | ECDSA asymmetric key pair | JWT signing, digital signatures |
+| `symmetric` | Random symmetric key | Session encryption, AES keys, secret tokens, salts, key derivation |
+
+## Properties
+
+### RSA Keys
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `type` | string | required | Must be `rsa` |
+| `bits` | number | `2048` | Key size: 2048, 3072, or 4096 |
+
+```yaml
+encryptionKeys:
+  signing-key:
+    type: rsa
+    bits: 4096  # Stronger key for high-security applications
+```
+
+### ECDSA Keys
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `type` | string | required | Must be `ecdsa` |
+| `curve` | string | `P-256` | Curve: P-256, P-384, or P-521 |
+
+```yaml
+encryptionKeys:
+  jwt-key:
+    type: ecdsa
+    curve: P-384  # Balance of security and performance
+```
+
+### Symmetric Keys
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `type` | string | required | Must be `symmetric` |
+| `bytes` | number | `32` | Key length in bytes (1-1024) |
+
+```yaml
+encryptionKeys:
+  aes-key:
+    type: symmetric
+    bytes: 32  # 256-bit key for AES-256
+
+  # Salts also use symmetric type
+  password-salt:
+    type: symmetric
+    bytes: 16
+```
+
+## Outputs
+
+Access encryption key values in other resources using expressions.
+
+### Asymmetric Key Outputs (RSA/ECDSA)
+
+| Output | Description |
+|--------|-------------|
+| `${{ encryptionKeys.<name>.privateKey }}` | Private key in PEM format |
+| `${{ encryptionKeys.<name>.publicKey }}` | Public key in PEM format |
+| `${{ encryptionKeys.<name>.privateKeyBase64 }}` | Private key PEM, base64-encoded |
+| `${{ encryptionKeys.<name>.publicKeyBase64 }}` | Public key PEM, base64-encoded |
+
+### Symmetric Key Outputs
+
+| Output | Description |
+|--------|-------------|
+| `${{ encryptionKeys.<name>.key }}` | Key as hex-encoded string |
+| `${{ encryptionKeys.<name>.keyBase64 }}` | Key as base64-encoded string |
+
+## Example Usage
+
+```yaml
+name: secure-app
+
+encryptionKeys:
+  # RSA key for webhook signatures
+  webhook-key:
+    type: rsa
+    bits: 2048
+
+  # Symmetric key for session encryption
+  session-secret:
+    type: symmetric
+    bytes: 64
+
+  # Encryption keys and salts
+  encryption-primary:
+    type: symmetric
+    bytes: 32
+
+  encryption-salt:
+    type: salt
+    bytes: 32
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      # RSA key - base64 encoded for safe env var transport
+      RSA_PRIVATE_KEY: ${{ encryptionKeys.webhook-key.privateKeyBase64 }}
+      RSA_PUBLIC_KEY: ${{ encryptionKeys.webhook-key.publicKeyBase64 }}
+      
+      # Session secret - hex format
+      SECRET_KEY_BASE: ${{ encryptionKeys.session-secret.key }}
+      
+      # Encryption keys
+      ENCRYPTION_PRIMARY_KEY: ${{ encryptionKeys.encryption-primary.keyBase64 }}
+      ENCRYPTION_SALT: ${{ encryptionKeys.encryption-salt.keyBase64 }}
+```
+
+## Best Practices
+
+### Use Base64 for Environment Variables
+
+When passing keys through environment variables, prefer base64-encoded formats to avoid issues with special characters:
+
+```yaml
+environment:
+  # Good: base64-encoded, safe for env vars
+  PRIVATE_KEY: ${{ encryptionKeys.signing.privateKeyBase64 }}
+  
+  # May have issues: PEM format contains newlines
+  # PRIVATE_KEY: ${{ encryptionKeys.signing.privateKey }}
+```
+
+### Choose Appropriate Key Sizes
+
+| Key Type | Recommended | High Security |
+|----------|-------------|---------------|
+| RSA | 2048 bits | 4096 bits |
+| ECDSA | P-256 | P-384 or P-521 |
+| Symmetric | 32 bytes (256-bit) | 64 bytes (512-bit) |
+| Salt | 16-32 bytes | 32 bytes |
+
+### Separate Keys by Purpose
+
+Create separate keys for different purposes rather than reusing:
+
+```yaml
+encryptionKeys:
+  # Separate keys for different concerns
+  jwt-signing:
+    type: ecdsa
+    curve: P-256
+  
+  webhook-signing:
+    type: rsa
+    bits: 2048
+  
+  session-encryption:
+    type: symmetric
+    bytes: 32
+  
+  data-encryption:
+    type: symmetric
+    bytes: 32
+```
+
+## Migration from Variables
+
+If you're currently using sensitive variables for keys, you can migrate to encryption keys:
+
+**Before:**
+```yaml
+variables:
+  secret_key:
+    description: "Session encryption key"
+    required: true
+    sensitive: true
+```
+
+**After:**
+```yaml
+encryptionKeys:
+  session-key:
+    type: symmetric
+    bytes: 64
+
+deployments:
+  api:
+    environment:
+      SECRET_KEY: ${{ encryptionKeys.session-key.key }}
+```
+
+The key benefits of using `encryptionKeys`:
+- Keys are automatically generated by the datacenter
+- No need to manually create and manage secrets
+- Keys are stored securely in the datacenter's secret management system
+- Consistent key generation across environments

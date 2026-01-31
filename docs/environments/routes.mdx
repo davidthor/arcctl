@@ -1,0 +1,259 @@
+---
+title: "Routes"
+description: "Configure hostnames and TLS for component routes"
+---
+
+# Routes
+
+Configure hostnames and TLS certificates for component routes at the environment level.
+
+## Basic Usage
+
+```yaml
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    routes:
+      main:                       # Route name from component
+        hostnames:
+          - subdomain: app        # Results in app.<env-domain>
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `hostnames` | array | List of hostname configurations |
+| `tls` | object | TLS/HTTPS configuration |
+
+### Hostname Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `subdomain` | string | Subdomain of environment domain |
+| `host` | string | Explicit fully-qualified hostname |
+
+### TLS Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `enabled` | boolean | Enable HTTPS |
+| `secretName` | string | Custom TLS secret name (optional) |
+
+## Hostname Configuration
+
+### Subdomain-Based
+
+Use the environment's base domain:
+
+```yaml
+routes:
+  main:
+    hostnames:
+      - subdomain: app      # app.staging.example.com
+      - subdomain: www      # www.staging.example.com
+```
+
+### Explicit Hostname
+
+Specify the full hostname:
+
+```yaml
+routes:
+  main:
+    hostnames:
+      - host: app.example.com
+      - host: www.example.com
+```
+
+### Mixed Configuration
+
+```yaml
+routes:
+  main:
+    hostnames:
+      - subdomain: app           # app.staging.example.com
+      - host: app.example.com    # Explicit FQDN
+```
+
+## TLS Configuration
+
+### Basic TLS
+
+Enable automatic TLS certificate provisioning:
+
+```yaml
+routes:
+  main:
+    hostnames:
+      - subdomain: app
+    tls:
+      enabled: true
+```
+
+### Custom TLS Secret
+
+Use a pre-existing TLS certificate:
+
+```yaml
+routes:
+  main:
+    hostnames:
+      - host: app.example.com
+    tls:
+      enabled: true
+      secretName: production-tls-cert
+```
+
+## Multiple Routes
+
+Configure different routes independently:
+
+```yaml
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    routes:
+      main:
+        hostnames:
+          - subdomain: app
+          - subdomain: www
+        tls:
+          enabled: true
+
+      api:
+        hostnames:
+          - subdomain: api
+        tls:
+          enabled: true
+
+      admin:
+        hostnames:
+          - subdomain: admin
+        tls:
+          enabled: true
+```
+
+## Environment Patterns
+
+### Development
+
+Simple subdomain without TLS:
+
+```yaml
+components:
+  my-app:
+    component: ./
+    routes:
+      main:
+        hostnames:
+          - subdomain: dev
+```
+
+### Staging
+
+Subdomain with TLS:
+
+```yaml
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    routes:
+      main:
+        hostnames:
+          - subdomain: staging
+        tls:
+          enabled: true
+```
+
+### Production
+
+Custom domains with managed certificates:
+
+```yaml
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    routes:
+      main:
+        hostnames:
+          - host: app.example.com
+          - host: www.example.com
+        tls:
+          enabled: true
+          secretName: production-tls
+```
+
+### Preview Environments
+
+Dynamic subdomains for PRs:
+
+```yaml
+name: preview-${{ pr_number }}
+
+components:
+  my-app:
+    component: ghcr.io/org/my-app:pr-${{ pr_number }}
+    routes:
+      main:
+        hostnames:
+          - subdomain: preview-${{ pr_number }}
+        tls:
+          enabled: true
+```
+
+## Complete Example
+
+```yaml
+name: staging
+datacenter: aws-production
+
+locals:
+  base_domain: "staging.example.com"
+
+components:
+  auth-service:
+    component: ghcr.io/myorg/auth:v2.1.0
+    routes:
+      public:
+        hostnames:
+          - subdomain: auth
+        tls:
+          enabled: true
+
+  web-app:
+    component: ghcr.io/myorg/web-app:v1.5.0
+    routes:
+      main:
+        hostnames:
+          - subdomain: www
+          - subdomain: app
+        tls:
+          enabled: true
+      
+      api:
+        hostnames:
+          - subdomain: api
+        tls:
+          enabled: true
+
+  admin-portal:
+    component: ghcr.io/myorg/admin:v1.0.0
+    routes:
+      admin:
+        hostnames:
+          - subdomain: admin
+        tls:
+          enabled: true
+```
+
+## DNS Configuration
+
+Routes create the following DNS requirements:
+
+| Hostname Type | DNS Record |
+|---------------|------------|
+| `subdomain: app` | `app.staging.example.com` → Load Balancer |
+| `host: app.example.com` | `app.example.com` → Load Balancer |
+
+The datacenter's ingress hook typically handles DNS record creation automatically.

@@ -1,0 +1,245 @@
+---
+title: "React + Hono with Migrations"
+description: "Build a React SPA with Hono API backend and database migrations"
+---
+
+# React + Hono with Migrations
+
+This guide shows how to build a React single-page application with a Hono.js API backend, demonstrating database migrations, MySQL, and Redis caching.
+
+<Info>
+Example source: `examples/components/react-hono-app/`
+</Info>
+
+## Overview
+
+This component demonstrates:
+- React SPA frontend deployed as a serverless function
+- Hono.js API backend as a deployment
+- MySQL database with automatic migrations
+- Redis for caching
+- URL rewriting for API routing
+
+## Component Definition
+
+```yaml
+name: react-hono-app
+description: React SPA frontend with a Hono.js API backend, MySQL database, and Redis cache
+
+variables:
+  jwt_secret:
+    description: "Secret for JWT token signing"
+    required: true
+    sensitive: true
+  
+  cors_origins:
+    description: "Allowed CORS origins (comma-separated)"
+    default: "*"
+
+databases:
+  main:
+    type: mysql:^8
+    migrations:
+      build:
+        context: ./database
+        dockerfile: Dockerfile.migrations
+      command: ["npm", "run", "migrate:up"]
+      environment:
+        MIGRATION_TABLE: "_migrations"
+
+  cache:
+    type: redis:^7
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      JWT_SECRET: ${{ variables.jwt_secret }}
+      CORS_ORIGINS: ${{ variables.cors_origins }}
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 2
+    liveness_probe:
+      path: /health
+      port: 3000
+
+functions:
+  frontend:
+    build:
+      context: ./frontend
+    framework: react
+    environment:
+      VITE_API_URL: ${{ services.api.url }}
+    memory: "512Mi"
+
+services:
+  api:
+    deployment: api
+    port: 3000
+
+  frontend:
+    function: frontend
+
+routes:
+  main:
+    type: http
+    rules:
+      # API routes with URL rewriting
+      - name: api
+        matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: api
+            port: 3000
+        filters:
+          - type: URLRewrite
+            urlRewrite:
+              path:
+                type: ReplacePrefixMatch
+                replacePrefixMatch: /
+      
+      # Frontend (catch-all)
+      - name: frontend
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: frontend
+```
+
+## Key Concepts
+
+### Database Migrations
+
+Configure automatic migrations that run after database provisioning:
+
+```yaml
+databases:
+  main:
+    type: mysql:^8
+    migrations:
+      build:
+        context: ./database
+        dockerfile: Dockerfile.migrations
+      command: ["npm", "run", "migrate:up"]
+      environment:
+        MIGRATION_TABLE: "_migrations"
+```
+
+The migration container:
+- Builds from the specified Dockerfile
+- Receives `DATABASE_URL` automatically
+- Runs before deployments start
+- Must exit successfully for deployment to continue
+
+### Multi-stage Routing
+
+Use routing rules to direct traffic to different services:
+
+```yaml
+routes:
+  main:
+    rules:
+      # /api/* → API backend (with URL rewrite)
+      - name: api
+        matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: api
+        filters:
+          - type: URLRewrite
+            urlRewrite:
+              path:
+                type: ReplacePrefixMatch
+                replacePrefixMatch: /
+      
+      # Everything else → Frontend
+      - name: frontend
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: frontend
+```
+
+### Frontend Service Discovery
+
+The frontend can discover the API URL at build time:
+
+```yaml
+functions:
+  frontend:
+    environment:
+      VITE_API_URL: ${{ services.api.url }}
+```
+
+## Project Structure
+
+```
+react-hono-app/
+├── architect.yml
+├── api/
+│   ├── Dockerfile
+│   ├── src/
+│   │   └── index.ts
+│   └── package.json
+├── frontend/
+│   ├── Dockerfile
+│   ├── src/
+│   │   └── App.tsx
+│   └── package.json
+└── database/
+    ├── Dockerfile.migrations
+    ├── migrations/
+    │   └── 001_create_users.sql
+    └── package.json
+```
+
+## Migration Dockerfile Example
+
+```dockerfile
+# database/Dockerfile.migrations
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY migrations ./migrations
+
+# DATABASE_URL is provided by arcctl
+CMD ["npm", "run", "migrate:up"]
+```
+
+## Deploying
+
+```bash
+# Build and deploy
+arcctl component build . -t ghcr.io/myorg/react-hono-app:v1.0.0
+arcctl component push ghcr.io/myorg/react-hono-app:v1.0.0
+
+arcctl component deploy react-hono-app -e staging \
+  --config ghcr.io/myorg/react-hono-app:v1.0.0 \
+  --var jwt_secret=my-secret-key
+```
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="NestJS Worker" href="/guides/components/nestjs-worker">
+    Background job processing
+  </Card>
+  <Card title="AWS ECS" href="/guides/datacenters/aws-ecs">
+    Deploy to AWS ECS
+  </Card>
+</CardGroup>

@@ -1,0 +1,225 @@
+---
+title: "Scaling"
+description: "Configure replicas and resource allocation for deployments"
+---
+
+# Scaling
+
+Override deployment resource allocations and replica counts at the environment level.
+
+## Basic Usage
+
+```yaml
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    scaling:
+      api:                      # Deployment name from component
+        replicas: 3
+        cpu: "1"
+        memory: "1Gi"
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `replicas` | number | Number of instances to run |
+| `cpu` | string | CPU allocation per replica |
+| `memory` | string | Memory allocation per replica |
+
+## CPU and Memory Formats
+
+### CPU
+
+```yaml
+scaling:
+  api:
+    cpu: "0.5"      # Half a CPU core
+    cpu: "1"        # One CPU core
+    cpu: "2"        # Two CPU cores
+    cpu: "100m"     # 100 millicores (0.1 CPU)
+    cpu: "500m"     # 500 millicores (0.5 CPU)
+```
+
+### Memory
+
+```yaml
+scaling:
+  api:
+    memory: "256Mi"   # 256 mebibytes
+    memory: "512Mi"   # 512 mebibytes
+    memory: "1Gi"     # 1 gibibyte
+    memory: "2Gi"     # 2 gibibytes
+```
+
+## Multiple Deployments
+
+Configure different deployments independently:
+
+```yaml
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    scaling:
+      api:
+        replicas: 3
+        cpu: "1"
+        memory: "1Gi"
+      worker:
+        replicas: 5
+        cpu: "0.5"
+        memory: "512Mi"
+      scheduler:
+        replicas: 1
+        cpu: "0.25"
+        memory: "256Mi"
+```
+
+## Environment-Based Scaling
+
+Use locals to define environment-specific sizing:
+
+```yaml
+# staging.yml
+locals:
+  api_replicas: 2
+  api_cpu: "0.5"
+  api_memory: "512Mi"
+
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    scaling:
+      api:
+        replicas: ${{ locals.api_replicas }}
+        cpu: ${{ locals.api_cpu }}
+        memory: ${{ locals.api_memory }}
+```
+
+```yaml
+# production.yml
+locals:
+  api_replicas: 10
+  api_cpu: "2"
+  api_memory: "4Gi"
+
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    scaling:
+      api:
+        replicas: ${{ locals.api_replicas }}
+        cpu: ${{ locals.api_cpu }}
+        memory: ${{ locals.api_memory }}
+```
+
+## Function Scaling
+
+For serverless functions, use the `functions` block instead:
+
+```yaml
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    functions:
+      web:                        # Function name from component
+        regions: ["us-east-1", "us-west-2"]
+        memory: "2048Mi"
+        timeout: 120
+```
+
+### Function Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `regions` | string[] | Deployment regions for multi-region |
+| `memory` | string | Memory per invocation |
+| `timeout` | number | Timeout in seconds |
+
+## Scaling Patterns
+
+### Development (Minimal Resources)
+
+```yaml
+components:
+  my-app:
+    component: ./
+    scaling:
+      api:
+        replicas: 1
+        cpu: "0.1"
+        memory: "128Mi"
+```
+
+### Staging (Moderate Resources)
+
+```yaml
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    scaling:
+      api:
+        replicas: 2
+        cpu: "0.5"
+        memory: "512Mi"
+      worker:
+        replicas: 2
+```
+
+### Production (High Availability)
+
+```yaml
+components:
+  my-app:
+    component: ghcr.io/org/my-app:v1.0.0
+    scaling:
+      api:
+        replicas: 10
+        cpu: "2"
+        memory: "4Gi"
+      worker:
+        replicas: 20
+        cpu: "1"
+        memory: "2Gi"
+```
+
+## Complete Example
+
+```yaml
+name: production
+datacenter: aws-production
+
+locals:
+  # API tier
+  api_replicas: 10
+  api_cpu: "2"
+  api_memory: "4Gi"
+  
+  # Worker tier
+  worker_replicas: 20
+  worker_cpu: "1"
+  worker_memory: "2Gi"
+
+components:
+  web-app:
+    component: ghcr.io/myorg/web-app:v1.5.0
+    scaling:
+      api:
+        replicas: ${{ locals.api_replicas }}
+        cpu: ${{ locals.api_cpu }}
+        memory: ${{ locals.api_memory }}
+    functions:
+      frontend:
+        regions: ["us-east-1", "us-west-2", "eu-west-1"]
+        memory: "2048Mi"
+        timeout: 30
+
+  worker:
+    component: ghcr.io/myorg/worker:v1.2.0
+    scaling:
+      processor:
+        replicas: ${{ locals.worker_replicas }}
+        cpu: ${{ locals.worker_cpu }}
+        memory: ${{ locals.worker_memory }}
+```

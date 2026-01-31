@@ -1,0 +1,262 @@
+---
+title: "Shared Database Pattern"
+description: "Multiple components sharing a common database"
+---
+
+# Shared Database Pattern
+
+This guide shows how multiple components can share a common database by depending on a child component that provides database access.
+
+<Info>
+Example source: `examples/components/shared-database-app/`
+</Info>
+
+## Overview
+
+This example demonstrates:
+- Database encapsulated as a child component
+- Multiple apps depending on shared database
+- Public and internal route separation
+- Service discovery through dependencies
+
+## Architecture
+
+```
+    ┌─────────────────┐     ┌─────────────────┐
+    │   Main App      │     │  Admin Panel    │
+    │    (app/)       │     │   (admin/)      │
+    │  [Public]       │     │  [Internal]     │
+    └────────┬────────┘     └────────┬────────┘
+             │                       │
+             └───────────┬───────────┘
+                         │
+                         ▼
+              ┌─────────────────────┐
+              │  Shared Database    │
+              │    (database/)      │
+              │                     │
+              │  ┌───────┐ ┌─────┐  │
+              │  │Postgres│ │Redis│  │
+              │  └───────┘ └─────┘  │
+              └─────────────────────┘
+```
+
+## Components
+
+### Database Component
+
+Encapsulates database infrastructure with a connection pooling proxy:
+
+```yaml
+# database/architect.yml
+name: shared-database
+
+variables:
+  db_max_connections:
+    description: "Maximum database connections"
+    default: "100"
+
+databases:
+  main:
+    type: postgres:^16
+  
+  cache:
+    type: redis:^7
+
+deployments:
+  proxy:
+    image: pgbouncer/pgbouncer:latest
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      MAX_CLIENT_CONN: ${{ variables.db_max_connections }}
+      DEFAULT_POOL_SIZE: "20"
+    cpu: "0.25"
+    memory: "256Mi"
+
+services:
+  postgres:
+    deployment: proxy
+    port: 5432
+    protocol: tcp
+
+  redis:
+    url: ${{ databases.cache.url }}
+```
+
+### Main Application
+
+Public-facing app that depends on the database:
+
+```yaml
+# app/architect.yml
+name: main-app
+
+dependencies:
+  database:
+    component: ../database
+    variables:
+      db_max_connections: "100"
+
+functions:
+  web:
+    build:
+      context: .
+    framework: nextjs
+    environment:
+      DATABASE_HOST: ${{ dependencies.database.services.postgres.host }}
+      DATABASE_PORT: ${{ dependencies.database.services.postgres.port }}
+      REDIS_URL: ${{ dependencies.database.services.redis.url }}
+
+services:
+  web:
+    function: web
+
+routes:
+  public:
+    type: http
+    service: web
+```
+
+### Admin Panel
+
+Internal app sharing the same database:
+
+```yaml
+# admin/architect.yml
+name: admin-panel
+
+dependencies:
+  database:
+    component: ../database
+    variables:
+      db_max_connections: "50"
+
+functions:
+  admin:
+    build:
+      context: .
+    framework: nextjs
+    environment:
+      DATABASE_HOST: ${{ dependencies.database.services.postgres.host }}
+      DATABASE_PORT: ${{ dependencies.database.services.postgres.port }}
+      REDIS_URL: ${{ dependencies.database.services.redis.url }}
+
+services:
+  admin:
+    function: admin
+
+routes:
+  internal:
+    type: http
+    internal: true  # VPC-only access
+    service: admin
+```
+
+## Key Concepts
+
+### Database as a Component
+
+Instead of declaring databases in each app, encapsulate them:
+
+```yaml
+# Without shared database (each app has its own)
+databases:
+  main:
+    type: postgres:^16
+
+# With shared database (reference through dependency)
+dependencies:
+  database:
+    component: ../database
+```
+
+### Service Discovery
+
+Components discover database connections through dependency outputs:
+
+```yaml
+environment:
+  DATABASE_HOST: ${{ dependencies.database.services.postgres.host }}
+  DATABASE_PORT: ${{ dependencies.database.services.postgres.port }}
+```
+
+### Connection Pooling
+
+The database component includes PgBouncer for connection pooling:
+
+```yaml
+deployments:
+  proxy:
+    image: pgbouncer/pgbouncer:latest
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      MAX_CLIENT_CONN: ${{ variables.db_max_connections }}
+```
+
+Apps connect to the proxy instead of directly to PostgreSQL.
+
+### Shared State
+
+Both apps share the same database instance:
+- Admins can manage data that the main app displays
+- Real-time updates visible in both interfaces
+- Consistent data across applications
+
+## Deploying
+
+### Deploy Together via Environment File
+
+```yaml
+# environment.yml
+name: production
+datacenter: aws-production
+
+components:
+  main:
+    component: ./app
+    routes:
+      public:
+        hostnames:
+          - host: app.example.com
+
+  admin:
+    component: ./admin
+    routes:
+      internal:
+        hostnames:
+          - subdomain: admin
+```
+
+```bash
+arcctl env apply -f environment.yml
+```
+
+### Deploy Individually
+
+```bash
+# Deploy main app (includes database)
+arcctl component deploy main -e production --config ./app
+
+# Deploy admin (shares the same database)
+arcctl component deploy admin -e production --config ./admin
+```
+
+## Use Cases
+
+This pattern is ideal for:
+
+1. **Admin/User separation** - Admin panel for internal users, main app for customers
+2. **Multi-tenant applications** - Multiple frontends sharing a backend database
+3. **Microservices with shared data** - Services that need access to common data
+4. **Gradual migrations** - New and legacy apps accessing the same database
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="Microservices" href="/guides/components/microservices">
+    Service-to-service architecture
+  </Card>
+  <Card title="Preview Datacenter" href="/guides/datacenters/shared-database">
+    Shared database for preview environments
+  </Card>
+</CardGroup>

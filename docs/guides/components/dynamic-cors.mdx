@@ -1,0 +1,219 @@
+---
+title: "Dynamic CORS with Dependents"
+description: "Automatically configure CORS based on dependent frontend applications"
+---
+
+# Dynamic CORS with Dependents
+
+This guide shows how to use the `dependents` expression to automatically discover which frontend applications will call your API and configure CORS accordingly.
+
+<Info>
+Example source: `examples/components/api-with-cors/`
+</Info>
+
+## Overview
+
+This component demonstrates:
+- Using `dependents.*` expressions to discover callers
+- Automatic CORS configuration based on dependent routes
+- Response header modification at the route level
+- Building reusable API components
+
+## The Problem
+
+When building a shared API, you need to configure CORS to allow requests from frontend applications. Hardcoding origins is problematic:
+- Requires updating the API when frontends change
+- Different origins per environment
+- Preview environments have dynamic URLs
+
+## The Solution
+
+Use `dependents` expressions to automatically collect frontend URLs:
+
+```yaml
+deployments:
+  api:
+    environment:
+      # Automatically collect all dependent route URLs
+      CORS_ORIGINS: ${{ dependents.*.routes.*.url | join "," }}
+```
+
+## Component Definition
+
+```yaml
+name: api-with-cors
+description: Backend API that dynamically configures CORS based on dependent frontend applications
+
+variables:
+  jwt_secret:
+    description: "Secret for JWT token signing"
+    required: true
+    sensitive: true
+
+databases:
+  main:
+    type: postgres:^16
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      JWT_SECRET: ${{ variables.jwt_secret }}
+      # Dynamically collect CORS origins from all dependent components
+      CORS_ORIGINS: ${{ dependents.*.routes.*.url | join "," }}
+      # Reference this API's own public URL
+      API_BASE_URL: ${{ routes.api.url }}
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 2
+
+services:
+  api:
+    deployment: api
+    port: 3000
+
+routes:
+  api:
+    type: http
+    rules:
+      - name: api
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: api
+        filters:
+          - type: ResponseHeaderModifier
+            responseHeaderModifier:
+              set:
+                - name: Access-Control-Allow-Methods
+                  value: "GET, POST, PUT, DELETE, OPTIONS"
+                - name: Access-Control-Allow-Headers
+                  value: "Content-Type, Authorization"
+```
+
+## Key Concepts
+
+### Dependents Expression
+
+The `dependents` expression provides access to components that depend on this one:
+
+```yaml
+# All route URLs from all dependents
+${{ dependents.*.routes.*.url | join "," }}
+
+# Specific dependent's route
+${{ dependents.frontend-app.routes.main.url }}
+
+# All service URLs
+${{ dependents.*.services.*.url | join "," }}
+```
+
+### How It Works
+
+1. **Frontend declares dependency:**
+
+```yaml
+# frontend-app/architect.yml
+name: frontend-app
+
+dependencies:
+  api:
+    component: ghcr.io/myorg/api-with-cors:v1.0.0
+
+routes:
+  main:
+    type: http
+    service: web
+```
+
+2. **API automatically sees the frontend:**
+
+The `api-with-cors` component receives `frontend-app`'s route URLs via the `dependents` expression.
+
+3. **CORS is configured:**
+
+```
+CORS_ORIGINS=https://frontend-app.staging.example.com
+```
+
+### Multiple Frontends
+
+When multiple frontends depend on the API:
+
+```yaml
+# frontend-app/architect.yml
+dependencies:
+  api:
+    component: ghcr.io/myorg/api-with-cors:v1.0.0
+
+# admin-app/architect.yml  
+dependencies:
+  api:
+    component: ghcr.io/myorg/api-with-cors:v1.0.0
+```
+
+The API receives both URLs:
+
+```
+CORS_ORIGINS=https://frontend.example.com,https://admin.example.com
+```
+
+## Application Code
+
+Handle multiple CORS origins in your API:
+
+```typescript
+// Express.js example
+import cors from 'cors';
+
+const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+```
+
+## Deploying
+
+Deploy the API first, then deploy frontends that depend on it:
+
+```bash
+# Deploy API
+arcctl component deploy api -e staging \
+  --config ghcr.io/myorg/api-with-cors:v1.0.0 \
+  --var jwt_secret=$JWT_SECRET
+
+# Deploy frontend (automatically links to API)
+arcctl component deploy frontend -e staging \
+  --config ghcr.io/myorg/frontend-app:v1.0.0
+```
+
+When the frontend deploys, arcctl:
+1. Detects the dependency on api-with-cors
+2. Updates the API with the frontend's route URLs
+3. The API receives the new CORS_ORIGINS value
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="Microservices" href="/guides/components/microservices">
+    Multi-service architecture with dependencies
+  </Card>
+  <Card title="Dependencies" href="/components/dependencies">
+    Component dependency reference
+  </Card>
+</CardGroup>

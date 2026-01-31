@@ -1,0 +1,199 @@
+---
+title: "State Backends"
+description: "Configure remote state storage for team collaboration"
+---
+
+# State Backends
+
+State backends persist arcctl state, including datacenter configurations, environment metadata, and infrastructure states. For team collaboration, use a remote backend to share state across machines.
+
+## Supported Backends
+
+| Backend | Description | Use Case |
+|---------|-------------|----------|
+| `local` | File-based local storage | Development, single-user |
+| `s3` | AWS S3 with DynamoDB locking | Teams on AWS |
+| `gcs` | Google Cloud Storage | Teams on GCP |
+| `azurerm` | Azure Blob Storage | Teams on Azure |
+
+## Configuration
+
+### Local Backend
+
+Default backend for development:
+
+```bash
+# Uses default path (~/.arcctl/state/)
+arcctl component deploy my-app -e staging --config ./
+
+# Custom path
+arcctl component deploy my-app -e staging --config ./ \
+  --backend local \
+  --backend-config path=/custom/state/path
+```
+
+### S3 Backend
+
+For AWS-based teams with DynamoDB locking:
+
+```bash
+arcctl component deploy my-app -e staging --config ./ \
+  --backend s3 \
+  --backend-config bucket=my-arcctl-state \
+  --backend-config region=us-east-1 \
+  --backend-config key=arcctl \
+  --backend-config dynamodb_table=arcctl-locks
+```
+
+**Configuration options:**
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `bucket` | Yes | S3 bucket name |
+| `region` | No | AWS region (default: from AWS config) |
+| `key` | No | Prefix for state files |
+| `dynamodb_table` | No | DynamoDB table for locking |
+| `encrypt` | No | Enable server-side encryption |
+
+### GCS Backend
+
+For GCP-based teams:
+
+```bash
+arcctl component deploy my-app -e staging --config ./ \
+  --backend gcs \
+  --backend-config bucket=my-arcctl-state \
+  --backend-config prefix=arcctl
+```
+
+**Configuration options:**
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `bucket` | Yes | GCS bucket name |
+| `prefix` | No | Prefix for state files |
+| `project` | No | GCP project (default: from gcloud config) |
+
+### Azure Backend
+
+For Azure-based teams:
+
+```bash
+arcctl component deploy my-app -e staging --config ./ \
+  --backend azurerm \
+  --backend-config storage_account_name=myaccount \
+  --backend-config container_name=arcctl-state \
+  --backend-config key=arcctl
+```
+
+**Configuration options:**
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `storage_account_name` | Yes | Azure storage account |
+| `container_name` | Yes | Blob container name |
+| `key` | No | Prefix for state files |
+
+## Environment Variables
+
+Backend configuration can be set via environment variables:
+
+```bash
+# S3 Backend
+export ARCCTL_BACKEND=s3
+export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
+export ARCCTL_BACKEND_S3_REGION=us-east-1
+export ARCCTL_BACKEND_S3_KEY=arcctl
+
+# GCS Backend
+export ARCCTL_BACKEND=gcs
+export ARCCTL_BACKEND_GCS_BUCKET=my-arcctl-state
+export ARCCTL_BACKEND_GCS_PREFIX=arcctl
+
+# Azure Backend
+export ARCCTL_BACKEND=azurerm
+export ARCCTL_BACKEND_AZURERM_STORAGE_ACCOUNT_NAME=myaccount
+export ARCCTL_BACKEND_AZURERM_CONTAINER_NAME=arcctl-state
+```
+
+## State Path Structure
+
+Backends store state in a hierarchical structure:
+
+```
+<prefix>/
+├── datacenters/
+│   └── <datacenter-name>/
+│       ├── datacenter.state.json
+│       ├── modules/
+│       │   └── <module>.state.json
+│       └── environments/
+│           └── <env-name>/
+│               ├── environment.state.json
+│               ├── modules/
+│               │   └── <module>.state.json
+│               └── resources/
+│                   └── <component>/
+│                       └── <resource>.state.json
+```
+
+## State Locking
+
+arcctl uses state locking to prevent concurrent modifications. If a lock is held, arcctl shows the lock information:
+
+```
+Error: State is locked
+
+  Lock ID:    abc123
+  Locked by:  ci-job-456
+  Operation:  deploy
+  Created:    2026-01-30 14:22:00
+
+Use --force-unlock to break the lock (use with caution).
+```
+
+### Force Unlock
+
+In emergencies, force unlock a stuck state:
+
+```bash
+arcctl env unlock staging --force
+```
+
+<Warning>
+Only use force unlock when you're certain no other operation is running. Breaking a lock during an active operation can corrupt state.
+</Warning>
+
+## Best Practices
+
+### For Teams
+
+1. **Use a remote backend** - Share state across team members
+2. **Enable locking** - Prevent concurrent modifications (S3 with DynamoDB, GCS native)
+3. **Secure credentials** - Use IAM roles or service accounts, not static keys
+4. **Separate state by environment** - Consider separate backends or prefixes for prod vs dev
+
+### For CI/CD
+
+```yaml
+# GitHub Actions example
+- name: Deploy to staging
+  env:
+    ARCCTL_BACKEND: s3
+    ARCCTL_BACKEND_S3_BUCKET: ${{ secrets.STATE_BUCKET }}
+    ARCCTL_BACKEND_S3_REGION: us-east-1
+    ARCCTL_BACKEND_S3_DYNAMODB_TABLE: arcctl-locks
+  run: |
+    arcctl component deploy my-app -e staging --config ghcr.io/myorg/my-app:${{ github.sha }}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="IaC Plugins" icon="puzzle-piece" href="/advanced/iac-plugins">
+    Configure Infrastructure-as-Code plugins
+  </Card>
+  <Card title="CI/CD Integration" icon="rotate" href="/guides/ci-cd-integration">
+    Automate deployments with CI/CD
+  </Card>
+</CardGroup>

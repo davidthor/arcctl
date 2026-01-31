@@ -1,0 +1,58 @@
+# Native module for running Redis in Docker
+plugin: native
+type: docker
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: Container name
+  version:
+    type: string
+    default: "7"
+    description: Redis version
+  network:
+    type: string
+    required: true
+    description: Docker network to join
+
+resources:
+  volume:
+    type: docker:volume
+    properties:
+      name: "${inputs.name}-data"
+  
+  container:
+    type: docker:container
+    depends_on: [volume]
+    properties:
+      image: "redis:${inputs.version}-alpine"
+      name: "${inputs.name}"
+      network: "${inputs.network}"
+      command: ["redis-server", "--appendonly", "yes"]
+      ports:
+        - container: 6379
+          host: auto
+      volumes:
+        - name: "${inputs.name}-data"
+          path: /data
+      healthcheck:
+        command: ["redis-cli", "ping"]
+        interval: 5s
+        timeout: 5s
+        retries: 10
+      restart: unless-stopped
+
+outputs:
+  host:
+    value: "localhost"
+    description: Redis host
+  port:
+    value: "${resources.container.ports[0].host}"
+    description: Redis port on host
+  url:
+    value: "redis://localhost:${resources.container.ports[0].host}"
+    description: Full connection URL
+  container_id:
+    value: "${resources.container.id}"
+    description: Docker container ID

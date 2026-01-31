@@ -1,0 +1,351 @@
+---
+title: "SMTP Hook"
+description: "Provision email sending capabilities for components"
+---
+
+# SMTP Hook
+
+The SMTP hook provisions email sending capabilities when components declare SMTP requirements. This can be fulfilled by various email service providers (AWS SES, SendGrid, Mailgun, Postmark) or self-hosted SMTP servers.
+
+## Basic Usage
+
+```hcl
+smtp {
+  module "ses" {
+    plugin = "pulumi"
+    build  = "./modules/aws-ses"
+    inputs = {
+      name   = "${environment.name}-${node.component}-${node.name}"
+      domain = variable.email_domain
+    }
+  }
+
+  outputs = {
+    host     = module.ses.smtp_host
+    port     = module.ses.smtp_port
+    username = module.ses.smtp_username
+    password = module.ses.smtp_password
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | SMTP connection identifier |
+| `description` | string | Optional description from the component |
+
+## Required Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `host` | string | SMTP server hostname |
+| `port` | number | SMTP server port (typically 587 or 465) |
+| `username` | string | SMTP authentication username |
+| `password` | string | SMTP authentication password |
+
+## Complete Example
+
+```hcl
+variable "email_domain" {
+  type        = string
+  description = "Domain for sending emails"
+}
+
+variable "email_provider" {
+  type        = string
+  default     = "ses"
+  description = "Email provider: ses, sendgrid, mailgun"
+}
+
+environment {
+  # AWS SES
+  smtp {
+    when = variable.email_provider == "ses"
+
+    module "ses" {
+      plugin = "pulumi"
+      build  = "./modules/aws-ses"
+      inputs = {
+        name   = "${environment.name}-${node.component}-${node.name}"
+        domain = variable.email_domain
+      }
+    }
+
+    outputs = {
+      host     = module.ses.smtp_endpoint
+      port     = 587
+      username = module.ses.smtp_username
+      password = module.ses.smtp_password
+    }
+  }
+
+  # SendGrid
+  smtp {
+    when = variable.email_provider == "sendgrid"
+
+    module "sendgrid" {
+      plugin = "pulumi"
+      build  = "./modules/sendgrid"
+      inputs = {
+        name = "${environment.name}-${node.component}-${node.name}"
+      }
+    }
+
+    outputs = {
+      host     = "smtp.sendgrid.net"
+      port     = 587
+      username = "apikey"
+      password = module.sendgrid.api_key
+    }
+  }
+
+  # Local/Development SMTP (MailHog)
+  smtp {
+    when = variable.email_provider == "local"
+
+    module "mailhog" {
+      plugin = "native"
+      build  = "./modules/docker-mailhog"
+      inputs = {
+        name = "${environment.name}-mailhog"
+      }
+    }
+
+    outputs = {
+      host     = module.mailhog.host
+      port     = 1025
+      username = ""
+      password = ""
+    }
+  }
+}
+```
+
+## Provider-Specific Modules
+
+### AWS SES Module
+
+```typescript
+// modules/aws-ses/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+const domain = config.require("domain");
+
+// Verify domain for SES
+const domainIdentity = new aws.ses.DomainIdentity("domain", {
+  domain: domain,
+});
+
+// Create SMTP credentials
+const smtpUser = new aws.iam.User("smtp-user", {
+  name: `${name}-smtp`,
+});
+
+const smtpPolicy = new aws.iam.UserPolicy("smtp-policy", {
+  user: smtpUser.name,
+  policy: pulumi.interpolate`{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Action": "ses:SendRawEmail",
+      "Resource": "*"
+    }]
+  }`,
+});
+
+const smtpAccessKey = new aws.iam.AccessKey("smtp-key", {
+  user: smtpUser.name,
+});
+
+// Generate SMTP password from secret access key
+const smtpPassword = smtpAccessKey.sesSmtpPasswordV4;
+
+export const smtp_endpoint = pulumi.interpolate`email-smtp.${aws.getRegion().then(r => r.name)}.amazonaws.com`;
+export const smtp_username = smtpAccessKey.id;
+export const smtp_password = smtpPassword;
+```
+
+### SendGrid Module
+
+```typescript
+// modules/sendgrid/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as sendgrid from "@pulumi/sendgrid";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+
+// Create API key for SMTP
+const apiKey = new sendgrid.ApiKey("smtp-key", {
+  name: name,
+  scopes: ["mail.send"],
+});
+
+export const api_key = apiKey.apiKey;
+```
+
+### Docker MailHog Module (Local Development)
+
+```yaml
+# modules/docker-mailhog/module.yml
+name: docker-mailhog
+description: MailHog SMTP server for local development
+
+inputs:
+  name:
+    type: string
+    description: Container name
+
+outputs:
+  host:
+    type: string
+    description: SMTP host
+
+resources:
+  container:
+    type: docker_container
+    properties:
+      name: ${{ inputs.name }}
+      image: mailhog/mailhog:latest
+      ports:
+        - internal: 1025
+          external: 1025
+        - internal: 8025
+          external: 8025
+
+expressions:
+  host: localhost
+```
+
+## Native Module Example
+
+For simpler setups, use a native module with static configuration:
+
+```yaml
+# modules/smtp-config/module.yml
+name: smtp-config
+description: Configure SMTP from environment variables
+
+inputs:
+  name:
+    type: string
+
+outputs:
+  host:
+    type: string
+  port:
+    type: number
+  username:
+    type: string
+  password:
+    type: string
+
+# Read from datacenter variables or secrets
+expressions:
+  host: ${{ secrets.smtp_host }}
+  port: ${{ secrets.smtp_port }}
+  username: ${{ secrets.smtp_username }}
+  password: ${{ secrets.smtp_password }}
+```
+
+```hcl
+smtp {
+  module "config" {
+    plugin = "native"
+    build  = "./modules/smtp-config"
+    inputs = {
+      name = node.name
+    }
+  }
+
+  outputs = {
+    host     = module.config.host
+    port     = module.config.port
+    username = module.config.username
+    password = module.config.password
+  }
+}
+```
+
+## Best Practices
+
+### 1. Domain Verification
+
+Always verify your sending domain with your email provider to ensure deliverability:
+
+```hcl
+smtp {
+  module "ses" {
+    inputs = {
+      domain        = variable.email_domain
+      verify_domain = true
+    }
+  }
+}
+```
+
+### 2. Credential Security
+
+Store SMTP credentials securely:
+
+```hcl
+module "secret" {
+  build = "./modules/aws-secret"
+  inputs = {
+    name  = "${environment.name}/smtp/${node.component}/${node.name}"
+    value = jsonencode({
+      username = module.ses.smtp_username
+      password = module.ses.smtp_password
+    })
+  }
+}
+```
+
+### 3. Environment-Specific Providers
+
+Use different providers for different environments:
+
+```hcl
+variable "environment_type" {
+  type    = string
+  default = "development"
+}
+
+smtp {
+  when = variable.environment_type == "production"
+  
+  module "ses" {
+    build = "./modules/aws-ses"
+    # Production SES configuration
+  }
+}
+
+smtp {
+  when = variable.environment_type != "production"
+  
+  module "mailhog" {
+    build = "./modules/docker-mailhog"
+    # Local development configuration
+  }
+}
+```
+
+### 4. Rate Limiting
+
+Consider implementing rate limiting for email sending in production:
+
+```hcl
+module "ses" {
+  inputs = {
+    sending_rate_limit = 14  # emails per second
+    daily_quota        = 50000
+  }
+}
+```

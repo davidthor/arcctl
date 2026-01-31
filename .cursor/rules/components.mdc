@@ -1,0 +1,115 @@
+---
+description: Guidelines for authoring arcctl component configurations (architect.yml)
+globs: "**/architect.yml,**/architect.yaml,**/components/**/*.yml,**/components/**/*.yaml"
+alwaysApply: false
+---
+
+# Component Authoring Guidelines
+
+Components are developer-focused application bundles in `architect.yml` files that describe what an application needs without specifying infrastructure details.
+
+## File Structure
+
+```yaml
+# Component name comes from the OCI tag at build time
+# README.md (if present) is bundled into the artifact for documentation
+
+# Resources
+databases: map<string, Database>
+buckets: map<string, Bucket>
+deployments: map<string, Deployment>
+functions: map<string, Function>
+services: map<string, Service>
+routes: map<string, Route>
+cronjobs: map<string, Cronjob>
+
+# Configuration
+variables: map<string, Variable>
+dependencies: map<string, Dependency>
+```
+
+## Expression Syntax
+
+Use `${{ ... }}` to reference values:
+
+```yaml
+environment:
+  DATABASE_URL: ${{ databases.main.url }}
+  REDIS_URL: ${{ databases.cache.url }}
+  LOG_LEVEL: ${{ variables.log_level }}
+  API_URL: ${{ services.api.url }}
+```
+
+## Available References
+
+| Expression | Description |
+|------------|-------------|
+| `databases.<name>.url` | Database connection URL |
+| `databases.<name>.host` | Database host |
+| `databases.<name>.port` | Database port |
+| `buckets.<name>.endpoint` | Bucket endpoint |
+| `services.<name>.url` | Service URL |
+| `variables.<name>` | Variable value |
+| `dependencies.<name>.<output>` | Dependency outputs |
+
+## Common Patterns
+
+### Database with Migrations
+
+```yaml
+databases:
+  main:
+    type: postgres:^15
+    migrations:
+      build:
+        context: ./migrations
+      command: ["npm", "run", "migrate"]
+```
+
+### Deployment with Health Check
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 2
+    liveness_probe:
+      path: /health
+      port: 8080
+```
+
+### Service with Route
+
+```yaml
+services:
+  api:
+    deployment: api
+    port: 8080
+
+routes:
+  main:
+    type: http
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: api
+            port: 8080
+```
+
+## Supported Database Types
+
+- `postgres:^15` - PostgreSQL with semver version
+- `mysql:^8` - MySQL
+- `mariadb:^10` - MariaDB
+- `mongodb:^6` - MongoDB
+- `redis` - Redis (no version)
+- `cockroachdb:^23` - CockroachDB distributed SQL
+- `clickhouse:^24` - ClickHouse OLAP database

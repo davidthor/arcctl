@@ -1,0 +1,302 @@
+---
+title: "Modules"
+description: "IaC templates for infrastructure provisioning"
+---
+
+# Modules
+
+Modules contain Infrastructure-as-Code (IaC) templates that provision actual infrastructure. They use either Pulumi or OpenTofu to manage cloud resources.
+
+## Basic Usage
+
+```hcl
+module "k8s" {
+  build  = "./modules/k8s-cluster"
+  plugin = "pulumi"
+  
+  inputs = {
+    name   = variable.cluster_name
+    region = variable.region
+  }
+}
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `build` | string | Local directory containing IaC code (mutually exclusive with `source`) |
+| `source` | string | Pre-built module OCI image (mutually exclusive with `build`) |
+| `plugin` | string | IaC framework: `pulumi` (default) or `opentofu` |
+| `inputs` | map | Values passed to the module |
+| `when` | expression | Conditional expression for when to invoke |
+| `environment` | map | Environment variables for module execution |
+| `volume` | block | Volume mounts for module execution |
+
+## Source Configuration
+
+### Build from Local Path
+
+```hcl
+module "k8s" {
+  build  = "./modules/k8s-cluster"
+  plugin = "pulumi"
+  
+  inputs = {
+    name = variable.cluster_name
+  }
+}
+```
+
+### Use Pre-built Image
+
+```hcl
+module "k8s" {
+  source = "ghcr.io/myorg/k8s-module:v1.0.0"
+  plugin = "pulumi"
+  
+  inputs = {
+    name = variable.cluster_name
+  }
+}
+```
+
+## IaC Plugins
+
+### Pulumi
+
+```hcl
+module "k8s" {
+  build  = "./modules/k8s-cluster"
+  plugin = "pulumi"
+  
+  inputs = {
+    name = variable.cluster_name
+  }
+}
+```
+
+### OpenTofu
+
+```hcl
+module "k8s" {
+  build  = "./modules/k8s-cluster"
+  plugin = "opentofu"
+  
+  inputs = {
+    name = variable.cluster_name
+  }
+}
+```
+
+## Conditional Modules
+
+Use `when` to conditionally invoke modules:
+
+```hcl
+module "postgres_cluster" {
+  build = "./modules/postgres"
+  when  = contains(environment.nodes.*.inputs.databaseType, "postgres")
+  
+  inputs = {
+    namespace = environment.name
+  }
+}
+
+module "redis_cluster" {
+  build = "./modules/redis"
+  when  = contains(environment.nodes.*.inputs.databaseType, "redis")
+  
+  inputs = {
+    namespace = environment.name
+  }
+}
+```
+
+## Environment Variables
+
+Pass environment variables to module execution:
+
+```hcl
+module "aws_resources" {
+  build = "./modules/aws"
+  
+  environment = {
+    AWS_REGION            = variable.region
+    AWS_ACCESS_KEY_ID     = variable.aws_access_key
+    AWS_SECRET_ACCESS_KEY = variable.aws_secret_key
+  }
+  
+  inputs = {
+    cluster_name = variable.cluster_name
+  }
+}
+```
+
+## Volume Mounts
+
+Mount volumes for module execution (useful for Docker socket access):
+
+```hcl
+module "docker_build" {
+  build = "./modules/docker-build"
+  
+  volume {
+    host_path  = "/var/run/docker.sock"
+    mount_path = "/var/run/docker.sock"
+  }
+  
+  inputs = {
+    context = node.inputs.context
+    image   = node.inputs.image
+  }
+}
+```
+
+## Referencing Module Outputs
+
+Use module outputs in other modules and hooks:
+
+```hcl
+module "k8s" {
+  build = "./modules/eks-cluster"
+  inputs = {
+    name = variable.cluster_name
+  }
+}
+
+module "namespace" {
+  build = "./modules/k8s-namespace"
+  inputs = {
+    name       = environment.name
+    kubeconfig = module.k8s.kubeconfig  # Reference output from k8s module
+  }
+}
+
+environment {
+  deployment {
+    module "deployment" {
+      build = "./modules/k8s-deployment"
+      inputs = {
+        namespace  = module.namespace.id  # Reference output from namespace module
+        kubeconfig = module.k8s.kubeconfig
+      }
+    }
+  }
+}
+```
+
+## Module Scope
+
+### Datacenter-Level Modules
+
+Run once per datacenter (shared infrastructure):
+
+```hcl
+# Runs once when datacenter is deployed
+module "k8s" {
+  build = "./modules/eks-cluster"
+  inputs = {
+    name = variable.cluster_name
+  }
+}
+
+module "vpc" {
+  build = "./modules/vpc"
+  inputs = {
+    name = "${variable.cluster_name}-vpc"
+  }
+}
+```
+
+### Environment-Level Modules
+
+Run once per environment:
+
+```hcl
+environment {
+  # Runs once per environment
+  module "namespace" {
+    build = "./modules/k8s-namespace"
+    inputs = {
+      name = environment.name
+    }
+  }
+  
+  # Conditional module based on environment needs
+  module "ingress" {
+    build = "./modules/nginx-controller"
+    when  = length(environment.resources.routes) > 0
+    inputs = {
+      namespace = module.namespace.id
+    }
+  }
+}
+```
+
+## Complete Example
+
+```hcl
+variable "cluster_name" {
+  type = string
+}
+
+variable "region" {
+  type    = string
+  default = "us-east-1"
+}
+
+variable "domain" {
+  type = string
+}
+
+# Datacenter-level: shared Kubernetes cluster
+module "k8s" {
+  build  = "./modules/eks-cluster"
+  plugin = "pulumi"
+  inputs = {
+    name   = variable.cluster_name
+    region = variable.region
+  }
+}
+
+# Datacenter-level: shared VPC
+module "vpc" {
+  build = "./modules/vpc"
+  inputs = {
+    name   = "${variable.cluster_name}-vpc"
+    region = variable.region
+  }
+}
+
+environment {
+  # Environment-level: namespace per environment
+  module "namespace" {
+    build = "./modules/k8s-namespace"
+    inputs = {
+      name       = environment.name
+      kubeconfig = module.k8s.kubeconfig
+    }
+  }
+
+  # Conditional: ingress controller when routes exist
+  module "nginx" {
+    build = "./modules/nginx-controller"
+    when  = length(environment.resources.routes) > 0
+    inputs = {
+      namespace  = module.namespace.id
+      kubeconfig = module.k8s.kubeconfig
+    }
+  }
+
+  # Conditional: certificate when HTTPS routes exist
+  module "cert" {
+    build = "./modules/cert-manager"
+    when  = length(environment.resources.routes) > 0
+    inputs = {
+      domain     = "${environment.name}.${variable.domain}"
+      kubeconfig = module.k8s.kubeconfig
+    }
+  }
+}
+```

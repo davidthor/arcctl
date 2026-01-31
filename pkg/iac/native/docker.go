@@ -1,0 +1,308 @@
+package native
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"os/exec"
+	"strings"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/volume"
+	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
+)
+
+// DockerClient wraps the Docker SDK client.
+type DockerClient struct {
+	client *client.Client
+}
+
+// ContainerOptions defines options for creating a container.
+type ContainerOptions struct {
+	Image       string
+	Name        string
+	Command     []string
+	Entrypoint  []string
+	Environment map[string]string
+	Ports       []PortMapping
+	Volumes     []VolumeMount
+	Network     string
+	Restart     string
+	Healthcheck *Healthcheck
+}
+
+// PortMapping defines a port mapping.
+type PortMapping struct {
+	ContainerPort int
+	HostPort      int
+	Protocol      string
+}
+
+// VolumeMount defines a volume mount.
+type VolumeMount struct {
+	Name   string
+	Source string
+	Path   string
+}
+
+// Healthcheck defines a health check.
+type Healthcheck struct {
+	Command  []string
+	Interval string
+	Timeout  string
+	Retries  int
+}
+
+// ContainerInfo contains container information.
+type ContainerInfo struct {
+	ID    string
+	Name  string
+	Ports map[string]int
+}
+
+// NewDockerClient creates a new Docker client.
+func NewDockerClient() (*DockerClient, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker client: %w", err)
+	}
+
+	return &DockerClient{client: cli}, nil
+}
+
+// RunContainer creates and starts a container.
+func (d *DockerClient) RunContainer(ctx context.Context, opts ContainerOptions) (string, error) {
+	// Pull image first
+	reader, err := d.client.ImagePull(ctx, opts.Image, image.PullOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to pull image %s: %w", opts.Image, err)
+	}
+	_, _ = io.Copy(io.Discard, reader)
+	reader.Close()
+
+	// Build environment slice
+	env := make([]string, 0, len(opts.Environment))
+	for k, v := range opts.Environment {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// Build port bindings
+	exposedPorts := nat.PortSet{}
+	portBindings := nat.PortMap{}
+	for _, pm := range opts.Ports {
+		protocol := pm.Protocol
+		if protocol == "" {
+			protocol = "tcp"
+		}
+		port := nat.Port(fmt.Sprintf("%d/%s", pm.ContainerPort, protocol))
+		exposedPorts[port] = struct{}{}
+
+		hostPort := ""
+		if pm.HostPort > 0 {
+			hostPort = fmt.Sprintf("%d", pm.HostPort)
+		}
+		portBindings[port] = []nat.PortBinding{{HostPort: hostPort}}
+	}
+
+	// Build volume binds
+	var binds []string
+	for _, vm := range opts.Volumes {
+		source := vm.Source
+		if source == "" {
+			source = vm.Name
+		}
+		binds = append(binds, fmt.Sprintf("%s:%s", source, vm.Path))
+	}
+
+	// Create container config
+	config := &container.Config{
+		Image:        opts.Image,
+		Env:          env,
+		Cmd:          opts.Command,
+		Entrypoint:   opts.Entrypoint,
+		ExposedPorts: exposedPorts,
+	}
+
+	hostConfig := &container.HostConfig{
+		PortBindings: portBindings,
+		Binds:        binds,
+	}
+
+	if opts.Restart != "" {
+		hostConfig.RestartPolicy = container.RestartPolicy{Name: container.RestartPolicyMode(opts.Restart)}
+	}
+
+	networkConfig := &network.NetworkingConfig{}
+	if opts.Network != "" {
+		networkConfig.EndpointsConfig = map[string]*network.EndpointSettings{
+			opts.Network: {},
+		}
+	}
+
+	// Create container
+	resp, err := d.client.ContainerCreate(ctx, config, hostConfig, networkConfig, nil, opts.Name)
+	if err != nil {
+		return "", fmt.Errorf("failed to create container: %w", err)
+	}
+
+	// Start container
+	if err := d.client.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+		_ = d.client.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+		return "", fmt.Errorf("failed to start container: %w", err)
+	}
+
+	return resp.ID, nil
+}
+
+// InspectContainer returns information about a container.
+func (d *DockerClient) InspectContainer(ctx context.Context, containerID string) (*ContainerInfo, error) {
+	info, err := d.client.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return nil, err
+	}
+
+	ports := make(map[string]int)
+	for port, bindings := range info.NetworkSettings.Ports {
+		if len(bindings) > 0 {
+			var hostPort int
+			_, _ = fmt.Sscanf(bindings[0].HostPort, "%d", &hostPort)
+			ports[string(port)] = hostPort
+		}
+	}
+
+	return &ContainerInfo{
+		ID:    info.ID,
+		Name:  info.Name,
+		Ports: ports,
+	}, nil
+}
+
+// IsContainerRunning checks if a container is running.
+func (d *DockerClient) IsContainerRunning(ctx context.Context, containerID string) (bool, error) {
+	info, err := d.client.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return false, err
+	}
+	return info.State.Running, nil
+}
+
+// RemoveContainer stops and removes a container.
+func (d *DockerClient) RemoveContainer(ctx context.Context, containerID string) error {
+	return d.client.ContainerRemove(ctx, containerID, container.RemoveOptions{
+		Force:         true,
+		RemoveVolumes: false,
+	})
+}
+
+// CreateNetwork creates a Docker network.
+func (d *DockerClient) CreateNetwork(ctx context.Context, name string) (string, error) {
+	// Check if network already exists
+	networks, err := d.client.NetworkList(ctx, network.ListOptions{
+		Filters: filters.NewArgs(filters.Arg("name", name)),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	for _, n := range networks {
+		if n.Name == name {
+			return n.ID, nil
+		}
+	}
+
+	resp, err := d.client.NetworkCreate(ctx, name, network.CreateOptions{
+		Driver: "bridge",
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create network: %w", err)
+	}
+
+	return resp.ID, nil
+}
+
+// NetworkExists checks if a network exists.
+func (d *DockerClient) NetworkExists(ctx context.Context, networkID string) (bool, error) {
+	_, err := d.client.NetworkInspect(ctx, networkID, network.InspectOptions{})
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// RemoveNetwork removes a Docker network.
+func (d *DockerClient) RemoveNetwork(ctx context.Context, networkID string) error {
+	return d.client.NetworkRemove(ctx, networkID)
+}
+
+// CreateVolume creates a Docker volume.
+func (d *DockerClient) CreateVolume(ctx context.Context, name string) (string, error) {
+	// Check if volume already exists
+	volumes, err := d.client.VolumeList(ctx, volume.ListOptions{
+		Filters: filters.NewArgs(filters.Arg("name", name)),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	for _, v := range volumes.Volumes {
+		if v.Name == name {
+			return v.Name, nil
+		}
+	}
+
+	vol, err := d.client.VolumeCreate(ctx, volume.CreateOptions{
+		Name: name,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create volume: %w", err)
+	}
+
+	return vol.Name, nil
+}
+
+// VolumeExists checks if a volume exists.
+func (d *DockerClient) VolumeExists(ctx context.Context, volumeName string) (bool, error) {
+	_, err := d.client.VolumeInspect(ctx, volumeName)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such volume") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// RemoveVolume removes a Docker volume.
+func (d *DockerClient) RemoveVolume(ctx context.Context, volumeName string) error {
+	return d.client.VolumeRemove(ctx, volumeName, false)
+}
+
+// Exec executes a command on the host.
+func (d *DockerClient) Exec(ctx context.Context, command []string, workDir string, env map[string]string) (string, error) {
+	if len(command) == 0 {
+		return "", fmt.Errorf("command is required")
+	}
+
+	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
+	if workDir != "" {
+		cmd.Dir = workDir
+	}
+
+	for k, v := range env {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output), fmt.Errorf("command failed: %w", err)
+	}
+
+	return string(output), nil
+}

@@ -1,0 +1,87 @@
+# Apache ZooKeeper - Distributed Coordination Service
+# https://zookeeper.apache.org/doc/current/
+#
+# This component provides ZooKeeper for distributed coordination,
+# configuration management, and synchronization services.
+# Commonly used as a dependency for distributed systems like
+# ClickHouse, Kafka, and other stateful applications.
+
+variables:
+  # ZooKeeper settings
+  tick_time:
+    description: "The length of a single tick in milliseconds (basic time unit)"
+    default: "2000"
+
+  init_limit:
+    description: "Ticks to allow for followers to connect and sync to leader"
+    default: "10"
+
+  sync_limit:
+    description: "Ticks to allow for followers to sync with ZooKeeper"
+    default: "5"
+
+  max_client_connections:
+    description: "Maximum number of client connections (0 = unlimited)"
+    default: "60"
+
+  autopurge_snap_retain_count:
+    description: "Number of recent snapshots to retain"
+    default: "3"
+
+  autopurge_purge_interval:
+    description: "Purge interval in hours (0 = disable auto purge)"
+    default: "1"
+
+  # Resource settings
+  heap_size:
+    description: "JVM heap size (e.g., 256m, 512m, 1g)"
+    default: "256m"
+
+  log_level:
+    description: "Log level (DEBUG, INFO, WARN, ERROR)"
+    default: "INFO"
+
+# Deployments
+deployments:
+  zookeeper:
+    image: zookeeper:3.9
+    environment:
+      # Core settings
+      ZOO_TICK_TIME: ${{ variables.tick_time }}
+      ZOO_INIT_LIMIT: ${{ variables.init_limit }}
+      ZOO_SYNC_LIMIT: ${{ variables.sync_limit }}
+      ZOO_MAX_CLIENT_CNXNS: ${{ variables.max_client_connections }}
+      # Auto purge settings
+      ZOO_AUTOPURGE_SNAPRETAINCOUNT: ${{ variables.autopurge_snap_retain_count }}
+      ZOO_AUTOPURGE_PURGEINTERVAL: ${{ variables.autopurge_purge_interval }}
+      # JVM settings
+      JVMFLAGS: "-Xmx${{ variables.heap_size }} -Xms${{ variables.heap_size }}"
+      # Logging
+      ZOO_LOG4J_PROP: "${{ variables.log_level }},CONSOLE"
+      # Allow anonymous login for standalone mode
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 1
+    liveness_probe:
+      command: ["bash", "-c", "echo ruok | nc localhost 2181 | grep imok"]
+      initial_delay_seconds: 30
+      period_seconds: 10
+    readiness_probe:
+      command: ["bash", "-c", "echo ruok | nc localhost 2181 | grep imok"]
+      initial_delay_seconds: 10
+      period_seconds: 5
+
+# Services
+services:
+  # Main ZooKeeper client port
+  zookeeper:
+    deployment: zookeeper
+    port: 2181
+    protocol: tcp
+
+  # Admin server (HTTP) for monitoring
+  admin:
+    deployment: zookeeper
+    port: 8080
+    protocol: http

@@ -1,0 +1,306 @@
+---
+title: "Routes"
+description: "Define external traffic routing using the Gateway API pattern"
+---
+
+# Routes
+
+Routes define external traffic routing using the Gateway API pattern. They expose services to the internet or internal networks with sophisticated routing rules.
+
+## Basic Usage
+
+### Simple Route
+
+```yaml
+routes:
+  web:
+    type: http
+    service: frontend
+    port: 3000
+```
+
+### Route to Function
+
+```yaml
+routes:
+  api:
+    type: http
+    function: api-handler
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | string | Route type: `http` or `grpc` |
+| `internal` | boolean | VPC-only if true (default: false) |
+| `service` | string | Shorthand: target service name |
+| `function` | string | Shorthand: target function name |
+| `port` | number | Shorthand: target port |
+| `rules` | array | Advanced routing rules |
+
+## Full Route Syntax
+
+For advanced routing scenarios:
+
+```yaml
+routes:
+  api:
+    type: http
+    internal: false
+    rules:
+      - name: v1-api
+        matches:
+          - path:
+              type: PathPrefix
+              value: /api/v1
+            headers:
+              - name: x-api-version
+                type: Exact
+                value: "1"
+            method: GET
+        backendRefs:
+          - service: api
+            port: 8080
+            weight: 90
+          - service: api-canary
+            weight: 10
+        filters:
+          - type: RequestHeaderModifier
+            requestHeaderModifier:
+              add:
+                - name: x-request-id
+                  value: generated-uuid
+        timeouts:
+          request: 30s
+          backendRequest: 10s
+```
+
+## Path Matching
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `PathPrefix` | Matches path prefix | `/api` matches `/api/users` |
+| `Exact` | Exact path match | `/api` only matches `/api` |
+| `RegularExpression` | Regex pattern | `/api/v[0-9]+` |
+
+```yaml
+routes:
+  main:
+    type: http
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: api
+
+      - matches:
+          - path:
+              type: Exact
+              value: /health
+        backendRefs:
+          - service: health-check
+
+      - matches:
+          - path:
+              type: RegularExpression
+              value: /users/[0-9]+
+        backendRefs:
+          - service: user-service
+```
+
+## Header Matching
+
+```yaml
+routes:
+  api:
+    type: http
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api
+            headers:
+              - name: x-api-version
+                type: Exact
+                value: "2"
+        backendRefs:
+          - service: api-v2
+
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: api-v1
+```
+
+## Traffic Splitting
+
+Split traffic between services for canary deployments:
+
+```yaml
+routes:
+  api:
+    type: http
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: api-stable
+            weight: 90
+          - service: api-canary
+            weight: 10
+```
+
+## Route Filters
+
+### Request Header Modifier
+
+```yaml
+routes:
+  api:
+    type: http
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        filters:
+          - type: RequestHeaderModifier
+            requestHeaderModifier:
+              add:
+                - name: x-forwarded-prefix
+                  value: /api
+              set:
+                - name: x-custom-header
+                  value: custom-value
+              remove:
+                - x-internal-header
+        backendRefs:
+          - service: api
+```
+
+### Response Header Modifier
+
+```yaml
+routes:
+  api:
+    type: http
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        filters:
+          - type: ResponseHeaderModifier
+            responseHeaderModifier:
+              add:
+                - name: x-served-by
+                  value: arcctl
+        backendRefs:
+          - service: api
+```
+
+### URL Rewrite
+
+```yaml
+routes:
+  api:
+    type: http
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /v1
+        filters:
+          - type: URLRewrite
+            urlRewrite:
+              path:
+                type: ReplacePrefixMatch
+                replacePrefixMatch: /api/v1
+        backendRefs:
+          - service: api
+```
+
+### Redirect
+
+```yaml
+routes:
+  redirect:
+    type: http
+    rules:
+      - matches:
+          - path:
+              type: Exact
+              value: /old-page
+        filters:
+          - type: RequestRedirect
+            requestRedirect:
+              scheme: https
+              hostname: new.example.com
+              statusCode: 301
+```
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `${{ routes.<name>.url }}` | Public URL assigned by datacenter/environment |
+| `${{ routes.<name>.hosts }}` | Array of assigned hostnames |
+
+## Complete Example
+
+```yaml
+name: my-app
+
+deployments:
+  api:
+    build:
+      context: ./api
+
+functions:
+  web:
+    build:
+      context: ./web
+    framework: nextjs
+
+services:
+  api:
+    deployment: api
+    port: 8080
+
+  web:
+    function: web
+
+routes:
+  main:
+    type: http
+    rules:
+      - name: api
+        matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: api
+            port: 8080
+        filters:
+          - type: RequestHeaderModifier
+            requestHeaderModifier:
+              add:
+                - name: x-request-id
+                  value: generated
+
+      - name: web
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: web
+```

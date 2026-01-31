@@ -1,0 +1,43 @@
+# Native module for service discovery in local Docker
+plugin: native
+type: docker
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: Service name
+  target:
+    type: string
+    required: true
+    description: Target container or process name
+  target_type:
+    type: string
+    required: true
+    description: Target type (deployment, function)
+  port:
+    type: number
+    required: true
+    description: Service port
+  protocol:
+    type: string
+    default: "http"
+    description: Service protocol
+  host:
+    type: string
+    default: "localhost"
+    description: Host for service URL
+
+# Services in local mode are just lookups - the container/process already exposes the port
+# This module resolves the actual port from the target
+
+outputs:
+  host:
+    value: "${inputs.host}"
+    description: Service host
+  port:
+    value: "${lookup_port(inputs.target, inputs.port)}"
+    description: Service port
+  url:
+    value: "${inputs.protocol}://${inputs.host}:${lookup_port(inputs.target, inputs.port)}"
+    description: Full service URL

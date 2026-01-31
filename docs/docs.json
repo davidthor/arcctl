@@ -1,0 +1,187 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "arcctl",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "index",
+              "quickstart",
+              "concepts/overview"
+            ]
+          },
+          {
+            "group": "Components",
+            "pages": [
+              "components/overview",
+              "components/databases",
+              "components/buckets",
+              "components/deployments",
+              "components/functions",
+              "components/services",
+              "components/routes",
+              "components/cronjobs",
+              "components/variables",
+              "components/dependencies"
+            ]
+          },
+          {
+            "group": "Datacenters",
+            "pages": [
+              "datacenters/overview",
+              "datacenters/variables",
+              "datacenters/modules",
+              "datacenters/database-hook",
+              "datacenters/deployment-hook",
+              "datacenters/function-hook",
+              "datacenters/service-hook",
+              "datacenters/ingress-hook",
+              "datacenters/bucket-hook",
+              "datacenters/docker-build-hook",
+              "datacenters/cronjob-hook",
+              "datacenters/expressions"
+            ]
+          },
+          {
+            "group": "Environments",
+            "pages": [
+              "environments/overview",
+              "environments/components",
+              "environments/locals",
+              "environments/scaling",
+              "environments/routes",
+              "environments/patterns"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/state-backends",
+              "advanced/iac-plugins"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Component Examples",
+            "pages": [
+              "guides/components/nextjs-app",
+              "guides/components/react-hono-app",
+              "guides/components/nestjs-worker",
+              "guides/components/public-private-routes",
+              "guides/components/dynamic-cors",
+              "guides/components/microservices",
+              "guides/components/shared-database"
+            ]
+          },
+          {
+            "group": "Datacenter Examples",
+            "pages": [
+              "guides/datacenters/local-docker",
+              "guides/datacenters/aws-ecs",
+              "guides/datacenters/digitalocean-k8s",
+              "guides/datacenters/serverless-neon",
+              "guides/datacenters/vercel-functions",
+              "guides/datacenters/shared-database"
+            ]
+          },
+          {
+            "group": "Workflows",
+            "pages": [
+              "guides/developer-workflow",
+              "guides/platform-engineer-workflow",
+              "guides/ci-cd-integration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "cli/overview",
+              "cli/up"
+            ]
+          },
+          {
+            "group": "component",
+            "pages": [
+              "cli/component/build",
+              "cli/component/tag",
+              "cli/component/push",
+              "cli/component/deploy",
+              "cli/component/destroy",
+              "cli/component/list",
+              "cli/component/get"
+            ]
+          },
+          {
+            "group": "datacenter",
+            "pages": [
+              "cli/datacenter/build",
+              "cli/datacenter/tag",
+              "cli/datacenter/push",
+              "cli/datacenter/deploy",
+              "cli/datacenter/list",
+              "cli/datacenter/get",
+              "cli/datacenter/destroy"
+            ]
+          },
+          {
+            "group": "environment",
+            "pages": [
+              "cli/environment/create",
+              "cli/environment/list",
+              "cli/environment/get",
+              "cli/environment/update",
+              "cli/environment/apply",
+              "cli/environment/destroy"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/architect-io/arcctl",
+          "icon": "github"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/architect-io/arcctl"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/architect-io/arcctl"
+    }
+  }
+}

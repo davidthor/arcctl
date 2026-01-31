@@ -1,0 +1,256 @@
+# Example: DigitalOcean Kubernetes datacenter
+# Creates a DOKS cluster and deploys workloads with managed databases
+
+variable "do_token" {
+  description = "DigitalOcean API token"
+  type        = string
+  sensitive   = true
+}
+
+variable "region" {
+  description = "DigitalOcean region"
+  type        = string
+  default     = "nyc3"
+}
+
+variable "cluster_name" {
+  description = "Kubernetes cluster name"
+  type        = string
+}
+
+variable "domain" {
+  description = "Base domain for environments"
+  type        = string
+  default     = "app.example.com"
+}
+
+variable "registry" {
+  description = "Container registry URL"
+  type        = string
+  default     = "registry.digitalocean.com"
+}
+
+# Create the DOKS cluster (shared across all environments)
+module "k8s" {
+  build = "./modules/doks-cluster"
+  inputs = {
+    name   = variable.cluster_name
+    region = variable.region
+    token  = variable.do_token
+    node_pool = {
+      size       = "s-2vcpu-4gb"
+      min_nodes  = 2
+      max_nodes  = 10
+      auto_scale = true
+    }
+  }
+}
+
+environment {
+  # Create namespace per environment
+  module "namespace" {
+    build = "./modules/k8s-namespace"
+    inputs = {
+      name       = environment.name
+      kubeconfig = module.k8s.kubeconfig
+    }
+  }
+
+  # Gateway for HTTP routes
+  module "gateway" {
+    when  = contains(environment.nodes.*.type, "ingress")
+    build = "./modules/k8s-gateway"
+    inputs = {
+      name          = "${environment.name}-gateway"
+      namespace     = environment.name
+      gateway_class = "nginx"
+      kubeconfig    = module.k8s.kubeconfig
+      tls = {
+        enabled = true
+        issuer  = "letsencrypt-prod"
+      }
+    }
+  }
+
+  # DNS zone per environment
+  module "dns_records" {
+    build = "./modules/do-dns"
+    inputs = {
+      domain    = variable.domain
+      subdomain = environment.name
+      target    = module.k8s.load_balancer_ip
+      token     = variable.do_token
+    }
+  }
+
+  # Resource hooks
+  database {
+    module "managed_database" {
+      build = "./modules/do-managed-database"
+      inputs = {
+        name    = "${environment.name}-${node.name}"
+        type    = node.inputs.databaseType
+        version = node.inputs.databaseVersion
+        region  = variable.region
+        size    = "db-s-1vcpu-1gb"
+        token   = variable.do_token
+      }
+    }
+
+    outputs = {
+      host     = module.managed_database.host
+      port     = module.managed_database.port
+      database = module.managed_database.database
+      url      = module.managed_database.connection_url
+    }
+  }
+
+  # Run database migrations after database is provisioned
+  # Uses Kubernetes Jobs for one-time execution
+  databaseMigration {
+    module "migration_job" {
+      build = "./modules/k8s-job"
+      inputs = {
+        name       = "${node.component}--${node.name}--migration"
+        namespace  = environment.name
+        kubeconfig = module.k8s.kubeconfig
+        image      = node.inputs.image
+        command    = node.inputs.command
+        environment = merge(node.inputs.environment, {
+          DATABASE_URL      = node.inputs.databaseUrl
+          DATABASE_HOST     = node.inputs.databaseHost
+          DATABASE_PORT     = node.inputs.databasePort
+          DATABASE_NAME     = node.inputs.databaseName
+          DATABASE_USER     = node.inputs.databaseUser
+          DATABASE_PASSWORD = node.inputs.databasePassword
+        })
+        # Wait for job completion before continuing deployment
+        backoff_limit = 3
+        ttl_seconds_after_finished = 300
+      }
+    }
+
+    outputs = {
+      id     = module.migration_job.job_id
+      status = module.migration_job.status
+    }
+  }
+
+  bucket {
+    module "spaces_bucket" {
+      build = "./modules/do-spaces"
+      inputs = {
+        name       = "${environment.name}-${node.name}"
+        region     = variable.region
+        versioning = node.inputs.versioning
+        public     = node.inputs.public
+        token      = variable.do_token
+      }
+    }
+
+    outputs = {
+      endpoint        = "https://${variable.region}.digitaloceanspaces.com"
+      bucket          = module.spaces_bucket.bucket_name
+      region          = variable.region
+      accessKeyId     = module.spaces_bucket.access_key
+      secretAccessKey = module.spaces_bucket.secret_key
+    }
+  }
+
+  deployment {
+    module "deployment" {
+      build = "./modules/k8s-deployment"
+      inputs = merge(node.inputs, {
+        namespace  = environment.name
+        kubeconfig = module.k8s.kubeconfig
+      })
+    }
+
+    outputs = {
+      id = module.deployment.deployment_id
+    }
+  }
+
+  # DigitalOcean doesn't have native functions - deploy as Knative serving
+  function {
+    module "knative_service" {
+      build = "./modules/knative-service"
+      inputs = merge(node.inputs, {
+        namespace  = environment.name
+        kubeconfig = module.k8s.kubeconfig
+      })
+    }
+
+    outputs = {
+      id       = module.knative_service.service_id
+      endpoint = module.knative_service.url
+    }
+  }
+
+  service {
+    module "service" {
+      build = "./modules/k8s-service"
+      inputs = merge(node.inputs, {
+        namespace  = environment.name
+        kubeconfig = module.k8s.kubeconfig
+      })
+    }
+
+    outputs = {
+      host = module.service.cluster_ip
+      port = module.service.port
+      url  = "http://${module.service.cluster_ip}:${module.service.port}"
+    }
+  }
+
+  ingress {
+    module "httproute" {
+      build = "./modules/k8s-httproute"
+      inputs = merge(node.inputs, {
+        namespace    = environment.name
+        gateway_name = "${environment.name}-gateway"
+        kubeconfig   = module.k8s.kubeconfig
+      })
+    }
+
+    outputs = {
+      url      = "https://${node.name}.${environment.name}.${variable.domain}"
+      hosts    = ["${node.name}.${environment.name}.${variable.domain}"]
+      protocol = "https"
+      host     = "${node.name}.${environment.name}.${variable.domain}"
+      port     = 443
+    }
+  }
+
+  cronjob {
+    module "cronjob" {
+      build = "./modules/k8s-cronjob"
+      inputs = merge(node.inputs, {
+        namespace  = environment.name
+        kubeconfig = module.k8s.kubeconfig
+      })
+    }
+
+    outputs = {
+      id = module.cronjob.cronjob_id
+    }
+  }
+
+  dockerBuild {
+    module "docker_build" {
+      build = "./modules/docker-build-push"
+      inputs = {
+        context    = node.inputs.context
+        dockerfile = node.inputs.dockerfile
+        target     = node.inputs.target
+        args       = node.inputs.args
+        registry   = variable.registry
+        token      = variable.do_token
+      }
+    }
+
+    outputs = {
+      image = module.docker_build.image
+    }
+  }
+}

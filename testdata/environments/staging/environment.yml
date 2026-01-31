@@ -1,0 +1,35 @@
+name: staging
+datacenter: local
+
+locals:
+  base_domain: staging.example.com
+  log_level: debug
+
+components:
+  # Local component - key is identifier, source is file path
+  api:
+    source: ./../../components/basic
+    variables:
+      log_level: ${{ locals.log_level }}
+    scaling:
+      api:
+        replicas: 2
+        cpu: "0.5"
+        memory: "512Mi"
+    routes:
+      main:
+        hostnames:
+          - subdomain: api
+        tls:
+          enabled: true
+
+  # OCI component - key is registry address, source is version tag
+  registry.example.com/org/worker:
+    source: v1.0.0
+    variables:
+      log_level: info
+    scaling:
+      processor:
+        replicas: 3
+        cpu: "1"
+        memory: "1Gi"

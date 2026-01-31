@@ -1,0 +1,282 @@
+# Local Docker Datacenter
+# A lightweight datacenter for local development using the native plugin.
+# Uses Docker for databases and deployments, runs functions as local processes.
+# Optimized for fast startup with minimal overhead.
+
+variable "network_name" {
+  description = "Docker network name for service communication"
+  type        = string
+  default     = "arcctl-local"
+}
+
+variable "host" {
+  description = "Host for local services"
+  type        = string
+  default     = "localhost"
+}
+
+variable "base_port" {
+  description = "Base port for auto-assigned ports"
+  type        = number
+  default     = 8000
+}
+
+# Create a shared Docker network for all environments
+module "network" {
+  plugin = "native"
+  build  = "./modules/docker-network"
+  inputs = {
+    name = variable.network_name
+  }
+}
+
+environment {
+  # Database hook - PostgreSQL
+  database {
+    when = node.inputs.databaseType == "postgres"
+    
+    module "postgres" {
+      plugin = "native"
+      build  = "./modules/docker-postgres"
+      inputs = {
+        name     = "${environment.name}-${node.component}-${node.name}"
+        version  = coalesce(node.inputs.databaseVersion, "16")
+        database = node.name
+        network  = variable.network_name
+      }
+    }
+    
+    outputs = {
+      host     = module.postgres.host
+      port     = module.postgres.port
+      database = module.postgres.database
+      username = module.postgres.username
+      password = module.postgres.password
+      url      = module.postgres.url
+    }
+  }
+  
+  # Database hook - MySQL
+  database {
+    when = node.inputs.databaseType == "mysql"
+    
+    module "mysql" {
+      plugin = "native"
+      build  = "./modules/docker-mysql"
+      inputs = {
+        name     = "${environment.name}-${node.component}-${node.name}"
+        version  = coalesce(node.inputs.databaseVersion, "8")
+        database = node.name
+        network  = variable.network_name
+      }
+    }
+    
+    outputs = {
+      host     = module.mysql.host
+      port     = module.mysql.port
+      database = module.mysql.database
+      username = module.mysql.username
+      password = module.mysql.password
+      url      = module.mysql.url
+    }
+  }
+  
+  # Database hook - Redis
+  database {
+    when = node.inputs.databaseType == "redis"
+    
+    module "redis" {
+      plugin = "native"
+      build  = "./modules/docker-redis"
+      inputs = {
+        name    = "${environment.name}-${node.component}-${node.name}"
+        version = coalesce(node.inputs.databaseVersion, "7")
+        network = variable.network_name
+      }
+    }
+    
+    outputs = {
+      host     = module.redis.host
+      port     = module.redis.port
+      database = "0"
+      url      = module.redis.url
+    }
+  }
+  
+  # Database migration hook - run migrations as one-time container
+  databaseMigration {
+    module "migration" {
+      plugin = "native"
+      build  = "./modules/docker-exec"
+      inputs = {
+        name        = "${node.component}--${node.name}--migration"
+        image       = node.inputs.image
+        command     = node.inputs.command
+        network     = variable.network_name
+        environment = merge(node.inputs.environment, {
+          DATABASE_URL      = node.inputs.databaseUrl
+          DATABASE_HOST     = node.inputs.databaseHost
+          DATABASE_PORT     = tostring(node.inputs.databasePort)
+          DATABASE_NAME     = node.inputs.databaseName
+          DATABASE_USER     = node.inputs.databaseUser
+          DATABASE_PASSWORD = node.inputs.databasePassword
+        })
+      }
+    }
+    
+    outputs = {
+      id     = module.migration.container_id
+      status = module.migration.exit_code == 0 ? "success" : "failed"
+    }
+  }
+  
+  # Bucket hook - use MinIO for S3-compatible storage
+  bucket {
+    module "minio" {
+      plugin = "native"
+      build  = "./modules/docker-bucket"
+      inputs = {
+        name       = "${environment.name}-${node.component}-${node.name}"
+        versioning = node.inputs.versioning
+        public     = node.inputs.public
+        network    = variable.network_name
+      }
+    }
+    
+    outputs = {
+      endpoint        = module.minio.endpoint
+      bucket          = module.minio.bucket
+      region          = module.minio.region
+      accessKeyId     = module.minio.access_key_id
+      secretAccessKey = module.minio.secret_access_key
+    }
+  }
+  
+  # Deployment hook - run as Docker container
+  deployment {
+    module "container" {
+      plugin = "native"
+      build  = "./modules/docker-deployment"
+      inputs = {
+        name          = "${environment.name}-${node.component}-${node.name}"
+        image         = node.inputs.image
+        command       = node.inputs.command
+        entrypoint    = node.inputs.entrypoint
+        environment   = node.inputs.environment
+        cpu           = node.inputs.cpu
+        memory        = node.inputs.memory
+        network       = variable.network_name
+        liveness_probe = node.inputs.liveness_probe
+      }
+    }
+    
+    outputs = {
+      id = module.container.container_id
+    }
+  }
+  
+  # Function hook - run as local process for fast iteration
+  function {
+    module "process" {
+      plugin = "native"
+      build  = "./modules/process-function"
+      inputs = {
+        name        = "${environment.name}-${node.component}-${node.name}"
+        context     = node.inputs.context
+        command     = node.inputs.command
+        environment = node.inputs.environment
+        framework   = node.inputs.framework
+      }
+    }
+    
+    outputs = {
+      id       = module.process.pid
+      endpoint = module.process.endpoint
+    }
+  }
+  
+  # Service hook - expose container/process ports
+  service {
+    module "service" {
+      plugin = "native"
+      build  = "./modules/docker-service"
+      inputs = {
+        name        = node.name
+        target      = node.inputs.target
+        target_type = node.inputs.target_type
+        port        = node.inputs.port
+        protocol    = node.inputs.protocol
+        host        = variable.host
+      }
+    }
+    
+    outputs = {
+      host = module.service.host
+      port = module.service.port
+      url  = module.service.url
+    }
+  }
+  
+  # Ingress hook - for local dev, just expose the port directly
+  ingress {
+    module "ingress" {
+      plugin = "native"
+      build  = "./modules/local-ingress"
+      inputs = {
+        name     = node.name
+        type     = node.inputs.type
+        rules    = node.inputs.rules
+        internal = node.inputs.internal
+        host     = variable.host
+      }
+    }
+    
+    outputs = {
+      url      = module.ingress.url
+      hosts    = [variable.host]
+      protocol = "http"
+      host     = variable.host
+      port     = module.ingress.port
+    }
+  }
+  
+  # Docker build hook - build images locally
+  dockerBuild {
+    module "build" {
+      plugin = "native"
+      build  = "./modules/docker-build"
+      inputs = {
+        context    = node.inputs.context
+        dockerfile = node.inputs.dockerfile
+        target     = node.inputs.target
+        args       = node.inputs.args
+        tag        = "${environment.name}-${node.component}-${node.name}:local"
+      }
+    }
+    
+    outputs = {
+      image = module.build.image
+    }
+  }
+  
+  # Cronjob hook - for local dev, run jobs manually or skip
+  cronjob {
+    module "cronjob" {
+      plugin = "native"
+      build  = "./modules/local-cronjob"
+      inputs = {
+        name        = "${environment.name}-${node.component}-${node.name}"
+        schedule    = node.inputs.schedule
+        image       = node.inputs.image
+        command     = node.inputs.command
+        environment = node.inputs.environment
+        # In local dev, cronjobs are suspended by default
+        suspended   = true
+      }
+    }
+    
+    outputs = {
+      id = module.cronjob.id
+    }
+  }
+}

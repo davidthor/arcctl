@@ -1,0 +1,254 @@
+---
+title: "Dependencies"
+description: "Declare dependencies on other components and access dependent information"
+---
+
+# Dependencies
+
+Components can declare dependencies on other components, enabling modular application architectures. Dependencies are automatically deployed and their outputs become available for reference.
+
+## Declaring Dependencies
+
+```yaml
+dependencies:
+  auth:
+    component: ghcr.io/myorg/auth-service:v1.0.0
+    variables:
+      log_level: debug
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `component` | string | Component reference (OCI image or local path) |
+| `variables` | map | Variable values for the dependency |
+
+## Component References
+
+### OCI Registry
+
+```yaml
+dependencies:
+  auth:
+    component: ghcr.io/myorg/auth-service:v1.0.0
+```
+
+### Local Path (Development)
+
+```yaml
+dependencies:
+  auth:
+    component: ./services/auth
+```
+
+## Accessing Dependency Outputs
+
+Reference dependency services and routes:
+
+```yaml
+dependencies:
+  auth:
+    component: ghcr.io/myorg/auth-service:v1.0.0
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      AUTH_SERVICE_URL: ${{ dependencies.auth.services.api.url }}
+      AUTH_PUBLIC_URL: ${{ dependencies.auth.routes.public.url }}
+```
+
+### Available Outputs
+
+| Output | Description |
+|--------|-------------|
+| `${{ dependencies.<name>.services.<service>.url }}` | Service URL from dependency |
+| `${{ dependencies.<name>.services.<service>.host }}` | Service hostname |
+| `${{ dependencies.<name>.services.<service>.port }}` | Service port |
+| `${{ dependencies.<name>.routes.<route>.url }}` | Route URL from dependency |
+
+## Dependents (Reverse Dependencies)
+
+Access information about components that depend on this component:
+
+```yaml
+deployments:
+  api:
+    environment:
+      # Get URLs from all components that depend on this one
+      CORS_ORIGINS: ${{ dependents.*.routes.*.url | join "," }}
+```
+
+### Wildcard Syntax
+
+Use wildcards to collect values from all dependents:
+
+```yaml
+deployments:
+  api:
+    environment:
+      # All route URLs from all dependents
+      ALLOWED_ORIGINS: ${{ dependents.*.routes.*.url | join "," }}
+      
+      # All service URLs from a specific dependent
+      FRONTEND_URLS: ${{ dependents.frontend.services.*.url | join "," }}
+```
+
+### Specific Dependent
+
+Reference a specific dependent by name:
+
+```yaml
+deployments:
+  api:
+    environment:
+      FRONTEND_URL: ${{ dependents.frontend.routes.main.url }}
+```
+
+## Dependency Graph
+
+arcctl automatically manages the dependency graph:
+
+1. Dependencies are deployed before dependents
+2. Circular dependencies are detected and rejected
+3. Updates propagate through the graph
+
+## Complete Example
+
+### Auth Service (Dependency)
+
+```yaml
+# auth-service/architect.yml
+name: auth-service
+
+variables:
+  jwt_secret:
+    required: true
+    sensitive: true
+
+databases:
+  users:
+    type: postgres:^15
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.users.url }}
+      JWT_SECRET: ${{ variables.jwt_secret }}
+
+services:
+  api:
+    deployment: api
+    port: 8080
+
+routes:
+  public:
+    type: http
+    service: api
+```
+
+### Main Application (Dependent)
+
+```yaml
+# my-app/architect.yml
+name: my-app
+
+dependencies:
+  auth:
+    component: ghcr.io/myorg/auth-service:v1.0.0
+    variables:
+      jwt_secret: ${{ variables.jwt_secret }}
+
+variables:
+  jwt_secret:
+    required: true
+    sensitive: true
+
+databases:
+  main:
+    type: postgres:^15
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      AUTH_SERVICE_URL: ${{ dependencies.auth.services.api.url }}
+      JWT_SECRET: ${{ variables.jwt_secret }}
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      API_URL: ${{ services.api.url }}
+      AUTH_URL: ${{ dependencies.auth.routes.public.url }}
+
+services:
+  api:
+    deployment: api
+    port: 8080
+
+routes:
+  main:
+    type: http
+    service: frontend
+```
+
+### Auth Service with CORS (Using Dependents)
+
+```yaml
+# auth-service/architect.yml (updated to support CORS)
+name: auth-service
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.users.url }}
+      JWT_SECRET: ${{ variables.jwt_secret }}
+      # Automatically allow CORS from all dependent frontends
+      CORS_ORIGINS: ${{ dependents.*.routes.*.url | join "," }}
+```
+
+## Best Practices
+
+### Version Dependencies
+
+Always use specific versions in production:
+
+```yaml
+dependencies:
+  auth:
+    # Good - specific version
+    component: ghcr.io/myorg/auth-service:v1.0.0
+    
+  # Avoid in production
+  # component: ghcr.io/myorg/auth-service:latest
+```
+
+### Use Local Paths for Development
+
+```yaml
+dependencies:
+  auth:
+    # Use local path during development
+    component: ../auth-service
+```
+
+### Pass Required Variables
+
+```yaml
+dependencies:
+  auth:
+    component: ghcr.io/myorg/auth-service:v1.0.0
+    variables:
+      # Pass through shared secrets
+      jwt_secret: ${{ variables.jwt_secret }}
+      log_level: ${{ variables.log_level }}
+```

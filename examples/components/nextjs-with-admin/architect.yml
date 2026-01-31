@@ -1,0 +1,78 @@
+# Example: Public Next.js app with private admin panel
+# Demonstrates public and private (VPC-only) route configurations
+
+variables:
+  admin_secret:
+    description: "Admin panel secret key"
+    required: true
+    sensitive: true
+
+databases:
+  main:
+    type: postgres:^16
+
+  cache:
+    type: redis:^7
+
+functions:
+  storefront:
+    build:
+      context: ./storefront
+    framework: nextjs
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      NEXT_PUBLIC_API_URL: ${{ routes.public.url }}/api
+    memory: "1024Mi"
+    timeout: 30
+
+  admin:
+    build:
+      context: ./admin
+    framework: nextjs
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      ADMIN_SECRET: ${{ variables.admin_secret }}
+    memory: "1024Mi"
+    timeout: 30
+
+services:
+  storefront:
+    function: storefront
+
+  admin:
+    function: admin
+
+# Public route - accessible from the internet
+routes:
+  public:
+    type: http
+    rules:
+      - name: storefront
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: storefront
+
+  # Private route - only accessible within the VPC (via VPN)
+  # The datacenter/environment will configure this as internal-only
+  private:
+    type: http
+    internal: true  # Marks this route as private/internal-only
+    rules:
+      - name: admin-panel
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: admin
+        filters:
+          - type: RequestHeaderModifier
+            requestHeaderModifier:
+              set:
+                - name: X-Internal-Request
+                  value: "true"

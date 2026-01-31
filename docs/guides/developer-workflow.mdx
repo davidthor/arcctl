@@ -1,0 +1,418 @@
+---
+title: "Developer Workflow"
+description: "Best practices for developing with arcctl"
+---
+
+# Developer Workflow
+
+This guide covers the complete developer experience with arcctl, from local development to production deployment.
+
+## Overview
+
+The typical developer workflow with arcctl:
+
+```mermaid
+graph LR
+    A[Write Code] --> B[Local Dev]
+    B --> C[Build]
+    C --> D[Push]
+    D --> E[Deploy]
+    E --> F[Monitor]
+```
+
+1. **Write**: Create your application with an `architect.yml` file
+2. **Local Dev**: Use `arcctl up` for rapid iteration
+3. **Build**: Build portable OCI artifacts
+4. **Push**: Push to a container registry
+5. **Deploy**: Deploy to staging/production environments
+6. **Monitor**: Track deployments and resources
+
+## Local Development
+
+### Quick Start with `arcctl up`
+
+The fastest way to start developing:
+
+```bash
+# Start your application with all dependencies
+arcctl up
+
+# With custom variables
+arcctl up --var log_level=debug
+
+# Named environment (useful for multiple instances)
+arcctl up --name feature-branch
+```
+
+`arcctl up` will:
+- Parse your `architect.yml`
+- Provision databases and other resources locally
+- Build your application containers
+- Watch for file changes and auto-reload
+
+### Project Structure
+
+A typical arcctl project structure:
+
+```
+my-app/
+├── architect.yml           # Component definition
+├── api/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── src/
+├── web/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── src/
+├── database/
+│   └── migrations/
+│       ├── Dockerfile
+│       └── migrations/
+└── jobs/
+    ├── Dockerfile
+    └── cleanup.js
+```
+
+### Writing Components
+
+Start with a minimal component and add resources as needed:
+
+```yaml
+name: my-app
+
+# Start simple
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      PORT: "8080"
+
+services:
+  api:
+    deployment: api
+    port: 8080
+```
+
+Then add databases when you need persistence:
+
+```yaml
+databases:
+  main:
+    type: postgres:^15
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      PORT: "8080"
+```
+
+### Using Variables
+
+Define configurable inputs for different environments:
+
+```yaml
+variables:
+  log_level:
+    default: "info"
+    description: "Application log level"
+  
+  api_key:
+    required: true
+    sensitive: true
+    description: "External API key"
+
+deployments:
+  api:
+    environment:
+      LOG_LEVEL: ${{ variables.log_level }}
+      API_KEY: ${{ variables.api_key }}
+```
+
+Set variables during development:
+
+```bash
+arcctl up --var log_level=debug --var api_key=dev-key
+```
+
+### Working with Dependencies
+
+Reference other components your application needs:
+
+```yaml
+dependencies:
+  auth:
+    component: ghcr.io/myorg/auth:latest
+    variables:
+      log_level: debug
+
+deployments:
+  api:
+    environment:
+      AUTH_URL: ${{ dependencies.auth.services.api.url }}
+```
+
+## Building for Production
+
+### Build Component Artifacts
+
+When ready to share or deploy:
+
+```bash
+# Build with version tag
+arcctl component build . -t ghcr.io/myorg/my-app:v1.0.0
+
+# Build for specific platform
+arcctl component build . -t ghcr.io/myorg/my-app:v1.0.0 --platform linux/amd64
+
+# View what will be built
+arcctl component build . -t ghcr.io/myorg/my-app:v1.0.0 --dry-run
+```
+
+### Understanding Build Output
+
+Building creates multiple artifacts:
+
+```
+Root Artifact:
+  ghcr.io/myorg/my-app:v1.0.0
+
+Child Artifacts:
+  deployments/api    → ghcr.io/myorg/my-app-deployment-api:v1.0.0
+  functions/web      → ghcr.io/myorg/my-app-function-web:v1.0.0
+  migrations/main    → ghcr.io/myorg/my-app-migration-main:v1.0.0
+```
+
+### Push to Registry
+
+```bash
+# Push all artifacts
+arcctl component push ghcr.io/myorg/my-app:v1.0.0
+```
+
+### Tagging Releases
+
+```bash
+# Tag as latest
+arcctl component tag ghcr.io/myorg/my-app:v1.0.0 ghcr.io/myorg/my-app:latest
+
+# Tag for production
+arcctl component tag ghcr.io/myorg/my-app:v1.0.0 ghcr.io/myorg/my-app:production
+```
+
+## Deploying to Environments
+
+### Deploy to Staging
+
+```bash
+# Deploy from OCI artifact
+arcctl component deploy my-app -e staging \
+  --config ghcr.io/myorg/my-app:v1.0.0 \
+  --var log_level=debug
+
+# Deploy from local source (for testing)
+arcctl component deploy my-app -e staging \
+  --config . \
+  --var log_level=debug
+```
+
+### View Deployment Status
+
+```bash
+# List components in environment
+arcctl component list -e staging
+
+# Get detailed component info
+arcctl component get my-app -e staging
+```
+
+### Update Deployments
+
+```bash
+# Deploy new version
+arcctl component deploy my-app -e staging \
+  --config ghcr.io/myorg/my-app:v1.1.0
+```
+
+arcctl will show a diff of changes:
+
+```
+Execution Plan:
+
+  deployment "api"
+    ~ update: image ghcr.io/myorg/my-app-deployment-api:v1.0.0
+           -> ghcr.io/myorg/my-app-deployment-api:v1.1.0
+
+Plan: 0 to create, 1 to update, 0 to destroy
+```
+
+### Rollback
+
+Deploy the previous version:
+
+```bash
+arcctl component deploy my-app -e staging \
+  --config ghcr.io/myorg/my-app:v1.0.0
+```
+
+## Testing Strategies
+
+### Local Integration Tests
+
+Use `arcctl up` to spin up the full stack for integration tests:
+
+```bash
+# Start the environment
+arcctl up --name test-env --detach
+
+# Run tests against local environment
+npm test
+
+# Cleanup
+arcctl env destroy test-env
+```
+
+### Preview Environments
+
+Create ephemeral environments for pull request testing:
+
+```bash
+# Create preview environment
+arcctl env create preview-$PR_NUMBER --datacenter aws-staging --if-not-exists
+
+# Deploy PR build
+arcctl component deploy my-app -e preview-$PR_NUMBER \
+  --config ghcr.io/myorg/my-app:pr-$PR_NUMBER
+
+# Get preview URL
+arcctl env get preview-$PR_NUMBER
+```
+
+### Promotion Testing
+
+Test in staging before production:
+
+```bash
+# Deploy to staging
+arcctl component deploy my-app -e staging \
+  --config ghcr.io/myorg/my-app:v1.1.0
+
+# Run smoke tests
+./scripts/smoke-test.sh staging
+
+# Promote to production
+arcctl component deploy my-app -e production \
+  --config ghcr.io/myorg/my-app:v1.1.0
+```
+
+## Best Practices
+
+### Component Design
+
+<AccordionGroup>
+  <Accordion title="Keep components focused">
+    Each component should represent a single deployable unit. Split large applications into smaller, focused components.
+  </Accordion>
+  
+  <Accordion title="Use semantic versioning">
+    Tag component builds with semantic versions (`v1.0.0`, `v1.1.0`) for clear release tracking.
+  </Accordion>
+  
+  <Accordion title="Document variables">
+    Add descriptions to all variables so others know what they do:
+    ```yaml
+    variables:
+      stripe_key:
+        required: true
+        sensitive: true
+        description: "Stripe API key for payment processing"
+    ```
+  </Accordion>
+  
+  <Accordion title="Use expressions over hardcoding">
+    Reference resources via expressions instead of hardcoding values:
+    ```yaml
+    # Good
+    DATABASE_URL: ${{ databases.main.url }}
+    
+    # Bad
+    DATABASE_URL: postgres://localhost:5432/mydb
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Development Tips
+
+<AccordionGroup>
+  <Accordion title="Use .env files for local variables">
+    Create a `.env.local` file for development secrets:
+    ```bash
+    arcctl up --var-file .env.local
+    ```
+  </Accordion>
+  
+  <Accordion title="Leverage health checks">
+    Add liveness and readiness probes for reliable deployments:
+    ```yaml
+    deployments:
+      api:
+        liveness_probe:
+          path: /health
+          port: 8080
+    ```
+  </Accordion>
+  
+  <Accordion title="Use database migrations">
+    Keep database schemas in version control:
+    ```yaml
+    databases:
+      main:
+        type: postgres:^15
+        migrations:
+          build:
+            context: ./database/migrations
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### Common Issues
+
+**Build fails with "Dockerfile not found"**
+- Ensure `build.context` points to a directory containing a Dockerfile
+- Check `build.dockerfile` if using a custom filename
+
+**Connection refused to database**
+- The database might still be starting up
+- Check that `DATABASE_URL` expression is correct
+- Verify the database type matches what your app expects
+
+**Environment variable not set**
+- Ensure the expression syntax is correct: `${{ databases.main.url }}`
+- Check that the referenced resource exists in your component
+
+### Getting Help
+
+```bash
+# Show command help
+arcctl component deploy --help
+
+# Verbose output for debugging
+arcctl component deploy my-app -e staging --config . --verbose
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="CI/CD Integration" icon="arrows-spin" href="/guides/ci-cd-integration">
+    Automate builds and deployments
+  </Card>
+  <Card title="Component Reference" icon="cube" href="/components/overview">
+    Full component specification
+  </Card>
+</CardGroup>

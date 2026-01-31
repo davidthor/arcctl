@@ -1,0 +1,237 @@
+---
+title: "Function Hook"
+description: "Deploy serverless functions for components"
+---
+
+# Function Hook
+
+The function hook deploys serverless functions when components declare function workloads. It receives the function specification and provisions the appropriate serverless infrastructure.
+
+## Basic Usage
+
+```hcl
+function {
+  module "lambda" {
+    build = "./modules/lambda-function"
+    inputs = merge(node.inputs, {
+      name   = "${environment.name}-${node.component}-${node.name}"
+      region = variable.region
+    })
+  }
+
+  outputs = {
+    id       = module.lambda.function_id
+    endpoint = module.lambda.function_url
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Function name |
+| `image` | string | Container image |
+| `runtime` | string | Runtime specification |
+| `framework` | string | Optional framework hint |
+| `environment` | map | Environment variables |
+| `memory` | string | Memory allocation |
+| `timeout` | number | Timeout in seconds |
+
+## Required Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique function identifier |
+| `endpoint` | string | Internal endpoint URL |
+
+## AWS Lambda Example
+
+```hcl
+function {
+  module "lambda" {
+    build = "./modules/lambda-function"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      image       = node.inputs.image
+      memory      = node.inputs.memory
+      timeout     = node.inputs.timeout
+      environment = node.inputs.environment
+      region      = variable.region
+    }
+  }
+
+  outputs = {
+    id       = module.lambda.function_arn
+    endpoint = module.lambda.function_url
+  }
+}
+```
+
+### Pulumi Module
+
+```typescript
+// modules/lambda-function/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+const image = config.require("image");
+const memory = config.getNumber("memory") || 512;
+const timeout = config.getNumber("timeout") || 30;
+const environment = config.getObject<Record<string, string>>("environment") || {};
+
+const role = new aws.iam.Role("function-role", {
+  assumeRolePolicy: JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [{
+      Action: "sts:AssumeRole",
+      Effect: "Allow",
+      Principal: { Service: "lambda.amazonaws.com" },
+    }],
+  }),
+});
+
+const fn = new aws.lambda.Function("function", {
+  name: name,
+  packageType: "Image",
+  imageUri: image,
+  role: role.arn,
+  memorySize: memory,
+  timeout: timeout,
+  environment: {
+    variables: environment,
+  },
+});
+
+const functionUrl = new aws.lambda.FunctionUrl("function-url", {
+  functionName: fn.name,
+  authorizationType: "NONE",
+});
+
+export const function_arn = fn.arn;
+export const function_url = functionUrl.functionUrl;
+```
+
+## Vercel Functions Example
+
+For Vercel-based deployments:
+
+```hcl
+function {
+  when = node.inputs.framework == "nextjs"
+
+  module "vercel" {
+    build = "./modules/vercel-deployment"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      project_id  = variable.vercel_project_id
+      image       = node.inputs.image
+      environment = node.inputs.environment
+    }
+  }
+
+  outputs = {
+    id       = module.vercel.deployment_id
+    endpoint = module.vercel.deployment_url
+  }
+}
+```
+
+## Google Cloud Functions Example
+
+```hcl
+function {
+  module "gcf" {
+    build = "./modules/cloud-function"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      image       = node.inputs.image
+      memory      = node.inputs.memory
+      timeout     = node.inputs.timeout
+      environment = node.inputs.environment
+      region      = variable.region
+      project     = variable.gcp_project
+    }
+  }
+
+  outputs = {
+    id       = module.gcf.function_id
+    endpoint = module.gcf.trigger_url
+  }
+}
+```
+
+## Knative Example
+
+For Kubernetes-based serverless:
+
+```hcl
+function {
+  module "knative" {
+    build = "./modules/knative-service"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      namespace   = module.namespace.id
+      image       = node.inputs.image
+      memory      = node.inputs.memory
+      environment = node.inputs.environment
+      kubeconfig  = module.k8s.kubeconfig
+    }
+  }
+
+  outputs = {
+    id       = module.knative.service_id
+    endpoint = module.knative.url
+  }
+}
+```
+
+## Framework-Specific Handling
+
+Handle different frameworks with conditional modules:
+
+```hcl
+# Next.js on Vercel
+function {
+  when = node.inputs.framework == "nextjs"
+
+  module "vercel" {
+    build = "./modules/vercel-nextjs"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      image       = node.inputs.image
+      environment = node.inputs.environment
+    }
+  }
+
+  outputs = {
+    id       = module.vercel.deployment_id
+    endpoint = module.vercel.url
+  }
+}
+
+# Generic functions on Lambda
+function {
+  when = node.inputs.framework != "nextjs"
+
+  module "lambda" {
+    build = "./modules/lambda-function"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      image       = node.inputs.image
+      memory      = node.inputs.memory
+      timeout     = node.inputs.timeout
+      environment = node.inputs.environment
+    }
+  }
+
+  outputs = {
+    id       = module.lambda.function_arn
+    endpoint = module.lambda.function_url
+  }
+}
+```

@@ -1,0 +1,130 @@
+---
+title: "Component Configuration"
+description: "Configure components within environments"
+---
+
+# Component Configuration
+
+Each component in an environment can be configured with variables, scaling rules, route hostnames, and more.
+
+## Basic Structure
+
+Components are keyed by their registry address (for OCI references) or an identifier (for local paths). The `source` field specifies the version tag or file path.
+
+```yaml
+components:
+  # OCI component - key is registry address, source is version tag
+  registry.example.com/org/my-app:
+    source: v1.0.0
+    variables: { ... }
+    scaling: { ... }
+    functions: { ... }
+    environment: { ... }
+    routes: { ... }
+
+  # Local component - key is identifier, source is file path
+  my-local-app:
+    source: ./path/to/component
+    variables: { ... }
+```
+
+## Component Source
+
+### OCI Registry
+
+Reference a pre-built component artifact. The key is the registry address and `source` is the version tag:
+
+```yaml
+components:
+  ghcr.io/myorg/my-app:
+    source: v1.0.0
+```
+
+### Local Path
+
+For development, use a local identifier as the key and the file path as the source:
+
+```yaml
+components:
+  my-app:
+    source: ./services/my-app
+```
+
+When using a local path (starting with `./`, `../`, or `/`), arcctl invokes the datacenter's `dockerBuild` hook to build images.
+
+## Variables
+
+Pass values to component variables:
+
+```yaml
+components:
+  ghcr.io/org/my-app:
+    source: v1.0.0
+    variables:
+      log_level: "info"
+      api_key: ${{ locals.api_key }}
+      feature_flags: "new-ui,dark-mode"
+```
+
+Variables defined in the component's `architect.yml` are resolved with these values at deployment time.
+
+## Environment Variable Overrides
+
+Add or override environment variables for specific deployments:
+
+```yaml
+components:
+  ghcr.io/org/my-app:
+    source: v1.0.0
+    environment:
+      api:                      # Deployment name
+        FEATURE_FLAG: "true"
+        DEBUG_MODE: "enabled"
+      worker:
+        BATCH_SIZE: "100"
+```
+
+This is useful for environment-specific configuration that shouldn't be in the component definition.
+
+## Complete Example
+
+```yaml
+name: staging
+datacenter: aws-production
+
+locals:
+  stripe_key: "sk_test_abc123"
+  log_level: "debug"
+
+components:
+  ghcr.io/myorg/auth:
+    source: v2.1.0
+    variables:
+      jwt_secret: ${{ locals.jwt_secret }}
+      log_level: ${{ locals.log_level }}
+
+  ghcr.io/myorg/web-app:
+    source: v1.5.0
+    variables:
+      stripe_key: ${{ locals.stripe_key }}
+      log_level: ${{ locals.log_level }}
+    environment:
+      frontend:
+        NEXT_PUBLIC_API_URL: https://api.staging.example.com
+
+  ghcr.io/myorg/worker:
+    source: v1.2.0
+    variables:
+      log_level: "info"  # Override for this component
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Scaling" icon="expand" href="/environments/scaling">
+    Configure replicas and resources
+  </Card>
+  <Card title="Routes" icon="route" href="/environments/routes">
+    Configure hostnames and TLS
+  </Card>
+</CardGroup>

@@ -1,0 +1,76 @@
+# Native module for running PostgreSQL in Docker
+plugin: native
+type: docker
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: Container name
+  version:
+    type: string
+    default: "16"
+    description: PostgreSQL version
+  database:
+    type: string
+    required: true
+    description: Database name to create
+  network:
+    type: string
+    required: true
+    description: Docker network to join
+
+resources:
+  volume:
+    type: docker:volume
+    properties:
+      name: "${inputs.name}-data"
+  
+  container:
+    type: docker:container
+    depends_on: [volume]
+    properties:
+      image: "postgres:${inputs.version}"
+      name: "${inputs.name}"
+      network: "${inputs.network}"
+      environment:
+        POSTGRES_DB: "${inputs.database}"
+        POSTGRES_USER: "app"
+        POSTGRES_PASSWORD: "${random_password(16)}"
+      ports:
+        - container: 5432
+          host: auto
+      volumes:
+        - name: "${inputs.name}-data"
+          path: /var/lib/postgresql/data
+      healthcheck:
+        command: ["pg_isready", "-U", "app", "-d", "${inputs.database}"]
+        interval: 5s
+        timeout: 5s
+        retries: 10
+      restart: unless-stopped
+
+outputs:
+  host:
+    value: "localhost"
+    description: Database host
+  port:
+    value: "${resources.container.ports[0].host}"
+    description: Database port on host
+  database:
+    value: "${inputs.database}"
+    description: Database name
+  username:
+    value: "app"
+    description: Database username
+  password:
+    value: "${resources.container.environment.POSTGRES_PASSWORD}"
+    sensitive: true
+    description: Database password
+  url:
+    value: "postgres://app:${resources.container.environment.POSTGRES_PASSWORD}@localhost:${resources.container.ports[0].host}/${inputs.database}"
+    sensitive: true
+    description: Full connection URL
+  container_id:
+    value: "${resources.container.id}"
+    description: Docker container ID

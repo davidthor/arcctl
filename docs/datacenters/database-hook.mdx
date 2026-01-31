@@ -1,0 +1,230 @@
+---
+title: "Database Hook"
+description: "Provision databases for components"
+---
+
+# Database Hook
+
+The database hook provisions databases when components declare database requirements. It receives the database specification and must return connection information.
+
+## Basic Usage
+
+```hcl
+database {
+  when = node.inputs.databaseType == "postgres"
+
+  module "db" {
+    build = "./modules/rds-postgres"
+    inputs = {
+      name    = "${environment.name}-${node.component}-${node.name}"
+      version = node.inputs.databaseVersion
+      region  = variable.region
+    }
+  }
+
+  outputs = {
+    host     = module.db.host
+    port     = module.db.port
+    database = module.db.database
+    username = module.db.username
+    password = module.db.password
+    url      = module.db.connection_url
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Resource identifier |
+| `databaseType` | string | Database type (postgres, mysql, mariadb, mongodb, redis, cockroachdb, clickhouse) |
+| `databaseVersion` | string | Requested version |
+| `migrations` | object | Optional migration configuration |
+
+## Required Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `host` | string | Database hostname |
+| `port` | number | Database port |
+| `database` | string | Database name |
+| `url` | string | Full connection URL |
+
+Optional outputs:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `username` | string | Database username |
+| `password` | string | Database password |
+
+## Multiple Database Types
+
+Handle different database types with conditional hooks:
+
+```hcl
+# PostgreSQL databases
+database {
+  when = node.inputs.databaseType == "postgres"
+
+  module "postgres" {
+    build = "./modules/rds-postgres"
+    inputs = {
+      name    = "${environment.name}-${node.component}-${node.name}"
+      version = node.inputs.databaseVersion
+    }
+  }
+
+  outputs = {
+    host     = module.postgres.endpoint
+    port     = module.postgres.port
+    database = module.postgres.database_name
+    url      = module.postgres.connection_url
+  }
+}
+
+# MySQL databases
+database {
+  when = node.inputs.databaseType == "mysql"
+
+  module "mysql" {
+    build = "./modules/rds-mysql"
+    inputs = {
+      name    = "${environment.name}-${node.component}-${node.name}"
+      version = node.inputs.databaseVersion
+    }
+  }
+
+  outputs = {
+    host     = module.mysql.endpoint
+    port     = module.mysql.port
+    database = module.mysql.database_name
+    url      = module.mysql.connection_url
+  }
+}
+
+# Redis databases
+database {
+  when = node.inputs.databaseType == "redis"
+
+  module "redis" {
+    build = "./modules/elasticache-redis"
+    inputs = {
+      name    = "${environment.name}-${node.component}-${node.name}"
+      version = node.inputs.databaseVersion
+    }
+  }
+
+  outputs = {
+    host = module.redis.endpoint
+    port = module.redis.port
+    url  = "redis://${module.redis.endpoint}:${module.redis.port}"
+  }
+}
+```
+
+## Example Pulumi Module
+
+Here's an example Pulumi module for provisioning RDS PostgreSQL:
+
+```typescript
+// modules/rds-postgres/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+const version = config.get("version") || "15";
+
+const db = new aws.rds.Instance("database", {
+  identifier: name,
+  engine: "postgres",
+  engineVersion: version,
+  instanceClass: "db.t3.micro",
+  allocatedStorage: 20,
+  dbName: "main",
+  username: "postgres",
+  password: pulumi.secret("generated-password"),
+  skipFinalSnapshot: true,
+});
+
+export const endpoint = db.endpoint;
+export const port = db.port;
+export const database_name = db.dbName;
+export const connection_url = pulumi.interpolate`postgres://${db.username}:${db.password}@${db.endpoint}/${db.dbName}`;
+```
+
+## Example OpenTofu Module
+
+```hcl
+# modules/rds-postgres/main.tf
+variable "name" {
+  type = string
+}
+
+variable "version" {
+  type    = string
+  default = "15"
+}
+
+resource "aws_db_instance" "database" {
+  identifier           = var.name
+  engine               = "postgres"
+  engine_version       = var.version
+  instance_class       = "db.t3.micro"
+  allocated_storage    = 20
+  db_name              = "main"
+  username             = "postgres"
+  password             = random_password.db_password.result
+  skip_final_snapshot  = true
+}
+
+resource "random_password" "db_password" {
+  length  = 32
+  special = false
+}
+
+output "endpoint" {
+  value = aws_db_instance.database.endpoint
+}
+
+output "port" {
+  value = aws_db_instance.database.port
+}
+
+output "database_name" {
+  value = aws_db_instance.database.db_name
+}
+
+output "connection_url" {
+  value     = "postgres://${aws_db_instance.database.username}:${random_password.db_password.result}@${aws_db_instance.database.endpoint}/${aws_db_instance.database.db_name}"
+  sensitive = true
+}
+```
+
+## Local Development
+
+For local development datacenters, you might use Docker-based databases:
+
+```hcl
+database {
+  when = node.inputs.databaseType == "postgres"
+
+  module "postgres" {
+    build = "./modules/docker-postgres"
+    inputs = {
+      name    = "${node.component}-${node.name}"
+      version = node.inputs.databaseVersion
+    }
+  }
+
+  outputs = {
+    host     = "localhost"
+    port     = module.postgres.port
+    database = module.postgres.database
+    url      = module.postgres.connection_url
+  }
+}
+```

@@ -1,0 +1,304 @@
+# Example: AWS ECS datacenter
+# Deploys to ECS Fargate with RDS, ElastiCache, and S3
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "vpc_id" {
+  description = "VPC ID for deployment"
+  type        = string
+}
+
+variable "cluster_name" {
+  description = "ECS cluster name"
+  type        = string
+}
+
+variable "domain" {
+  description = "Base domain for environments"
+  type        = string
+  default     = "app.example.com"
+}
+
+variable "hosted_zone_id" {
+  description = "Route53 hosted zone ID"
+  type        = string
+}
+
+variable "certificate_arn" {
+  description = "ACM certificate ARN for TLS"
+  type        = string
+}
+
+# ECS Cluster (shared across environments)
+module "ecs_cluster" {
+  build = "./modules/ecs-cluster"
+  inputs = {
+    name   = variable.cluster_name
+    region = variable.aws_region
+    vpc_id = variable.vpc_id
+  }
+}
+
+# Application Load Balancer (shared)
+module "alb" {
+  build = "./modules/alb"
+  inputs = {
+    name            = "${variable.cluster_name}-alb"
+    vpc_id          = variable.vpc_id
+    certificate_arn = variable.certificate_arn
+  }
+}
+
+environment {
+  # Target group per environment
+  module "target_group" {
+    build = "./modules/alb-target-group"
+    inputs = {
+      name    = environment.name
+      vpc_id  = variable.vpc_id
+      alb_arn = module.alb.arn
+    }
+  }
+
+  # CloudWatch log group
+  module "log_group" {
+    build = "./modules/cloudwatch-logs"
+    inputs = {
+      name           = "/ecs/${variable.cluster_name}/${environment.name}"
+      retention_days = 30
+    }
+  }
+
+  # DNS records
+  module "dns_records" {
+    build = "./modules/route53-records"
+    inputs = {
+      hosted_zone_id = variable.hosted_zone_id
+      domain         = "${environment.name}.${variable.domain}"
+      alb_dns_name   = module.alb.dns_name
+      alb_zone_id    = module.alb.zone_id
+    }
+  }
+
+  # Security group for environment
+  module "security_group" {
+    build = "./modules/security-group"
+    inputs = {
+      name   = "${environment.name}-sg"
+      vpc_id = variable.vpc_id
+    }
+  }
+
+  # Resource hooks
+  database {
+    module "rds_database" {
+      build = "./modules/rds-database"
+      inputs = {
+        name              = "${environment.name}-${node.name}"
+        type              = node.inputs.databaseType
+        version           = node.inputs.databaseVersion
+        region            = variable.aws_region
+        vpc_id            = variable.vpc_id
+        instance_class    = "db.t3.micro"
+        allocated_storage = 20
+        security_group_id = module.security_group.id
+      }
+    }
+
+    outputs = {
+      host     = module.rds_database.endpoint
+      port     = module.rds_database.port
+      database = module.rds_database.database_name
+      url      = module.rds_database.connection_url
+    }
+  }
+
+  # Run database migrations using ECS Tasks (Fargate)
+  # Waits for task completion before continuing deployment
+  databaseMigration {
+    module "migration_task" {
+      build = "./modules/ecs-task"
+      inputs = {
+        name              = "${node.component}--${node.name}--migration"
+        cluster           = variable.cluster_name
+        vpc_id            = variable.vpc_id
+        security_group_id = module.security_group.id
+        log_group         = module.log_group.name
+        image             = node.inputs.image
+        command           = node.inputs.command
+        environment = merge(node.inputs.environment, {
+          DATABASE_URL      = node.inputs.databaseUrl
+          DATABASE_HOST     = node.inputs.databaseHost
+          DATABASE_PORT     = node.inputs.databasePort
+          DATABASE_NAME     = node.inputs.databaseName
+          DATABASE_USER     = node.inputs.databaseUser
+          DATABASE_PASSWORD = node.inputs.databasePassword
+        })
+        # Use Fargate SPOT for cost-effective one-time tasks
+        capacity_provider = "FARGATE_SPOT"
+        cpu               = "256"
+        memory            = "512"
+      }
+    }
+
+    outputs = {
+      id     = module.migration_task.task_arn
+      status = module.migration_task.status
+    }
+  }
+
+  bucket {
+    module "s3_bucket" {
+      build = "./modules/s3-bucket"
+      inputs = {
+        name       = "${environment.name}-${node.name}"
+        region     = variable.aws_region
+        versioning = node.inputs.versioning
+        public     = node.inputs.public
+      }
+    }
+
+    outputs = {
+      endpoint        = "https://s3.${variable.aws_region}.amazonaws.com"
+      bucket          = module.s3_bucket.bucket_name
+      region          = variable.aws_region
+      accessKeyId     = module.s3_bucket.access_key_id
+      secretAccessKey = module.s3_bucket.secret_access_key
+    }
+  }
+
+  deployment {
+    module "ecs_service" {
+      build = "./modules/ecs-service"
+      inputs = merge(node.inputs, {
+        cluster           = variable.cluster_name
+        vpc_id            = variable.vpc_id
+        security_group_id = module.security_group.id
+        log_group         = module.log_group.name
+      })
+    }
+
+    outputs = {
+      id = module.ecs_service.service_id
+    }
+  }
+
+  function {
+    module "lambda" {
+      build = "./modules/lambda-function"
+      inputs = merge(node.inputs, {
+        name              = "${environment.name}-${node.name}"
+        vpc_id            = variable.vpc_id
+        security_group_id = module.security_group.id
+      })
+    }
+
+    outputs = {
+      id       = module.lambda.function_arn
+      endpoint = module.lambda.function_url
+    }
+  }
+
+  service {
+    module "service_discovery" {
+      build = "./modules/service-discovery"
+      inputs = {
+        name        = node.name
+        namespace   = environment.name
+        target      = node.inputs.target
+        target_type = node.inputs.target_type
+        port        = node.inputs.port
+      }
+    }
+
+    outputs = {
+      host = module.service_discovery.dns_name
+      port = module.service_discovery.port
+      url  = "http://${module.service_discovery.dns_name}:${module.service_discovery.port}"
+    }
+  }
+
+  ingress {
+    module "alb_listener_rule" {
+      build = "./modules/alb-listener-rule"
+      inputs = merge(node.inputs, {
+        alb_arn          = module.alb.arn
+        target_group_arn = module.target_group.arn
+        domain           = "${environment.name}.${variable.domain}"
+      })
+    }
+
+    outputs = {
+      url      = "https://${environment.name}.${variable.domain}"
+      hosts    = ["${environment.name}.${variable.domain}"]
+      protocol = "https"
+      host     = "${environment.name}.${variable.domain}"
+      port     = 443
+    }
+  }
+
+  cronjob {
+    module "eventbridge_task" {
+      build = "./modules/eventbridge-scheduled-task"
+      inputs = merge(node.inputs, {
+        name    = "${environment.name}-${node.name}"
+        cluster = variable.cluster_name
+      })
+    }
+
+    outputs = {
+      id = module.eventbridge_task.rule_arn
+    }
+  }
+
+  databaseUser {
+    module "rds_user" {
+      build = "./modules/rds-user"
+      inputs = {
+        database = node.inputs.database
+        username = node.inputs.username
+      }
+    }
+
+    outputs = {
+      username = module.rds_user.username
+      password = module.rds_user.password
+      url      = module.rds_user.connection_url
+    }
+  }
+
+  secret {
+    module "secrets_manager" {
+      build = "./modules/secrets-manager"
+      inputs = {
+        name = "${environment.name}/${node.name}"
+        data = node.inputs.data
+      }
+    }
+
+    outputs = {
+      id = module.secrets_manager.secret_arn
+    }
+  }
+
+  dockerBuild {
+    module "ecr_build" {
+      build = "./modules/ecr-build"
+      inputs = {
+        context    = node.inputs.context
+        dockerfile = node.inputs.dockerfile
+        target     = node.inputs.target
+        args       = node.inputs.args
+        region     = variable.aws_region
+      }
+    }
+
+    outputs = {
+      image = module.ecr_build.image_uri
+    }
+  }
+}

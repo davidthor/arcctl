@@ -1,0 +1,205 @@
+---
+title: "SMTP"
+description: "Declare email sending requirements in arcctl components"
+---
+
+# SMTP
+
+Declare email sending requirements for your component. The datacenter is responsible for provisioning SMTP credentials—you just specify that you need email capabilities.
+
+## Basic Usage
+
+```yaml
+smtp:
+  email: {}
+```
+
+That's it! The declaration can be an empty object. The datacenter provisions the SMTP connection credentials.
+
+## Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `description` | string | optional | Human-readable description of the SMTP connection |
+
+```yaml
+smtp:
+  notifications:
+    description: "For transactional emails"
+```
+
+## Outputs
+
+Access SMTP configuration values in other resources using expressions.
+
+| Output | Description |
+|--------|-------------|
+| `${{ smtp.<name>.host }}` | SMTP server hostname |
+| `${{ smtp.<name>.port }}` | SMTP server port (typically 587 or 465) |
+| `${{ smtp.<name>.username }}` | SMTP authentication username |
+| `${{ smtp.<name>.password }}` | SMTP authentication password |
+
+## Example Usage
+
+```yaml
+name: my-app
+
+smtp:
+  notifications: {}
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      SMTP_HOST: ${{ smtp.notifications.host }}
+      SMTP_PORT: ${{ smtp.notifications.port }}
+      SMTP_USERNAME: ${{ smtp.notifications.username }}
+      SMTP_PASSWORD: ${{ smtp.notifications.password }}
+```
+
+## Multiple SMTP Connections
+
+You can declare multiple SMTP connections for different purposes:
+
+```yaml
+smtp:
+  transactional:
+    description: "Password reset, verification emails"
+
+  marketing:
+    description: "Newsletter and promotional emails"
+
+  alerts:
+    description: "System alert notifications"
+
+deployments:
+  api:
+    environment:
+      TRANSACTIONAL_SMTP_HOST: ${{ smtp.transactional.host }}
+      MARKETING_SMTP_HOST: ${{ smtp.marketing.host }}
+```
+
+## Integration with Common Frameworks
+
+### Node.js (Nodemailer)
+
+```yaml
+deployments:
+  api:
+    environment:
+      SMTP_HOST: ${{ smtp.email.host }}
+      SMTP_PORT: ${{ smtp.email.port }}
+      SMTP_USER: ${{ smtp.email.username }}
+      SMTP_PASS: ${{ smtp.email.password }}
+```
+
+```javascript
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+// The "from" address is set when sending emails
+await transporter.sendMail({
+  from: 'noreply@myapp.com',
+  to: 'user@example.com',
+  subject: 'Hello',
+  text: 'Hello world'
+});
+```
+
+### Python (Django)
+
+```yaml
+deployments:
+  web:
+    environment:
+      EMAIL_HOST: ${{ smtp.email.host }}
+      EMAIL_PORT: ${{ smtp.email.port }}
+      EMAIL_HOST_USER: ${{ smtp.email.username }}
+      EMAIL_HOST_PASSWORD: ${{ smtp.email.password }}
+```
+
+### Ruby on Rails
+
+```yaml
+deployments:
+  api:
+    environment:
+      SMTP_ADDRESS: ${{ smtp.email.host }}
+      SMTP_PORT: ${{ smtp.email.port }}
+      SMTP_USERNAME: ${{ smtp.email.username }}
+      SMTP_PASSWORD: ${{ smtp.email.password }}
+```
+
+## How Datacenters Fulfill SMTP
+
+The datacenter determines how SMTP is provisioned. Common implementations include:
+
+| Provider | Description |
+|----------|-------------|
+| **AWS SES** | Amazon Simple Email Service - high deliverability, pay-per-use |
+| **SendGrid** | Email delivery platform with analytics |
+| **Mailgun** | Developer-focused email API |
+| **Postmark** | Transactional email service |
+| **Self-hosted** | Internal SMTP server for development/testing |
+
+The beauty of the SMTP resource type is that your component doesn't need to know which provider is used. The datacenter handles provider-specific configuration and returns standardized SMTP credentials.
+
+## Migration from Variables
+
+If you're currently using variables for SMTP configuration, you can migrate to the SMTP resource type:
+
+**Before:**
+```yaml
+variables:
+  smtp_host:
+    description: "SMTP server host"
+    required: true
+  smtp_port:
+    description: "SMTP server port"
+    default: "587"
+  smtp_username:
+    description: "SMTP username"
+    required: true
+  smtp_password:
+    description: "SMTP password"
+    sensitive: true
+    required: true
+
+deployments:
+  api:
+    environment:
+      SMTP_HOST: ${{ variables.smtp_host }}
+      SMTP_PORT: ${{ variables.smtp_port }}
+      SMTP_USERNAME: ${{ variables.smtp_username }}
+      SMTP_PASSWORD: ${{ variables.smtp_password }}
+```
+
+**After:**
+```yaml
+smtp:
+  email: {}
+
+deployments:
+  api:
+    environment:
+      SMTP_HOST: ${{ smtp.email.host }}
+      SMTP_PORT: ${{ smtp.email.port }}
+      SMTP_USERNAME: ${{ smtp.email.username }}
+      SMTP_PASSWORD: ${{ smtp.email.password }}
+```
+
+The key benefits of using `smtp`:
+- SMTP credentials are automatically provisioned by the datacenter
+- No need to manually configure email providers
+- Credentials are stored securely in the datacenter's secret management
+- Consistent email configuration across environments
+- The datacenter can ensure proper domain verification and deliverability

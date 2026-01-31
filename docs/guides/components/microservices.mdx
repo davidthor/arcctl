@@ -1,0 +1,291 @@
+---
+title: "Microservices Architecture"
+description: "Build a microservices system with shared authentication"
+---
+
+# Microservices Architecture
+
+This guide shows how to build a microservices architecture where multiple services depend on a centralized authentication service.
+
+<Info>
+Example source: `examples/components/microservices-auth/`
+</Info>
+
+## Overview
+
+This example demonstrates:
+- Multiple independent components
+- Shared authentication service
+- Transitive dependency resolution
+- API gateway pattern
+- Service-to-service communication
+
+## Architecture
+
+```
+                ┌─────────────────┐
+                │   API Gateway   │
+                │   (gateway/)    │
+                └────────┬────────┘
+                         │
+       ┌─────────────────┼─────────────────┐
+       │                 │                 │
+       ▼                 ▼                 ▼
+┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+│   Orders    │   │  Products   │   │    Auth     │
+│ (orders/)   │   │ (products/) │   │  (auth/)    │
+└─────────────┘   └─────────────┘   └─────────────┘
+       │                 │                 │
+       └─────────────────┴─────────────────┘
+                         │
+                         ▼
+                  Depends on Auth
+```
+
+## Components
+
+### Auth Service
+
+The foundational service with no dependencies:
+
+```yaml
+# auth/architect.yml
+name: auth-service
+
+variables:
+  jwt_secret:
+    required: true
+    sensitive: true
+  jwt_expiry:
+    default: "24h"
+
+databases:
+  users:
+    type: postgres:^16
+  sessions:
+    type: redis:^7
+
+deployments:
+  api:
+    build:
+      context: .
+    environment:
+      DATABASE_URL: ${{ databases.users.url }}
+      REDIS_URL: ${{ databases.sessions.url }}
+      JWT_SECRET: ${{ variables.jwt_secret }}
+      JWT_EXPIRY: ${{ variables.jwt_expiry }}
+
+services:
+  api:
+    deployment: api
+    port: 3000
+
+routes:
+  public:
+    type: http
+    service: api
+```
+
+### Orders Service
+
+Depends on Auth for token validation:
+
+```yaml
+# orders/architect.yml
+name: orders-service
+
+dependencies:
+  auth:
+    component: ../auth
+    variables:
+      jwt_expiry: "24h"
+
+databases:
+  orders:
+    type: postgres:^16
+  queue:
+    type: redis:^7
+
+deployments:
+  api:
+    build:
+      context: .
+    environment:
+      DATABASE_URL: ${{ databases.orders.url }}
+      REDIS_URL: ${{ databases.queue.url }}
+      AUTH_SERVICE_URL: ${{ dependencies.auth.services.api.url }}
+
+services:
+  api:
+    deployment: api
+    port: 3000
+```
+
+### Products Service
+
+Also depends on Auth:
+
+```yaml
+# products/architect.yml
+name: products-service
+
+dependencies:
+  auth:
+    component: ../auth
+    variables:
+      jwt_expiry: "24h"
+
+databases:
+  products:
+    type: postgres:^16
+  cache:
+    type: redis:^7
+
+buckets:
+  images:
+    type: s3
+
+deployments:
+  api:
+    build:
+      context: .
+    environment:
+      DATABASE_URL: ${{ databases.products.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      AUTH_SERVICE_URL: ${{ dependencies.auth.services.api.url }}
+      S3_BUCKET: ${{ buckets.images.bucket }}
+
+services:
+  api:
+    deployment: api
+    port: 3000
+```
+
+### API Gateway
+
+Aggregates all services:
+
+```yaml
+# gateway/architect.yml
+name: api-gateway
+
+dependencies:
+  auth:
+    component: ../auth
+  orders:
+    component: ../orders
+  products:
+    component: ../products
+
+deployments:
+  gateway:
+    build:
+      context: .
+    environment:
+      AUTH_URL: ${{ dependencies.auth.services.api.url }}
+      ORDERS_URL: ${{ dependencies.orders.services.api.url }}
+      PRODUCTS_URL: ${{ dependencies.products.services.api.url }}
+
+services:
+  gateway:
+    deployment: gateway
+    port: 3000
+
+routes:
+  api:
+    type: http
+    service: gateway
+```
+
+## Key Concepts
+
+### Dependency References
+
+Access dependency outputs using expressions:
+
+```yaml
+environment:
+  AUTH_SERVICE_URL: ${{ dependencies.auth.services.api.url }}
+```
+
+### Transitive Dependencies
+
+When you deploy the gateway, arcctl automatically deploys:
+1. Auth service (gateway depends on it)
+2. Orders service (gateway depends on it, orders depends on auth)
+3. Products service (gateway depends on it, products depends on auth)
+
+Auth is only deployed once, shared by all services.
+
+### Isolated Databases
+
+Each service has its own database:
+- Auth: `users` (postgres) + `sessions` (redis)
+- Orders: `orders` (postgres) + `queue` (redis)
+- Products: `products` (postgres) + `cache` (redis)
+
+### Variable Propagation
+
+Pass variables through dependencies:
+
+```yaml
+dependencies:
+  auth:
+    component: ../auth
+    variables:
+      jwt_expiry: "24h"  # Configure auth's JWT expiry
+```
+
+## Deploying
+
+### Deploy Everything via Gateway
+
+```bash
+# Deploy entire stack (dependencies resolved automatically)
+arcctl component deploy gateway -e staging \
+  --config ./gateway \
+  --var jwt_secret=$JWT_SECRET
+```
+
+### Deploy Individual Services
+
+```bash
+# Deploy just auth
+arcctl component deploy auth -e staging --config ./auth
+
+# Deploy orders (auto-deploys auth if not present)
+arcctl component deploy orders -e staging --config ./orders
+```
+
+## Service Communication
+
+```typescript
+// orders/src/auth.middleware.ts
+export async function validateToken(req: Request) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  
+  const response = await fetch(
+    `${process.env.AUTH_SERVICE_URL}/validate`,
+    {
+      headers: { Authorization: `Bearer ${token}` }
+    }
+  );
+  
+  if (!response.ok) {
+    throw new UnauthorizedError();
+  }
+  
+  return response.json();
+}
+```
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="Shared Database" href="/guides/components/shared-database">
+    Multiple apps sharing a database
+  </Card>
+  <Card title="Dynamic CORS" href="/guides/components/dynamic-cors">
+    Auto-configure CORS for dependents
+  </Card>
+</CardGroup>

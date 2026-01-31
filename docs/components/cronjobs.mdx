@@ -1,0 +1,187 @@
+---
+title: "Cronjobs"
+description: "Define scheduled tasks in arcctl components"
+---
+
+# Cronjobs
+
+Define scheduled tasks that run on a cron schedule. Cronjobs are useful for batch processing, cleanup tasks, reports, and other periodic workloads.
+
+## Basic Usage
+
+```yaml
+cronjobs:
+  cleanup:
+    schedule: "0 0 * * *"
+    build:
+      context: ./jobs
+    command: ["npm", "run", "cleanup"]
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `schedule` | string | Cron expression (required) |
+| `image` | string | Container image |
+| `build` | object | Build configuration |
+| `command` | string[] | Command to run |
+| `environment` | map | Environment variables |
+| `cpu` | string | CPU allocation |
+| `memory` | string | Memory allocation |
+
+## Cron Schedule Syntax
+
+Standard cron expression format:
+
+```
+┌───────────── minute (0 - 59)
+│ ┌───────────── hour (0 - 23)
+│ │ ┌───────────── day of month (1 - 31)
+│ │ │ ┌───────────── month (1 - 12)
+│ │ │ │ ┌───────────── day of week (0 - 6) (Sunday to Saturday)
+│ │ │ │ │
+│ │ │ │ │
+* * * * *
+```
+
+### Common Schedules
+
+| Schedule | Expression | Description |
+|----------|------------|-------------|
+| Every minute | `* * * * *` | Runs every minute |
+| Every hour | `0 * * * *` | Runs at minute 0 of every hour |
+| Daily at midnight | `0 0 * * *` | Runs at 00:00 every day |
+| Daily at 3 AM | `0 3 * * *` | Runs at 03:00 every day |
+| Weekly on Sunday | `0 0 * * 0` | Runs at midnight every Sunday |
+| Monthly on the 1st | `0 0 1 * *` | Runs at midnight on the 1st |
+| Every 15 minutes | `*/15 * * * *` | Runs every 15 minutes |
+| Weekdays at 9 AM | `0 9 * * 1-5` | Runs at 09:00 Monday-Friday |
+
+## Source Configuration
+
+### Build from Source
+
+```yaml
+cronjobs:
+  report:
+    schedule: "0 6 * * *"
+    build:
+      context: ./jobs/report
+      dockerfile: Dockerfile
+    command: ["node", "generate-report.js"]
+```
+
+### Use Pre-built Image
+
+```yaml
+cronjobs:
+  backup:
+    schedule: "0 2 * * *"
+    image: postgres:15
+    command: ["pg_dump", "-h", "db", "-U", "postgres", "mydb"]
+```
+
+## Environment Variables
+
+```yaml
+cronjobs:
+  cleanup:
+    schedule: "0 0 * * *"
+    build:
+      context: ./jobs
+    command: ["npm", "run", "cleanup"]
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      LOG_LEVEL: ${{ variables.log_level }}
+```
+
+## Resource Allocation
+
+```yaml
+cronjobs:
+  heavy-processing:
+    schedule: "0 2 * * *"
+    build:
+      context: ./jobs
+    command: ["python", "process.py"]
+    cpu: "1.0"
+    memory: "2Gi"
+```
+
+## Complete Example
+
+```yaml
+name: my-app
+
+databases:
+  main:
+    type: postgres:^15
+  cache:
+    type: redis
+
+variables:
+  admin_email:
+    default: "admin@example.com"
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+
+services:
+  api:
+    deployment: api
+    port: 8080
+
+cronjobs:
+  # Daily cleanup at midnight
+  cleanup:
+    schedule: "0 0 * * *"
+    build:
+      context: ./jobs
+    command: ["npm", "run", "cleanup"]
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+    cpu: "0.25"
+    memory: "256Mi"
+
+  # Daily report at 6 AM
+  daily-report:
+    schedule: "0 6 * * *"
+    build:
+      context: ./jobs
+    command: ["npm", "run", "report"]
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      ADMIN_EMAIL: ${{ variables.admin_email }}
+      API_URL: ${{ services.api.url }}
+    cpu: "0.5"
+    memory: "512Mi"
+
+  # Database backup at 2 AM
+  backup:
+    schedule: "0 2 * * *"
+    build:
+      context: ./jobs/backup
+    command: ["./backup.sh"]
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+    cpu: "0.25"
+    memory: "512Mi"
+
+  # Cache warmup every 15 minutes
+  cache-warmup:
+    schedule: "*/15 * * * *"
+    build:
+      context: ./jobs
+    command: ["npm", "run", "warmup"]
+    environment:
+      REDIS_URL: ${{ databases.cache.url }}
+      API_URL: ${{ services.api.url }}
+    cpu: "0.1"
+    memory: "128Mi"
+```

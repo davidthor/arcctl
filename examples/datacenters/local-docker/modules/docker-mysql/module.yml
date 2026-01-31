@@ -1,0 +1,77 @@
+# Native module for running MySQL in Docker
+plugin: native
+type: docker
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: Container name
+  version:
+    type: string
+    default: "8"
+    description: MySQL version
+  database:
+    type: string
+    required: true
+    description: Database name to create
+  network:
+    type: string
+    required: true
+    description: Docker network to join
+
+resources:
+  volume:
+    type: docker:volume
+    properties:
+      name: "${inputs.name}-data"
+  
+  container:
+    type: docker:container
+    depends_on: [volume]
+    properties:
+      image: "mysql:${inputs.version}"
+      name: "${inputs.name}"
+      network: "${inputs.network}"
+      environment:
+        MYSQL_DATABASE: "${inputs.database}"
+        MYSQL_USER: "app"
+        MYSQL_PASSWORD: "${random_password(16)}"
+        MYSQL_ROOT_PASSWORD: "${random_password(20)}"
+      ports:
+        - container: 3306
+          host: auto
+      volumes:
+        - name: "${inputs.name}-data"
+          path: /var/lib/mysql
+      healthcheck:
+        command: ["mysqladmin", "ping", "-h", "localhost", "-u", "app", "-p${resources.container.environment.MYSQL_PASSWORD}"]
+        interval: 5s
+        timeout: 5s
+        retries: 10
+      restart: unless-stopped
+
+outputs:
+  host:
+    value: "localhost"
+    description: Database host
+  port:
+    value: "${resources.container.ports[0].host}"
+    description: Database port on host
+  database:
+    value: "${inputs.database}"
+    description: Database name
+  username:
+    value: "app"
+    description: Database username
+  password:
+    value: "${resources.container.environment.MYSQL_PASSWORD}"
+    sensitive: true
+    description: Database password
+  url:
+    value: "mysql://app:${resources.container.environment.MYSQL_PASSWORD}@localhost:${resources.container.ports[0].host}/${inputs.database}"
+    sensitive: true
+    description: Full connection URL
+  container_id:
+    value: "${resources.container.id}"
+    description: Docker container ID

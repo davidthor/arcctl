@@ -1,0 +1,96 @@
+# Example: React frontend with Hono.js backend
+# Demonstrates separation of frontend/backend with MySQL and Redis
+# Also demonstrates database migrations
+
+variables:
+  jwt_secret:
+    description: "Secret for JWT token signing"
+    required: true
+    sensitive: true
+  
+  cors_origins:
+    description: "Allowed CORS origins (comma-separated)"
+    default: "*"
+
+databases:
+  main:
+    type: mysql:^8
+    # Database migrations configuration
+    # Runs after database is provisioned, before deployments start
+    migrations:
+      build:
+        context: ./database
+        dockerfile: Dockerfile.migrations
+      command: ["npm", "run", "migrate:up"]
+      environment:
+        MIGRATION_TABLE: "_migrations"
+
+  cache:
+    type: redis:^7
+
+deployments:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      JWT_SECRET: ${{ variables.jwt_secret }}
+      CORS_ORIGINS: ${{ variables.cors_origins }}
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 2
+    liveness_probe:
+      path: /health
+      port: 3000
+    readiness_probe:
+      path: /ready
+      port: 3000
+
+functions:
+  frontend:
+    build:
+      context: ./frontend
+    framework: react
+    environment:
+      VITE_API_URL: ${{ services.api.url }}
+    memory: "512Mi"
+
+services:
+  api:
+    deployment: api
+    port: 3000
+    protocol: http
+
+  frontend:
+    function: frontend
+
+routes:
+  main:
+    type: http
+    rules:
+      # API routes
+      - name: api
+        matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: api
+            port: 3000
+        filters:
+          - type: URLRewrite
+            urlRewrite:
+              path:
+                type: ReplacePrefixMatch
+                replacePrefixMatch: /
+      
+      # Frontend routes (catch-all)
+      - name: frontend
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: frontend

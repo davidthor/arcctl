@@ -1,0 +1,229 @@
+---
+title: "Deployments"
+description: "Define long-running application workloads in arcctl components"
+---
+
+# Deployments
+
+Define long-running application workloads. Deployments are containers that run continuously, handling traffic and processing background work.
+
+## Basic Usage
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `image` | string | Container image (mutually exclusive with `build`) |
+| `build` | object | Build configuration (mutually exclusive with `image`) |
+| `command` | string[] | Override container command |
+| `entrypoint` | string[] | Override container entrypoint |
+| `environment` | map | Environment variables (supports expressions) |
+| `cpu` | string | CPU allocation |
+| `memory` | string | Memory allocation |
+| `replicas` | number | Default replica count |
+| `liveness_probe` | object | Liveness check configuration |
+| `readiness_probe` | object | Readiness check configuration |
+| `volumes` | array | Volume mounts |
+
+## Source Configuration
+
+### Build from Source
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile          # Optional, defaults to "Dockerfile"
+      target: production              # Multi-stage build target
+      args:
+        NODE_ENV: production
+```
+
+### Use Pre-built Image
+
+```yaml
+deployments:
+  api:
+    image: node:18-alpine
+    command: ["npm", "start"]
+```
+
+## Runtime Configuration
+
+### Command and Entrypoint
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+    command: ["npm", "run", "start:prod"]
+    entrypoint: ["/bin/sh", "-c"]
+```
+
+### Environment Variables
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      # Static values
+      NODE_ENV: production
+      LOG_FORMAT: json
+      
+      # From databases
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      
+      # From variables
+      LOG_LEVEL: ${{ variables.log_level }}
+      API_KEY: ${{ variables.api_key }}
+      
+      # From services
+      AUTH_SERVICE_URL: ${{ services.auth.url }}
+```
+
+## Resource Allocation
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+    cpu: "0.5"           # 0.5 CPU cores
+    memory: "512Mi"      # 512 MB memory
+    replicas: 2          # 2 replicas
+```
+
+## Health Checks
+
+### Liveness Probe
+
+Determines if the container is running. If it fails, the container is restarted.
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+    liveness_probe:
+      path: /health
+      port: 8080
+      initial_delay_seconds: 10
+      period_seconds: 30
+      timeout_seconds: 5
+      failure_threshold: 3
+```
+
+### Readiness Probe
+
+Determines if the container is ready to receive traffic.
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+    readiness_probe:
+      path: /ready
+      port: 8080
+      initial_delay_seconds: 5
+      period_seconds: 10
+```
+
+### TCP Probes
+
+For non-HTTP services:
+
+```yaml
+deployments:
+  worker:
+    build:
+      context: ./worker
+    liveness_probe:
+      tcp_socket:
+        port: 9000
+      period_seconds: 30
+```
+
+## Volumes
+
+Mount volumes for persistent data or configuration:
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+    volumes:
+      - mount_path: /data
+        host_path: ./data           # For local development
+      
+      - mount_path: /config
+        config_map: app-config      # From ConfigMap
+```
+
+## Complete Example
+
+```yaml
+name: my-app
+
+databases:
+  main:
+    type: postgres:^15
+  cache:
+    type: redis
+
+variables:
+  log_level:
+    default: "info"
+
+deployments:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: ["npm", "start"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      LOG_LEVEL: ${{ variables.log_level }}
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 2
+    liveness_probe:
+      path: /health
+      port: 8080
+      initial_delay_seconds: 10
+    readiness_probe:
+      path: /ready
+      port: 8080
+
+  worker:
+    build:
+      context: ./worker
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+    cpu: "0.25"
+    memory: "256Mi"
+    replicas: 1
+
+services:
+  api:
+    deployment: api
+    port: 8080
+```

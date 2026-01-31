@@ -1,0 +1,296 @@
+---
+title: "Expressions"
+description: "Expression syntax and context in datacenter configurations"
+---
+
+# Expressions
+
+Datacenter configurations use HCL expressions to reference values, perform computations, and make conditional decisions.
+
+## Expression Context
+
+Different contexts are available depending on where you are in the datacenter configuration:
+
+### Global Context
+
+Available everywhere:
+
+| Expression | Description |
+|------------|-------------|
+| `variable.<name>` | Datacenter variable value |
+| `datacenter.name` | Name of the datacenter |
+
+### Environment Context
+
+Available in the `environment` block:
+
+| Expression | Description |
+|------------|-------------|
+| `environment.name` | Current environment name |
+| `environment.nodes` | Array of all nodes in the environment |
+| `environment.nodes.*.type` | Array of all node types |
+| `environment.resources.routes` | Array of route resources |
+| `environment.resources.databases` | Array of database resources |
+| `module.<name>.<output>` | Module output value |
+
+### Hook Context
+
+Available in resource hooks (database, deployment, etc.):
+
+| Expression | Description |
+|------------|-------------|
+| `node.name` | Resource name |
+| `node.component` | Component the resource belongs to |
+| `node.type` | Resource type |
+| `node.inputs.<field>` | Resource input values |
+| `module.<name>.<output>` | Module output value |
+
+## String Interpolation
+
+Use `${}` for string interpolation:
+
+```hcl
+module "k8s" {
+  inputs = {
+    name = "${datacenter.name}-cluster"
+    tags = {
+      environment = "${environment.name}"
+      component   = "${node.component}"
+    }
+  }
+}
+```
+
+## Conditional Expressions
+
+### Ternary Operator
+
+```hcl
+module "resources" {
+  inputs = {
+    replicas = environment.name == "production" ? 3 : 1
+    memory   = node.inputs.memory != null ? node.inputs.memory : "256Mi"
+  }
+}
+```
+
+### Conditional Hooks
+
+Use `when` to conditionally invoke hooks:
+
+```hcl
+database {
+  when = node.inputs.databaseType == "postgres"
+  
+  module "postgres" {
+    build = "./modules/postgres"
+  }
+}
+
+database {
+  when = node.inputs.databaseType == "mysql"
+  
+  module "mysql" {
+    build = "./modules/mysql"
+  }
+}
+```
+
+## Functions
+
+### contains
+
+Check if a list contains a value:
+
+```hcl
+module "postgres_cluster" {
+  when = contains(environment.nodes.*.inputs.databaseType, "postgres")
+}
+```
+
+### length
+
+Get the length of a list or map:
+
+```hcl
+module "ingress" {
+  when = length(environment.resources.routes) > 0
+}
+```
+
+### merge
+
+Merge maps together:
+
+```hcl
+deployment {
+  module "deployment" {
+    inputs = merge(node.inputs, {
+      namespace  = module.namespace.id
+      kubeconfig = module.k8s.kubeconfig
+    })
+  }
+}
+```
+
+### coalesce
+
+Return the first non-null value:
+
+```hcl
+module "deployment" {
+  inputs = {
+    replicas = coalesce(node.inputs.replicas, 1)
+    cpu      = coalesce(node.inputs.cpu, "100m")
+    memory   = coalesce(node.inputs.memory, "128Mi")
+  }
+}
+```
+
+### lookup
+
+Look up a value in a map with a default:
+
+```hcl
+module "database" {
+  inputs = {
+    instance_type = lookup(var.instance_types, node.inputs.databaseType, "db.t3.micro")
+  }
+}
+```
+
+## Operators
+
+### Comparison
+
+```hcl
+# Equality
+when = node.inputs.databaseType == "postgres"
+when = node.inputs.replicas != 0
+
+# Numeric comparison
+when = node.inputs.replicas > 1
+when = length(environment.resources.routes) >= 1
+```
+
+### Logical
+
+```hcl
+# AND
+when = node.inputs.databaseType == "postgres" && node.inputs.migrations != null
+
+# OR
+when = node.inputs.databaseType == "postgres" || node.inputs.databaseType == "mysql"
+
+# NOT
+when = !node.inputs.internal
+```
+
+## Collection Operations
+
+### Splat Expression
+
+Get a property from all items in a list:
+
+```hcl
+# Get all database types in the environment
+environment.nodes.*.inputs.databaseType
+
+# Check if any node needs postgres
+contains(environment.nodes.*.inputs.databaseType, "postgres")
+```
+
+### For Expression
+
+Transform collections:
+
+```hcl
+module "resources" {
+  inputs = {
+    # Transform list of nodes to map
+    databases = { for node in environment.nodes : node.name => node.inputs if node.type == "database" }
+  }
+}
+```
+
+## Examples
+
+### Conditional Module Based on Resources
+
+```hcl
+environment {
+  # Only create ingress controller if there are routes
+  module "nginx" {
+    build = "./modules/nginx-controller"
+    when  = length(environment.resources.routes) > 0
+  }
+
+  # Only create cert-manager if using HTTPS
+  module "cert_manager" {
+    build = "./modules/cert-manager"
+    when  = length([for r in environment.resources.routes : r if r.type == "https"]) > 0
+  }
+}
+```
+
+### Dynamic Naming
+
+```hcl
+deployment {
+  module "deployment" {
+    inputs = {
+      # Consistent naming convention
+      name = "${environment.name}-${node.component}-${node.name}"
+      
+      # Labels for organization
+      labels = {
+        "app.kubernetes.io/name"       = node.name
+        "app.kubernetes.io/component"  = node.component
+        "app.kubernetes.io/managed-by" = "arcctl"
+        "environment"                  = environment.name
+      }
+    }
+  }
+}
+```
+
+### Environment-Specific Configuration
+
+```hcl
+deployment {
+  module "deployment" {
+    inputs = merge(node.inputs, {
+      # More replicas in production
+      replicas = environment.name == "production" ? 3 : 1
+      
+      # More resources in production
+      cpu    = environment.name == "production" ? "500m" : "100m"
+      memory = environment.name == "production" ? "512Mi" : "128Mi"
+    })
+  }
+}
+```
+
+### Merging Defaults with Inputs
+
+```hcl
+deployment {
+  module "deployment" {
+    inputs = merge(
+      # Defaults
+      {
+        replicas = 1
+        cpu      = "100m"
+        memory   = "128Mi"
+      },
+      # Component inputs (may override defaults)
+      node.inputs,
+      # Datacenter-specific additions
+      {
+        namespace  = module.namespace.id
+        kubeconfig = module.k8s.kubeconfig
+      }
+    )
+  }
+}
+```

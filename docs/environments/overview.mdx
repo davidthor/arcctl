@@ -1,0 +1,112 @@
+---
+title: "Environments Overview"
+description: "Collaboration-focused deployment configurations in arcctl"
+---
+
+# Environments
+
+Environments define the desired state of a deployment context, including which components to deploy and how they're configured. They serve as the collaboration point between developers and platform engineers.
+
+## File Structure
+
+```yaml
+# environment.yml
+
+# Metadata
+name: string           # Environment name (optional, can be set via CLI)
+datacenter: string     # Target datacenter (optional, can be set via CLI)
+
+# Reusable values
+locals: map<string, any>
+
+# Component configurations
+components: map<string, ComponentConfig>
+```
+
+## Key Concepts
+
+<CardGroup cols={2}>
+  <Card title="Component Config" icon="cube" href="/environments/components">
+    Configure components for deployment
+  </Card>
+  <Card title="Locals" icon="code" href="/environments/locals">
+    Define reusable values
+  </Card>
+  <Card title="Scaling" icon="expand" href="/environments/scaling">
+    Resource allocation and replicas
+  </Card>
+  <Card title="Routes" icon="route" href="/environments/routes">
+    Hostname and TLS configuration
+  </Card>
+</CardGroup>
+
+## Basic Example
+
+```yaml
+name: staging
+datacenter: aws-production
+
+locals:
+  log_level: debug
+
+components:
+  # Key is registry address, source is version tag
+  ghcr.io/myorg/my-app:
+    source: v1.0.0
+    variables:
+      log_level: ${{ locals.log_level }}
+    scaling:
+      api:
+        replicas: 2
+```
+
+## How Environments Work
+
+1. **Define the environment** - Create an `environment.yml` file specifying components and configuration
+2. **Apply the environment** - Use `arcctl env apply` to deploy all components
+3. **Manage lifecycle** - Update, scale, and destroy as needed
+
+```mermaid
+flowchart LR
+    A[environment.yml] --> B[arcctl env apply]
+    B --> C[Datacenter]
+    C --> D[Cloud Resources]
+    D --> E[Running Application]
+```
+
+## Environment vs Component Deploy
+
+You can deploy components in two ways:
+
+### Using Environment File
+
+Deploy multiple components with shared configuration:
+
+```bash
+arcctl env apply -f staging.yml
+```
+
+### Individual Component Deploy
+
+Deploy a single component directly:
+
+```bash
+arcctl component deploy my-app -e staging --config ghcr.io/myorg/my-app:v1.0.0
+```
+
+The environment file approach is recommended for:
+- Reproducible deployments
+- Version-controlled configuration
+- Multiple component coordination
+- CI/CD pipelines
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Component Configuration" icon="cube" href="/environments/components">
+    Learn how to configure components
+  </Card>
+  <Card title="Common Patterns" icon="book" href="/environments/patterns">
+    See example environment configurations
+  </Card>
+</CardGroup>

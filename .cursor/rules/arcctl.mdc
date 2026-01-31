@@ -1,0 +1,61 @@
+---
+description: Core guidelines for contributing to arcctl - a CLI for portable cloud-native application deployment
+alwaysApply: true
+---
+
+# arcctl Project Guidelines
+
+arcctl is a Go CLI tool that helps developers create and deploy cloud-native applications portably. It uses a three-tier architecture: **Components** (developer apps), **Datacenters** (infrastructure templates), and **Environments** (deployed instances).
+
+## Project Structure
+
+| Directory | Purpose |
+|-----------|---------|
+| `cmd/arcctl/` | CLI entry point (minimal wiring) |
+| `internal/cli/` | CLI command implementations using Cobra |
+| `pkg/schema/` | Configuration parsing (component, datacenter, environment) |
+| `pkg/state/` | State management with pluggable backends |
+| `pkg/engine/` | Execution engine (graph, planner, executor, expressions) |
+| `pkg/iac/` | IaC plugin framework (native, pulumi, opentofu) |
+| `pkg/oci/` | OCI artifact management |
+| `testdata/` | Test fixtures |
+
+## Code Conventions
+
+- Follow [Effective Go](https://go.dev/doc/effective_go) guidelines
+- Use `gofmt` for formatting and `golangci-lint` for static analysis
+- Packages: lowercase single words (`schema`, `state`, `engine`)
+- Interfaces: descriptive nouns (`Backend`, `Plugin`, `Loader`)
+- Tests: `*_test.go` with `Test<Function>_<Case>` naming
+
+## Error Handling
+
+Use custom error types from `pkg/errors`:
+
+```go
+// ✅ Good - structured errors with context
+return nil, errors.ValidationError(
+    "invalid database type",
+    map[string]interface{}{
+        "type":      dbType,
+        "supported": []string{"postgres", "mysql", "mongodb", "redis"},
+    },
+)
+
+// ❌ Bad - generic errors
+return nil, fmt.Errorf("bad type")
+```
+
+## Testing
+
+- Unit tests use table-driven patterns with `testify`
+- Integration tests use `//go:build integration` tag
+- Run `make test` for unit tests, `make lint` for linting
+
+## Key Commands
+
+```bash
+make build    # Build the CLI
+make test     # Run unit tests
+make lint     # Run linter
+```

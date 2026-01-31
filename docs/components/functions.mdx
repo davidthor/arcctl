@@ -1,0 +1,182 @@
+---
+title: "Functions"
+description: "Define serverless functions in arcctl components"
+---
+
+# Functions
+
+Define serverless functions for auto-scaling workloads. Functions scale to zero when idle and automatically scale up based on demand.
+
+## Basic Usage
+
+```yaml
+functions:
+  web:
+    build:
+      context: ./web
+    runtime: nodejs:20
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `build` | object | Build configuration |
+| `image` | string | Pre-built container image |
+| `runtime` | string | Runtime specification (`nodejs:20`, `python:3.11`, `go:1.21`) |
+| `framework` | string | Framework hint for specialized providers (`nextjs`, `nuxt`, `sveltekit`) |
+| `environment` | map | Environment variables |
+| `memory` | string | Memory allocation per invocation |
+| `timeout` | number | Maximum execution time in seconds |
+
+## Source Configuration
+
+### Build from Source
+
+```yaml
+functions:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    runtime: nodejs:20
+```
+
+### Use Pre-built Image
+
+```yaml
+functions:
+  api:
+    image: ghcr.io/myorg/api-function:v1.0.0
+    runtime: nodejs:20
+```
+
+## Framework Support
+
+Specify a framework hint for specialized platform support:
+
+```yaml
+functions:
+  web:
+    build:
+      context: ./web
+    framework: nextjs
+    
+  docs:
+    build:
+      context: ./docs
+    framework: nuxt
+```
+
+Supported frameworks:
+
+| Framework | Description |
+|-----------|-------------|
+| `nextjs` | Next.js applications |
+| `nuxt` | Nuxt.js applications |
+| `sveltekit` | SvelteKit applications |
+| `remix` | Remix applications |
+| `astro` | Astro applications |
+
+## Runtime Configuration
+
+```yaml
+functions:
+  api:
+    build:
+      context: ./api
+    runtime: nodejs:20
+    memory: "1024Mi"      # Memory per invocation
+    timeout: 60           # Timeout in seconds
+```
+
+## Environment Variables
+
+```yaml
+functions:
+  web:
+    build:
+      context: ./web
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      LOG_LEVEL: ${{ variables.log_level }}
+```
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `${{ functions.<name>.url }}` | Function URL (when assigned by route) |
+
+## Functions vs Deployments
+
+Choose functions when:
+- Traffic is sporadic or unpredictable
+- You want to scale to zero during idle periods
+- Response time can tolerate cold starts
+- Cost optimization is important
+
+Choose deployments when:
+- Traffic is consistent
+- You need persistent connections (WebSockets, gRPC streams)
+- Cold start latency is unacceptable
+- You need more control over resource allocation
+
+## Complete Example
+
+```yaml
+name: my-app
+
+databases:
+  main:
+    type: postgres:^15
+
+variables:
+  log_level:
+    default: "info"
+
+functions:
+  web:
+    build:
+      context: ./web
+    framework: nextjs
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      NEXT_PUBLIC_API_URL: ${{ services.api.url }}
+    memory: "1024Mi"
+    timeout: 60
+
+  api:
+    build:
+      context: ./api
+    runtime: nodejs:20
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+    memory: "512Mi"
+    timeout: 30
+
+services:
+  web:
+    function: web
+  
+  api:
+    function: api
+
+routes:
+  main:
+    type: http
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: api
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: web
+```

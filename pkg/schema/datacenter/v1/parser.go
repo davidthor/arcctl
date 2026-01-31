@@ -1,0 +1,447 @@
+package v1
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/zclconf/go-cty/cty"
+)
+
+// Parser parses v1 datacenter schemas.
+type Parser struct {
+	parser *hclparse.Parser
+	// evalCtx holds the evaluation context for HCL expressions
+	evalCtx *EvalContext
+}
+
+// NewParser creates a new v1 parser.
+func NewParser() *Parser {
+	return &Parser{
+		parser:  hclparse.NewParser(),
+		evalCtx: NewEvalContext(),
+	}
+}
+
+// WithContext sets the evaluation context for the parser.
+func (p *Parser) WithContext(ctx *EvalContext) *Parser {
+	p.evalCtx = ctx
+	return p
+}
+
+// WithVariable adds a variable to the evaluation context.
+func (p *Parser) WithVariable(name string, value interface{}) *Parser {
+	p.evalCtx.WithVariable(name, value)
+	return p
+}
+
+// WithEnvironment sets the environment context.
+func (p *Parser) WithEnvironment(env *EnvironmentContext) *Parser {
+	p.evalCtx.WithEnvironment(env)
+	return p
+}
+
+// getHCLContext returns the HCL evaluation context.
+func (p *Parser) getHCLContext() *hcl.EvalContext {
+	return p.evalCtx.ToHCLContext()
+}
+
+// Parse parses a datacenter from the given file path.
+func (p *Parser) Parse(path string) (*SchemaV1, hcl.Diagnostics, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read file: %w", err)
+	}
+	return p.ParseBytes(data, path)
+}
+
+// ParseBytes parses a datacenter from raw bytes.
+func (p *Parser) ParseBytes(data []byte, filename string) (*SchemaV1, hcl.Diagnostics, error) {
+	file, diags := p.parser.ParseHCL(data, filename)
+	if diags.HasErrors() {
+		return nil, diags, fmt.Errorf("failed to parse HCL: %s", diags.Error())
+	}
+
+	schema := &SchemaV1{}
+
+	// Define the schema for decoding
+	bodySchema := &hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{Name: "version"},
+		},
+		Blocks: []hcl.BlockHeaderSchema{
+			{Type: "variable", LabelNames: []string{"name"}},
+			{Type: "module", LabelNames: []string{"name"}},
+			{Type: "environment"},
+		},
+	}
+
+	content, moreDiags := file.Body.Content(bodySchema)
+	diags = append(diags, moreDiags...)
+
+	// Get HCL evaluation context
+	hclCtx := p.getHCLContext()
+
+	// Parse version
+	if attr, ok := content.Attributes["version"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			schema.Version = val.AsString()
+		}
+	}
+
+	// Parse variables
+	for _, block := range content.Blocks.OfType("variable") {
+		variable, blockDiags := p.parseVariable(block)
+		diags = append(diags, blockDiags...)
+		if variable != nil {
+			schema.Variables = append(schema.Variables, *variable)
+		}
+	}
+
+	// Parse top-level modules
+	for _, block := range content.Blocks.OfType("module") {
+		module, blockDiags := p.parseModule(block)
+		diags = append(diags, blockDiags...)
+		if module != nil {
+			schema.Modules = append(schema.Modules, *module)
+		}
+	}
+
+	// Parse environment block
+	for _, block := range content.Blocks.OfType("environment") {
+		env, blockDiags := p.parseEnvironment(block)
+		diags = append(diags, blockDiags...)
+		schema.Environment = env
+		break // Only one environment block allowed
+	}
+
+	return schema, diags, nil
+}
+
+func (p *Parser) parseVariable(block *hcl.Block) (*VariableBlockV1, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+	hclCtx := p.getHCLContext()
+
+	varSchema := &hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{Name: "type"},
+			{Name: "description"},
+			{Name: "default"},
+			{Name: "sensitive"},
+		},
+	}
+
+	content, moreDiags := block.Body.Content(varSchema)
+	diags = append(diags, moreDiags...)
+
+	variable := &VariableBlockV1{
+		Name: block.Labels[0],
+	}
+
+	if attr, ok := content.Attributes["type"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			variable.Type = val.AsString()
+		}
+	}
+
+	if attr, ok := content.Attributes["description"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			variable.Description = val.AsString()
+		}
+	}
+
+	if attr, ok := content.Attributes["default"]; ok {
+		variable.Default = attr
+		// Also evaluate and store the default value for use in context
+		val, valDiags := attr.Expr.Value(hclCtx)
+		if !valDiags.HasErrors() {
+			variable.DefaultValue = val
+			// Add to evaluation context for subsequent references
+			p.evalCtx.WithVariable(variable.Name, fromCtyValue(val))
+		}
+	}
+
+	if attr, ok := content.Attributes["sensitive"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			variable.Sensitive = val.True()
+		}
+	}
+
+	return variable, diags
+}
+
+func (p *Parser) parseModule(block *hcl.Block) (*ModuleBlockV1, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+	hclCtx := p.getHCLContext()
+
+	moduleSchema := &hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{Name: "build"},
+			{Name: "source"},
+			{Name: "plugin"},
+			{Name: "when"},
+			{Name: "environment"},
+		},
+		Blocks: []hcl.BlockHeaderSchema{
+			{Type: "inputs"},
+			{Type: "volume"},
+		},
+	}
+
+	content, moreDiags := block.Body.Content(moduleSchema)
+	diags = append(diags, moreDiags...)
+
+	module := &ModuleBlockV1{
+		Name:   block.Labels[0],
+		Remain: block.Body,
+	}
+
+	if attr, ok := content.Attributes["build"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			module.Build = val.AsString()
+		}
+	}
+
+	if attr, ok := content.Attributes["source"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			module.Source = val.AsString()
+		}
+	}
+
+	if attr, ok := content.Attributes["plugin"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			module.Plugin = val.AsString()
+		}
+	}
+
+	if attr, ok := content.Attributes["when"]; ok {
+		// Store the raw expression for when - it may contain node.inputs references
+		// that need to be evaluated at runtime
+		module.WhenExpr = attr.Expr
+		// Try to evaluate if possible
+		val, valDiags := attr.Expr.Value(hclCtx)
+		if !valDiags.HasErrors() {
+			// When can be a boolean or string expression
+			switch val.Type() {
+			case cty.Bool:
+				if val.True() {
+					module.When = "true"
+				} else {
+					module.When = "false"
+				}
+			case cty.String:
+				module.When = val.AsString()
+			}
+		}
+	}
+
+	// Parse inputs block
+	for _, inputsBlock := range content.Blocks.OfType("inputs") {
+		module.Inputs = inputsBlock.Body
+		// Also extract evaluated inputs if context is available
+		attrs, attrDiags := inputsBlock.Body.JustAttributes()
+		diags = append(diags, attrDiags...)
+		if len(attrs) > 0 {
+			module.InputsEvaluated, _ = BuildInputsFromAttributes(attrs, hclCtx)
+		}
+		// Only process the first inputs block
+	}
+
+	// Parse volume blocks
+	for _, volBlock := range content.Blocks.OfType("volume") {
+		vol, volDiags := p.parseVolume(volBlock)
+		diags = append(diags, volDiags...)
+		if vol != nil {
+			module.Volumes = append(module.Volumes, *vol)
+		}
+	}
+
+	return module, diags
+}
+
+func (p *Parser) parseVolume(block *hcl.Block) (*VolumeBlockV1, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+	hclCtx := p.getHCLContext()
+
+	volSchema := &hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{Name: "host_path", Required: true},
+			{Name: "mount_path", Required: true},
+			{Name: "read_only"},
+		},
+	}
+
+	content, moreDiags := block.Body.Content(volSchema)
+	diags = append(diags, moreDiags...)
+
+	vol := &VolumeBlockV1{}
+
+	if attr, ok := content.Attributes["host_path"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			vol.HostPath = val.AsString()
+		}
+	}
+
+	if attr, ok := content.Attributes["mount_path"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			vol.MountPath = val.AsString()
+		}
+	}
+
+	if attr, ok := content.Attributes["read_only"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			vol.ReadOnly = val.True()
+		}
+	}
+
+	return vol, diags
+}
+
+func (p *Parser) parseEnvironment(block *hcl.Block) (*EnvironmentBlockV1, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+
+	envSchema := &hcl.BodySchema{
+		Blocks: []hcl.BlockHeaderSchema{
+			{Type: "module", LabelNames: []string{"name"}},
+			{Type: "database"},
+			{Type: "databaseMigration"},
+			{Type: "bucket"},
+			{Type: "databaseUser"},
+			{Type: "deployment"},
+			{Type: "function"},
+			{Type: "service"},
+			{Type: "ingress"},
+			{Type: "cronjob"},
+			{Type: "secret"},
+			{Type: "dockerBuild"},
+		},
+	}
+
+	content, moreDiags := block.Body.Content(envSchema)
+	diags = append(diags, moreDiags...)
+
+	env := &EnvironmentBlockV1{
+		Remain: block.Body,
+	}
+
+	// Parse modules
+	for _, modBlock := range content.Blocks.OfType("module") {
+		module, modDiags := p.parseModule(modBlock)
+		diags = append(diags, modDiags...)
+		if module != nil {
+			env.Modules = append(env.Modules, *module)
+		}
+	}
+
+	// Parse hooks
+	hookTypes := map[string]*[]HookBlockV1{
+		"database":          &env.DatabaseHooks,
+		"databaseMigration": &env.DatabaseMigrationHooks,
+		"bucket":            &env.BucketHooks,
+		"databaseUser":      &env.DatabaseUserHooks,
+		"deployment":        &env.DeploymentHooks,
+		"function":          &env.FunctionHooks,
+		"service":           &env.ServiceHooks,
+		"ingress":           &env.IngressHooks,
+		"cronjob":           &env.CronjobHooks,
+		"secret":            &env.SecretHooks,
+		"dockerBuild":       &env.DockerBuildHooks,
+	}
+
+	for hookType, hooks := range hookTypes {
+		for _, hookBlock := range content.Blocks.OfType(hookType) {
+			hook, hookDiags := p.parseHook(hookBlock)
+			diags = append(diags, hookDiags...)
+			if hook != nil {
+				*hooks = append(*hooks, *hook)
+			}
+		}
+	}
+
+	return env, diags
+}
+
+func (p *Parser) parseHook(block *hcl.Block) (*HookBlockV1, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+	hclCtx := p.getHCLContext()
+
+	hookSchema := &hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{Name: "when"},
+		},
+		Blocks: []hcl.BlockHeaderSchema{
+			{Type: "module", LabelNames: []string{"name"}},
+			{Type: "outputs"},
+		},
+	}
+
+	content, moreDiags := block.Body.Content(hookSchema)
+	diags = append(diags, moreDiags...)
+
+	hook := &HookBlockV1{
+		Remain: block.Body,
+	}
+
+	if attr, ok := content.Attributes["when"]; ok {
+		// Store raw expression for runtime evaluation
+		hook.WhenExpr = attr.Expr
+		// Try to evaluate if possible (may fail if references node.inputs)
+		val, valDiags := attr.Expr.Value(hclCtx)
+		if !valDiags.HasErrors() {
+			// When can be a boolean or string expression
+			switch val.Type() {
+			case cty.Bool:
+				if val.True() {
+					hook.When = "true"
+				} else {
+					hook.When = "false"
+				}
+			case cty.String:
+				hook.When = val.AsString()
+			}
+		}
+	}
+
+	// Parse modules
+	for _, modBlock := range content.Blocks.OfType("module") {
+		module, modDiags := p.parseModule(modBlock)
+		diags = append(diags, modDiags...)
+		if module != nil {
+			hook.Modules = append(hook.Modules, *module)
+		}
+	}
+
+	// Parse outputs
+	for _, outputsBlock := range content.Blocks.OfType("outputs") {
+		attrs, attrDiags := outputsBlock.Body.JustAttributes()
+		diags = append(diags, attrDiags...)
+		hook.Outputs = &OutputsBlockV1{
+			Attributes: attrs,
+			Body:       outputsBlock.Body,
+		}
+		break
+	}
+
+	return hook, diags
+}

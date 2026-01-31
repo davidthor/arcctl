@@ -1,0 +1,210 @@
+package v1
+
+import (
+	"fmt"
+	"strings"
+)
+
+// ValidationError represents a validation error.
+type ValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e ValidationError) Error() string {
+	return fmt.Sprintf("%s: %s", e.Field, e.Message)
+}
+
+// Validator validates v1 environment schemas.
+type Validator struct{}
+
+// NewValidator creates a new v1 environment validator.
+func NewValidator() *Validator {
+	return &Validator{}
+}
+
+// Validate validates an environment schema.
+func (v *Validator) Validate(schema *SchemaV1) []ValidationError {
+	var errors []ValidationError
+
+	// Validate components
+	for name, comp := range schema.Components {
+		compErrors := v.validateComponent(name, comp)
+		errors = append(errors, compErrors...)
+	}
+
+	// Validate locals don't contain reserved keys
+	for key := range schema.Locals {
+		if isReservedLocalKey(key) {
+			errors = append(errors, ValidationError{
+				Field:   fmt.Sprintf("locals.%s", key),
+				Message: "reserved key name",
+			})
+		}
+	}
+
+	return errors
+}
+
+func (v *Validator) validateComponent(name string, comp ComponentConfigV1) []ValidationError {
+	var errors []ValidationError
+	prefix := fmt.Sprintf("components.%s", name)
+
+	// Source is required (version tag or file path)
+	if comp.Source == "" {
+		errors = append(errors, ValidationError{
+			Field:   prefix + ".source",
+			Message: "source is required (version tag or file path)",
+		})
+	}
+
+	// Validate scaling configs
+	for deployName, scaling := range comp.Scaling {
+		scalingErrors := v.validateScaling(fmt.Sprintf("%s.scaling.%s", prefix, deployName), scaling)
+		errors = append(errors, scalingErrors...)
+	}
+
+	// Validate function configs
+	for funcName, funcConfig := range comp.Functions {
+		funcErrors := v.validateFunction(fmt.Sprintf("%s.functions.%s", prefix, funcName), funcConfig)
+		errors = append(errors, funcErrors...)
+	}
+
+	// Validate route configs
+	for routeName, routeConfig := range comp.Routes {
+		routeErrors := v.validateRoute(fmt.Sprintf("%s.routes.%s", prefix, routeName), routeConfig)
+		errors = append(errors, routeErrors...)
+	}
+
+	return errors
+}
+
+func (v *Validator) validateScaling(prefix string, scaling ScalingConfigV1) []ValidationError {
+	var errors []ValidationError
+
+	// Replicas must be non-negative
+	if scaling.Replicas < 0 {
+		errors = append(errors, ValidationError{
+			Field:   prefix + ".replicas",
+			Message: "replicas must be non-negative",
+		})
+	}
+
+	// Min/max replicas validation
+	if scaling.MinReplicas > 0 && scaling.MaxReplicas > 0 {
+		if scaling.MinReplicas > scaling.MaxReplicas {
+			errors = append(errors, ValidationError{
+				Field:   prefix,
+				Message: "min_replicas cannot be greater than max_replicas",
+			})
+		}
+	}
+
+	// CPU format validation
+	if scaling.CPU != "" && !isValidResourceQuantity(scaling.CPU) {
+		errors = append(errors, ValidationError{
+			Field:   prefix + ".cpu",
+			Message: "invalid CPU format",
+		})
+	}
+
+	// Memory format validation
+	if scaling.Memory != "" && !isValidResourceQuantity(scaling.Memory) {
+		errors = append(errors, ValidationError{
+			Field:   prefix + ".memory",
+			Message: "invalid memory format",
+		})
+	}
+
+	return errors
+}
+
+func (v *Validator) validateFunction(prefix string, funcConfig FunctionConfigV1) []ValidationError {
+	var errors []ValidationError
+
+	// Timeout must be positive
+	if funcConfig.Timeout < 0 {
+		errors = append(errors, ValidationError{
+			Field:   prefix + ".timeout",
+			Message: "timeout must be non-negative",
+		})
+	}
+
+	// Memory format validation
+	if funcConfig.Memory != "" && !isValidResourceQuantity(funcConfig.Memory) {
+		errors = append(errors, ValidationError{
+			Field:   prefix + ".memory",
+			Message: "invalid memory format",
+		})
+	}
+
+	return errors
+}
+
+func (v *Validator) validateRoute(prefix string, routeConfig RouteConfigV1) []ValidationError {
+	var errors []ValidationError
+
+	// Each hostname must have either subdomain or host, but not both
+	for i, hostname := range routeConfig.Hostnames {
+		if hostname.Subdomain == "" && hostname.Host == "" {
+			errors = append(errors, ValidationError{
+				Field:   fmt.Sprintf("%s.hostnames[%d]", prefix, i),
+				Message: "hostname must have either subdomain or host",
+			})
+		}
+		if hostname.Subdomain != "" && hostname.Host != "" {
+			errors = append(errors, ValidationError{
+				Field:   fmt.Sprintf("%s.hostnames[%d]", prefix, i),
+				Message: "hostname cannot have both subdomain and host",
+			})
+		}
+	}
+
+	return errors
+}
+
+// isReservedLocalKey checks if a key is reserved.
+func isReservedLocalKey(key string) bool {
+	reserved := []string{"environment", "datacenter", "component", "node"}
+	for _, r := range reserved {
+		if key == r {
+			return true
+		}
+	}
+	return false
+}
+
+// isValidResourceQuantity validates a Kubernetes-style resource quantity.
+func isValidResourceQuantity(s string) bool {
+	// Simple validation - accepts numbers with optional suffix
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+
+	// Check for valid suffixes
+	validSuffixes := []string{"", "m", "k", "M", "G", "T", "P", "E", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei"}
+
+	// Find numeric part
+	numEnd := 0
+	for i, c := range s {
+		if (c >= '0' && c <= '9') || c == '.' {
+			numEnd = i + 1
+		} else {
+			break
+		}
+	}
+
+	if numEnd == 0 {
+		return false
+	}
+
+	suffix := s[numEnd:]
+	for _, vs := range validSuffixes {
+		if suffix == vs {
+			return true
+		}
+	}
+
+	return false
+}

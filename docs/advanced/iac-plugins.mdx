@@ -1,0 +1,292 @@
+---
+title: "IaC Plugins"
+description: "Configure Infrastructure-as-Code frameworks in datacenter modules"
+---
+
+# IaC Plugins
+
+IaC plugins enable datacenter modules to use different Infrastructure-as-Code frameworks. arcctl supports multiple IaC tools, allowing you to choose the best tool for each module.
+
+## Supported Plugins
+
+| Plugin | Framework | Description |
+|--------|-----------|-------------|
+| `pulumi` | Pulumi | Default plugin, supports TypeScript, Python, Go, and more |
+| `opentofu` | OpenTofu/Terraform | HCL-based infrastructure modules |
+| `native` | Built-in | Lightweight execution for Docker/processes, ideal for local dev |
+
+## Using Plugins
+
+### In Datacenter Modules
+
+Specify the plugin in module definitions:
+
+```hcl
+module "rds" {
+  plugin = "opentofu"          # Use OpenTofu for this module
+  build  = "./modules/rds"
+  inputs = {
+    name = "my-database"
+  }
+}
+
+module "k8s_deployment" {
+  plugin = "pulumi"            # Use Pulumi (default)
+  build  = "./modules/k8s"
+  inputs = {
+    name = "my-app"
+  }
+}
+```
+
+### Module Structure
+
+#### Pulumi Module
+
+```
+modules/k8s-deployment/
+├── Pulumi.yaml
+├── package.json
+└── index.ts
+```
+
+```yaml
+# Pulumi.yaml
+name: k8s-deployment
+runtime: nodejs
+```
+
+```typescript
+// index.ts
+import * as k8s from "@pulumi/kubernetes";
+import * as pulumi from "@pulumi/pulumi";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+
+const deployment = new k8s.apps.v1.Deployment("deployment", {
+  metadata: { name },
+  spec: {
+    // ...
+  },
+});
+
+export const deployment_id = deployment.metadata.name;
+```
+
+#### OpenTofu Module
+
+```
+modules/rds-postgres/
+├── main.tf
+├── variables.tf
+└── outputs.tf
+```
+
+```hcl
+# main.tf
+resource "aws_db_instance" "postgres" {
+  identifier     = var.name
+  engine         = "postgres"
+  instance_class = var.instance_class
+}
+
+# variables.tf
+variable "name" {
+  type = string
+}
+
+variable "instance_class" {
+  type    = string
+  default = "db.t3.micro"
+}
+
+# outputs.tf
+output "endpoint" {
+  value = aws_db_instance.postgres.endpoint
+}
+```
+
+## Plugin Configuration
+
+### Pulumi Plugin
+
+```hcl
+module "example" {
+  plugin = "pulumi"
+  build  = "./modules/example"
+  
+  # Pulumi-specific: set stack name
+  inputs = {
+    "pulumi:stack" = "prod"
+  }
+}
+```
+
+### OpenTofu Plugin
+
+```hcl
+module "example" {
+  plugin = "opentofu"
+  build  = "./modules/example"
+  
+  # Provider configuration via inputs
+  inputs = {
+    "aws:region" = "us-east-1"
+  }
+}
+```
+
+## Environment Variables
+
+Pass environment variables to module execution:
+
+```hcl
+module "ecr_push" {
+  build = "./modules/docker-push"
+  
+  environment = {
+    AWS_ACCESS_KEY_ID     = variable.aws_access_key
+    AWS_SECRET_ACCESS_KEY = variable.aws_secret_key
+    AWS_REGION            = variable.region
+  }
+  
+  inputs = {
+    image = "myregistry.io/myapp:v1.0.0"
+  }
+}
+```
+
+## Volume Mounts
+
+Mount host paths for modules that need external resources:
+
+```hcl
+module "docker_build" {
+  build = "./modules/docker-build"
+  
+  volume {
+    host_path  = "/var/run/docker.sock"
+    mount_path = "/var/run/docker.sock"
+  }
+  
+  inputs = {
+    context = node.inputs.context
+  }
+}
+```
+
+## The Native Plugin
+
+The `native` plugin provides lightweight execution without external IaC tooling. It's designed for local development and ephemeral environments where fast startup is more important than robustness.
+
+### Key Differences
+
+| Aspect | Pulumi/OpenTofu | Native |
+|--------|-----------------|--------|
+| **Startup Time** | Seconds (tool init) | Milliseconds |
+| **Drift Detection** | Yes | No |
+| **State Refresh** | Yes | No |
+| **External Tools** | Required | None |
+| **Use Case** | Production | Local dev |
+
+### Native Module Format
+
+Native modules use a declarative YAML format:
+
+```yaml
+# modules/docker-postgres/module.yml
+plugin: native
+type: docker
+
+inputs:
+  name:
+    type: string
+    required: true
+  version:
+    type: string
+    default: "16"
+
+resources:
+  container:
+    type: docker:container
+    properties:
+      image: "postgres:${inputs.version}"
+      name: "${inputs.name}"
+      environment:
+        POSTGRES_PASSWORD: "${random_password(16)}"
+      ports:
+        - container: 5432
+          host: auto
+
+outputs:
+  port:
+    value: "${resources.container.ports[0].host}"
+  url:
+    value: "postgres://postgres:${resources.container.environment.POSTGRES_PASSWORD}@localhost:${resources.container.ports[0].host}/postgres"
+    sensitive: true
+```
+
+### Native Resource Types
+
+| Type | Description |
+|------|-------------|
+| `docker:container` | Run a Docker container |
+| `docker:network` | Create a Docker network |
+| `docker:volume` | Create a Docker volume |
+| `process` | Run a local process |
+| `exec` | Execute a one-time command |
+
+### Using Native Modules
+
+```hcl
+environment {
+  database {
+    when = node.inputs.databaseType == "postgres"
+    
+    module "postgres" {
+      plugin = "native"
+      build  = "./modules/docker-postgres"
+      inputs = {
+        name    = "${environment.name}-${node.name}"
+        version = node.inputs.databaseVersion
+      }
+    }
+    
+    outputs = {
+      url = module.postgres.url
+    }
+  }
+}
+```
+
+<Note>
+The native plugin still stores outputs in state, enabling dependency wiring between components. It just skips the overhead of IaC tool initialization and state refresh.
+</Note>
+
+For a complete example, see the [Local Docker Datacenter](/guides/datacenters/local-docker) guide.
+
+## Choosing a Plugin
+
+| Use Case | Recommended Plugin |
+|----------|-------------------|
+| Existing Terraform/OpenTofu modules | `opentofu` |
+| AWS CDK-style programming | `pulumi` |
+| Multi-language team | `pulumi` (supports TS, Python, Go, C#) |
+| Maximum provider support | `opentofu` (all Terraform providers) |
+| Local development | `native` |
+| Fast ephemeral environments | `native` |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Datacenter Modules" icon="cube" href="/datacenters/modules">
+    Learn about datacenter module configuration
+  </Card>
+  <Card title="State Backends" icon="database" href="/advanced/state-backends">
+    Configure remote state storage
+  </Card>
+  <Card title="Local Docker Datacenter" icon="docker" href="/guides/datacenters/local-docker">
+    Example datacenter using the native plugin
+  </Card>
+</CardGroup>

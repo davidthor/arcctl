@@ -1,0 +1,39 @@
+---
+title: "environment update"
+description: "Update environment configuration"
+---
+
+# arcctl environment update
+
+Update environment configuration.
+
+<Note>
+Use `arcctl env` as shorthand for `arcctl environment`.
+</Note>
+
+## Synopsis
+
+```bash
+arcctl environment update <name> [options]
+```
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `<name>` | Environment name |
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `-d, --datacenter <name>` | Change target datacenter |
+| `--backend <type>` | State backend type |
+| `--backend-config <key=value>` | Backend configuration |
+
+## Examples
+
+```bash
+# Update datacenter
+arcctl env update staging --datacenter aws-production-v2
+```

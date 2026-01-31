@@ -1,0 +1,235 @@
+---
+title: "Public & Private Routes"
+description: "Build applications with public and internal-only routes"
+---
+
+# Public & Private Routes
+
+This guide shows how to build applications with both public-facing and internal-only routes, useful for separating customer-facing apps from admin panels.
+
+<Info>
+Example source: `examples/components/nextjs-with-admin/`
+</Info>
+
+## Overview
+
+This component demonstrates:
+- Public routes accessible from the internet
+- Private/internal routes accessible only via VPN
+- Separate Next.js applications for storefront and admin
+- Shared database between public and private apps
+
+## Component Definition
+
+```yaml
+name: nextjs-with-admin
+description: Public Next.js storefront with a private admin panel accessible only via VPN
+
+variables:
+  admin_secret:
+    description: "Admin panel secret key"
+    required: true
+    sensitive: true
+
+databases:
+  main:
+    type: postgres:^16
+
+  cache:
+    type: redis:^7
+
+functions:
+  storefront:
+    build:
+      context: ./storefront
+    framework: nextjs
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      NEXT_PUBLIC_API_URL: ${{ routes.public.url }}/api
+    memory: "1024Mi"
+
+  admin:
+    build:
+      context: ./admin
+    framework: nextjs
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      REDIS_URL: ${{ databases.cache.url }}
+      ADMIN_SECRET: ${{ variables.admin_secret }}
+    memory: "1024Mi"
+
+services:
+  storefront:
+    function: storefront
+
+  admin:
+    function: admin
+
+# Public route - accessible from the internet
+routes:
+  public:
+    type: http
+    rules:
+      - name: storefront
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: storefront
+
+  # Private route - only accessible within the VPC
+  private:
+    type: http
+    internal: true
+    rules:
+      - name: admin-panel
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: admin
+        filters:
+          - type: RequestHeaderModifier
+            requestHeaderModifier:
+              set:
+                - name: X-Internal-Request
+                  value: "true"
+```
+
+## Key Concepts
+
+### Internal Routes
+
+Mark routes as internal to restrict access to VPC/VPN only:
+
+```yaml
+routes:
+  private:
+    type: http
+    internal: true    # Only accessible internally
+    rules:
+      - name: admin-panel
+        backendRefs:
+          - service: admin
+```
+
+The datacenter handles the implementation:
+- **Kubernetes**: Creates an internal LoadBalancer or ClusterIP service
+- **AWS**: Uses internal ALB or private subnets
+- **Cloudflare**: Uses Access policies
+
+### Request Header Injection
+
+Add headers to identify internal requests:
+
+```yaml
+filters:
+  - type: RequestHeaderModifier
+    requestHeaderModifier:
+      set:
+        - name: X-Internal-Request
+          value: "true"
+```
+
+Your application can verify this header for additional security.
+
+### Shared Resources
+
+Both apps share the same databases while having separate routes:
+
+```yaml
+functions:
+  storefront:
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+  
+  admin:
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+```
+
+## Project Structure
+
+```
+nextjs-with-admin/
+├── architect.yml
+├── storefront/
+│   ├── Dockerfile
+│   ├── app/
+│   └── package.json
+└── admin/
+    ├── Dockerfile
+    ├── app/
+    └── package.json
+```
+
+## Environment Configuration
+
+Configure hostnames for each route:
+
+```yaml
+# production.yml
+components:
+  nextjs-with-admin:
+    routes:
+      public:
+        hostnames:
+          - host: shop.example.com
+          - host: www.example.com
+      private:
+        hostnames:
+          - subdomain: admin  # admin.internal.example.com
+```
+
+## Security Patterns
+
+### Admin Authentication
+
+```typescript
+// admin/middleware.ts
+export function middleware(request: Request) {
+  // Verify internal header
+  const isInternal = request.headers.get('X-Internal-Request') === 'true';
+  if (!isInternal) {
+    return new Response('Forbidden', { status: 403 });
+  }
+  
+  // Additional auth checks
+  const adminSecret = request.headers.get('Authorization');
+  if (adminSecret !== process.env.ADMIN_SECRET) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+}
+```
+
+### VPN Access
+
+Users access the admin panel through:
+1. Connect to company VPN
+2. Navigate to internal hostname (e.g., `admin.internal.example.com`)
+3. Authenticate with admin credentials
+
+## Deploying
+
+```bash
+arcctl component build . -t ghcr.io/myorg/nextjs-with-admin:v1.0.0
+arcctl component push ghcr.io/myorg/nextjs-with-admin:v1.0.0
+
+arcctl component deploy shop -e production \
+  --config ghcr.io/myorg/nextjs-with-admin:v1.0.0 \
+  --var admin_secret=$ADMIN_SECRET
+```
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="Shared Database" href="/guides/components/shared-database">
+    Multiple apps sharing a database
+  </Card>
+  <Card title="AWS ECS" href="/guides/datacenters/aws-ecs">
+    Deploy with VPC networking
+  </Card>
+</CardGroup>

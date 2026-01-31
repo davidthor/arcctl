@@ -1,0 +1,203 @@
+---
+title: "Locals"
+description: "Define reusable values within environment files"
+---
+
+# Locals
+
+Locals allow you to define reusable values within an environment file. They help avoid repetition and make configuration easier to maintain.
+
+## Basic Usage
+
+```yaml
+locals:
+  domain: "staging.example.com"
+  log_level: "debug"
+
+components:
+  my-app:
+    component: ghcr.io/myorg/my-app:v1.0.0
+    variables:
+      api_domain: ${{ locals.domain }}
+      log_level: ${{ locals.log_level }}
+```
+
+## Referencing Locals
+
+Use the `${{ locals.<name> }}` syntax to reference local values:
+
+```yaml
+locals:
+  stripe_key: "sk_test_abc123"
+  database_size: "db.t3.medium"
+
+components:
+  my-app:
+    component: ghcr.io/myorg/my-app:v1.0.0
+    variables:
+      stripe_key: ${{ locals.stripe_key }}
+```
+
+## Use Cases
+
+### Shared Configuration
+
+```yaml
+locals:
+  log_level: "debug"
+  environment: "staging"
+
+components:
+  api:
+    component: ghcr.io/myorg/api:v1.0.0
+    variables:
+      log_level: ${{ locals.log_level }}
+      env: ${{ locals.environment }}
+
+  worker:
+    component: ghcr.io/myorg/worker:v1.0.0
+    variables:
+      log_level: ${{ locals.log_level }}
+      env: ${{ locals.environment }}
+
+  frontend:
+    component: ghcr.io/myorg/frontend:v1.0.0
+    variables:
+      log_level: ${{ locals.log_level }}
+```
+
+### Secrets and Credentials
+
+```yaml
+locals:
+  stripe_key: "sk_test_abc123"
+  jwt_secret: "staging-jwt-secret"
+  database_password: "staging-db-pass"
+
+components:
+  auth:
+    component: ghcr.io/myorg/auth:v1.0.0
+    variables:
+      jwt_secret: ${{ locals.jwt_secret }}
+
+  api:
+    component: ghcr.io/myorg/api:v1.0.0
+    variables:
+      stripe_key: ${{ locals.stripe_key }}
+      db_password: ${{ locals.database_password }}
+```
+
+### Domain Configuration
+
+```yaml
+locals:
+  base_domain: "staging.example.com"
+  api_subdomain: "api"
+  app_subdomain: "app"
+
+components:
+  api:
+    component: ghcr.io/myorg/api:v1.0.0
+    routes:
+      main:
+        hostnames:
+          - subdomain: ${{ locals.api_subdomain }}
+
+  frontend:
+    component: ghcr.io/myorg/frontend:v1.0.0
+    environment:
+      web:
+        NEXT_PUBLIC_API_URL: https://${{ locals.api_subdomain }}.${{ locals.base_domain }}
+    routes:
+      main:
+        hostnames:
+          - subdomain: ${{ locals.app_subdomain }}
+```
+
+### Resource Sizing
+
+```yaml
+locals:
+  # Small environment sizing
+  api_replicas: 1
+  api_cpu: "0.25"
+  api_memory: "256Mi"
+  worker_replicas: 1
+
+components:
+  api:
+    component: ghcr.io/myorg/api:v1.0.0
+    scaling:
+      api:
+        replicas: ${{ locals.api_replicas }}
+        cpu: ${{ locals.api_cpu }}
+        memory: ${{ locals.api_memory }}
+
+  worker:
+    component: ghcr.io/myorg/worker:v1.0.0
+    scaling:
+      processor:
+        replicas: ${{ locals.worker_replicas }}
+```
+
+## Environment-Specific Files
+
+Create separate files for each environment:
+
+```yaml
+# staging.yml
+locals:
+  log_level: "debug"
+  replicas: 2
+  
+# production.yml  
+locals:
+  log_level: "warn"
+  replicas: 10
+```
+
+## Best Practices
+
+### Group Related Values
+
+```yaml
+locals:
+  # Application config
+  log_level: "debug"
+  environment: "staging"
+  
+  # External services
+  stripe_key: "sk_test_abc123"
+  sentry_dsn: "https://..."
+  
+  # Resource sizing
+  default_replicas: 2
+  default_memory: "512Mi"
+```
+
+### Use Descriptive Names
+
+```yaml
+locals:
+  # Good
+  stripe_publishable_key: "pk_test_..."
+  stripe_secret_key: "sk_test_..."
+  
+  # Avoid
+  key1: "pk_test_..."
+  key2: "sk_test_..."
+```
+
+### Don't Commit Secrets
+
+For production, use environment variables or secret management:
+
+```yaml
+# staging.yml (committed)
+locals:
+  log_level: "debug"
+  # stripe_key loaded from CI/CD secret
+
+# In CI/CD:
+# arcctl env apply -f staging.yml --var stripe_key=$STRIPE_KEY
+```

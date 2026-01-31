@@ -1,0 +1,344 @@
+---
+title: "Encryption Key Hook"
+description: "Generate cryptographic keys for components"
+---
+
+# Encryption Key Hook
+
+The encryption key hook generates cryptographic keys when components declare encryption key requirements. It supports multiple key types (RSA, ECDSA, symmetric) and must return the appropriate outputs based on the key type.
+
+## Basic Usage
+
+```hcl
+encryptionKey {
+  when = node.inputs.type == "rsa"
+
+  module "rsa_key" {
+    build = "./modules/rsa-keygen"
+    inputs = {
+      name = "${environment.name}-${node.component}-${node.name}"
+      bits = node.inputs.bits
+    }
+  }
+
+  outputs = {
+    privateKey       = module.rsa_key.private_key_pem
+    publicKey        = module.rsa_key.public_key_pem
+    privateKeyBase64 = module.rsa_key.private_key_base64
+    publicKeyBase64  = module.rsa_key.public_key_base64
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Key identifier |
+| `type` | string | Key type: `rsa`, `ecdsa`, or `symmetric` |
+| `bits` | number | RSA key size in bits (when type=rsa) |
+| `curve` | string | ECDSA curve name (when type=ecdsa) |
+| `bytes` | number | Key length in bytes (when type=symmetric) |
+
+## Required Outputs
+
+### For RSA and ECDSA Keys
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `privateKey` | string | Private key in PEM format |
+| `publicKey` | string | Public key in PEM format |
+| `privateKeyBase64` | string | Private key PEM, base64-encoded |
+| `publicKeyBase64` | string | Public key PEM, base64-encoded |
+
+### For Symmetric Keys
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | string | Key as hex-encoded string |
+| `keyBase64` | string | Key as base64-encoded string |
+
+## Complete Example
+
+Handle all key types with conditional hooks:
+
+```hcl
+environment {
+  # RSA key generation
+  encryptionKey {
+    when = node.inputs.type == "rsa"
+
+    module "rsa" {
+      plugin = "native"
+      build  = "./modules/rsa-keygen"
+      inputs = {
+        name = "${environment.name}-${node.component}-${node.name}"
+        bits = node.inputs.bits
+      }
+    }
+
+    outputs = {
+      privateKey       = module.rsa.private_key_pem
+      publicKey        = module.rsa.public_key_pem
+      privateKeyBase64 = module.rsa.private_key_base64
+      publicKeyBase64  = module.rsa.public_key_base64
+    }
+  }
+
+  # ECDSA key generation
+  encryptionKey {
+    when = node.inputs.type == "ecdsa"
+
+    module "ecdsa" {
+      plugin = "native"
+      build  = "./modules/ecdsa-keygen"
+      inputs = {
+        name  = "${environment.name}-${node.component}-${node.name}"
+        curve = node.inputs.curve
+      }
+    }
+
+    outputs = {
+      privateKey       = module.ecdsa.private_key_pem
+      publicKey        = module.ecdsa.public_key_pem
+      privateKeyBase64 = module.ecdsa.private_key_base64
+      publicKeyBase64  = module.ecdsa.public_key_base64
+    }
+  }
+
+  # Symmetric key generation (also used for salts)
+  encryptionKey {
+    when = node.inputs.type == "symmetric"
+
+    module "random" {
+      plugin = "native"
+      build  = "./modules/random-keygen"
+      inputs = {
+        name  = "${environment.name}-${node.component}-${node.name}"
+        bytes = node.inputs.bytes
+      }
+    }
+
+    outputs = {
+      key       = module.random.hex
+      keyBase64 = module.random.base64
+    }
+  }
+}
+```
+
+## Native Module Examples
+
+### RSA Key Generator
+
+```yaml
+# modules/rsa-keygen/module.yml
+name: rsa-keygen
+description: Generate RSA key pairs
+
+inputs:
+  name:
+    type: string
+    description: Key identifier
+  bits:
+    type: number
+    description: Key size in bits
+    default: 2048
+
+outputs:
+  private_key_pem:
+    type: string
+    description: Private key in PEM format
+  public_key_pem:
+    type: string
+    description: Public key in PEM format
+  private_key_base64:
+    type: string
+    description: Private key PEM, base64-encoded
+  public_key_base64:
+    type: string
+    description: Public key PEM, base64-encoded
+
+resources:
+  key:
+    type: tls_private_key
+    properties:
+      algorithm: RSA
+      rsa_bits: ${{ inputs.bits }}
+
+expressions:
+  private_key_pem: ${{ resources.key.private_key_pem }}
+  public_key_pem: ${{ resources.key.public_key_pem }}
+  private_key_base64: ${{ resources.key.private_key_pem | base64encode }}
+  public_key_base64: ${{ resources.key.public_key_pem | base64encode }}
+```
+
+### Random Key Generator
+
+```yaml
+# modules/random-keygen/module.yml
+name: random-keygen
+description: Generate random symmetric keys (also usable as salts)
+
+inputs:
+  name:
+    type: string
+    description: Key identifier
+  bytes:
+    type: number
+    description: Key length in bytes
+    default: 32
+
+outputs:
+  hex:
+    type: string
+    description: Key as hex-encoded string
+  base64:
+    type: string
+    description: Key as base64-encoded string
+
+resources:
+  key:
+    type: random_bytes
+    properties:
+      length: ${{ inputs.bytes }}
+
+expressions:
+  hex: ${{ resources.key.hex }}
+  base64: ${{ resources.key.base64 }}
+```
+
+## Pulumi Module Example
+
+```typescript
+// modules/encryption-key/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as tls from "@pulumi/tls";
+import * as random from "@pulumi/random";
+
+const config = new pulumi.Config();
+const keyType = config.require("type");
+const name = config.require("name");
+
+// RSA key generation
+if (keyType === "rsa") {
+  const bits = config.getNumber("bits") || 2048;
+  
+  const key = new tls.PrivateKey("key", {
+    algorithm: "RSA",
+    rsaBits: bits,
+  });
+
+  export const privateKey = key.privateKeyPem;
+  export const publicKey = key.publicKeyPem;
+  export const privateKeyBase64 = key.privateKeyPem.apply(k => 
+    Buffer.from(k).toString("base64")
+  );
+  export const publicKeyBase64 = key.publicKeyPem.apply(k => 
+    Buffer.from(k).toString("base64")
+  );
+}
+
+// ECDSA key generation
+if (keyType === "ecdsa") {
+  const curve = config.get("curve") || "P256";
+  
+  const key = new tls.PrivateKey("key", {
+    algorithm: "ECDSA",
+    ecdsaCurve: curve,
+  });
+
+  export const privateKey = key.privateKeyPem;
+  export const publicKey = key.publicKeyPem;
+  export const privateKeyBase64 = key.privateKeyPem.apply(k => 
+    Buffer.from(k).toString("base64")
+  );
+  export const publicKeyBase64 = key.publicKeyPem.apply(k => 
+    Buffer.from(k).toString("base64")
+  );
+}
+
+// Symmetric key generation (also used for salts)
+if (keyType === "symmetric") {
+  const bytes = config.getNumber("bytes") || 32;
+  
+  const key = new random.RandomBytes("key", {
+    length: bytes,
+  });
+
+  export const keyHex = key.hex;
+  export const keyBase64 = key.base64;
+}
+```
+
+## AWS Secrets Manager Integration
+
+For production environments, store generated keys in a secrets manager:
+
+```hcl
+encryptionKey {
+  when = node.inputs.type == "rsa"
+
+  module "rsa_key" {
+    build = "./modules/rsa-keygen"
+    inputs = {
+      bits = node.inputs.bits
+    }
+  }
+
+  module "secret" {
+    build = "./modules/aws-secret"
+    inputs = {
+      name = "${environment.name}/${node.component}/${node.name}"
+      value = jsonencode({
+        privateKey = module.rsa_key.private_key_pem
+        publicKey  = module.rsa_key.public_key_pem
+      })
+    }
+  }
+
+  outputs = {
+    privateKey       = module.rsa_key.private_key_pem
+    publicKey        = module.rsa_key.public_key_pem
+    privateKeyBase64 = module.rsa_key.private_key_base64
+    publicKeyBase64  = module.rsa_key.public_key_base64
+  }
+}
+```
+
+## HashiCorp Vault Integration
+
+```hcl
+encryptionKey {
+  when = node.inputs.type == "rsa"
+
+  module "vault_key" {
+    build = "./modules/vault-transit-key"
+    inputs = {
+      name = "${environment.name}-${node.component}-${node.name}"
+      type = "rsa-2048"
+    }
+  }
+
+  outputs = {
+    privateKey       = module.vault_key.private_key
+    publicKey        = module.vault_key.public_key
+    privateKeyBase64 = module.vault_key.private_key_base64
+    publicKeyBase64  = module.vault_key.public_key_base64
+  }
+}
+```
+
+## Best Practices
+
+1. **Store keys securely**: In production, persist generated keys in a secrets manager rather than relying solely on Terraform/Pulumi state.
+
+2. **Use deterministic generation**: Ensure key generation is deterministic or state-backed to prevent key changes on each apply.
+
+3. **Separate hooks by type**: Use `when` conditions to create type-specific hooks for cleaner configuration.
+
+4. **Enable key rotation**: Consider implementing key rotation strategies for long-lived environments.
+
+5. **Audit key access**: Log when keys are generated or accessed for compliance purposes.

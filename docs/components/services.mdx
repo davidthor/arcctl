@@ -1,0 +1,193 @@
+---
+title: "Services"
+description: "Expose deployments and functions for internal traffic"
+---
+
+# Services
+
+Services expose deployments or functions for internal traffic within your component and to other components. They provide stable endpoints for inter-service communication.
+
+## Basic Usage
+
+```yaml
+services:
+  api:
+    deployment: api
+    port: 8080
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `deployment` | string | Target deployment name |
+| `function` | string | Target function name |
+| `url` | string | External URL for virtual services |
+| `port` | number | Service port |
+| `protocol` | string | Protocol (`http`, `https`, `tcp`, `grpc`) |
+
+## Service Types
+
+### Deployment Service
+
+Expose a deployment:
+
+```yaml
+services:
+  api:
+    deployment: api
+    port: 8080
+    protocol: http
+```
+
+### Function Service
+
+Expose a function:
+
+```yaml
+services:
+  web:
+    function: web
+```
+
+### External/Virtual Service
+
+Reference an external service:
+
+```yaml
+services:
+  legacy-api:
+    url: https://legacy.example.com
+```
+
+## Protocol Support
+
+| Protocol | Description | Use Case |
+|----------|-------------|----------|
+| `http` | HTTP/1.1 | REST APIs, web services |
+| `https` | HTTP/1.1 with TLS | Secure REST APIs |
+| `tcp` | Raw TCP | Databases, custom protocols |
+| `grpc` | gRPC over HTTP/2 | gRPC services |
+
+```yaml
+services:
+  api:
+    deployment: api
+    port: 8080
+    protocol: http
+
+  grpc-api:
+    deployment: grpc-server
+    port: 9090
+    protocol: grpc
+
+  database-proxy:
+    deployment: pgbouncer
+    port: 5432
+    protocol: tcp
+```
+
+## Outputs
+
+Access service connection information in other resources:
+
+| Output | Description |
+|--------|-------------|
+| `${{ services.<name>.url }}` | Full service URL |
+| `${{ services.<name>.host }}` | Service hostname |
+| `${{ services.<name>.port }}` | Service port |
+
+### Example Usage
+
+```yaml
+deployments:
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      API_URL: ${{ services.api.url }}
+      AUTH_SERVICE: ${{ services.auth.url }}
+```
+
+## Service Discovery
+
+Services within a component can reference each other:
+
+```yaml
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      WORKER_URL: ${{ services.worker.url }}
+
+  worker:
+    build:
+      context: ./worker
+
+services:
+  api:
+    deployment: api
+    port: 8080
+
+  worker:
+    deployment: worker
+    port: 9000
+```
+
+## Complete Example
+
+```yaml
+name: my-app
+
+deployments:
+  api:
+    build:
+      context: ./api
+    environment:
+      AUTH_SERVICE_URL: ${{ services.auth.url }}
+      WORKER_URL: ${{ services.worker.url }}
+
+  auth:
+    build:
+      context: ./auth
+
+  worker:
+    build:
+      context: ./worker
+
+functions:
+  web:
+    build:
+      context: ./web
+    environment:
+      API_URL: ${{ services.api.url }}
+
+services:
+  api:
+    deployment: api
+    port: 8080
+    protocol: http
+
+  auth:
+    deployment: auth
+    port: 8081
+    protocol: http
+
+  worker:
+    deployment: worker
+    port: 9000
+    protocol: tcp
+
+  web:
+    function: web
+
+  # External service
+  payment-gateway:
+    url: https://api.stripe.com
+
+routes:
+  main:
+    type: http
+    service: web
+```

@@ -1,0 +1,293 @@
+---
+title: "Cronjob Hook"
+description: "Configure scheduled tasks for components"
+---
+
+# Cronjob Hook
+
+The cronjob hook creates scheduled tasks when components declare cronjobs. It configures jobs that run on a specified schedule.
+
+## Basic Usage
+
+```hcl
+cronjob {
+  module "cronjob" {
+    build = "./modules/k8s-cronjob"
+    inputs = merge(node.inputs, {
+      name       = "${environment.name}-${node.component}-${node.name}"
+      namespace  = module.namespace.id
+      kubeconfig = module.k8s.kubeconfig
+    })
+  }
+
+  outputs = {
+    id = module.cronjob.cronjob_id
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Cronjob name |
+| `schedule` | string | Cron expression |
+| `image` | string | Container image |
+| `command` | string[] | Command to run |
+| `environment` | map | Environment variables |
+| `cpu` | string | CPU allocation |
+| `memory` | string | Memory allocation |
+
+## Required Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique cronjob identifier |
+
+## Kubernetes CronJob Example
+
+```hcl
+cronjob {
+  module "cronjob" {
+    build = "./modules/k8s-cronjob"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      namespace   = module.namespace.id
+      schedule    = node.inputs.schedule
+      image       = node.inputs.image
+      command     = node.inputs.command
+      environment = node.inputs.environment
+      cpu         = node.inputs.cpu
+      memory      = node.inputs.memory
+    }
+  }
+
+  outputs = {
+    id = module.cronjob.cronjob_id
+  }
+}
+```
+
+### Pulumi Module
+
+```typescript
+// modules/k8s-cronjob/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as k8s from "@pulumi/kubernetes";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+const namespace = config.require("namespace");
+const schedule = config.require("schedule");
+const image = config.require("image");
+const command = config.getObject<string[]>("command") || [];
+const environment = config.getObject<Record<string, string>>("environment") || {};
+const cpu = config.get("cpu") || "100m";
+const memory = config.get("memory") || "128Mi";
+
+const cronjob = new k8s.batch.v1.CronJob("cronjob", {
+  metadata: {
+    name: name,
+    namespace: namespace,
+  },
+  spec: {
+    schedule: schedule,
+    jobTemplate: {
+      spec: {
+        template: {
+          spec: {
+            restartPolicy: "OnFailure",
+            containers: [{
+              name: "job",
+              image: image,
+              command: command.length > 0 ? command : undefined,
+              resources: {
+                requests: { cpu, memory },
+                limits: { cpu, memory },
+              },
+              env: Object.entries(environment).map(([name, value]) => ({
+                name,
+                value,
+              })),
+            }],
+          },
+        },
+      },
+    },
+  },
+});
+
+export const cronjob_id = cronjob.metadata.name;
+```
+
+## Example OpenTofu Module
+
+```hcl
+# modules/k8s-cronjob/main.tf
+variable "name" {
+  type = string
+}
+
+variable "namespace" {
+  type = string
+}
+
+variable "schedule" {
+  type = string
+}
+
+variable "image" {
+  type = string
+}
+
+variable "command" {
+  type    = list(string)
+  default = []
+}
+
+variable "environment" {
+  type    = map(string)
+  default = {}
+}
+
+variable "cpu" {
+  type    = string
+  default = "100m"
+}
+
+variable "memory" {
+  type    = string
+  default = "128Mi"
+}
+
+resource "kubernetes_cron_job_v1" "cronjob" {
+  metadata {
+    name      = var.name
+    namespace = var.namespace
+  }
+
+  spec {
+    schedule = var.schedule
+
+    job_template {
+      metadata {}
+
+      spec {
+        template {
+          metadata {}
+
+          spec {
+            restart_policy = "OnFailure"
+
+            container {
+              name    = "job"
+              image   = var.image
+              command = length(var.command) > 0 ? var.command : null
+
+              resources {
+                requests = {
+                  cpu    = var.cpu
+                  memory = var.memory
+                }
+                limits = {
+                  cpu    = var.cpu
+                  memory = var.memory
+                }
+              }
+
+              dynamic "env" {
+                for_each = var.environment
+                content {
+                  name  = env.key
+                  value = env.value
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+output "cronjob_id" {
+  value = kubernetes_cron_job_v1.cronjob.metadata[0].name
+}
+```
+
+## AWS EventBridge Example
+
+For serverless cronjobs on AWS:
+
+```hcl
+cronjob {
+  module "eventbridge_rule" {
+    build = "./modules/eventbridge-lambda"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      schedule    = node.inputs.schedule
+      image       = node.inputs.image
+      command     = node.inputs.command
+      environment = node.inputs.environment
+      memory      = node.inputs.memory
+    }
+  }
+
+  outputs = {
+    id = module.eventbridge_rule.rule_arn
+  }
+}
+```
+
+## ECS Scheduled Task Example
+
+```hcl
+cronjob {
+  module "ecs_scheduled" {
+    build = "./modules/ecs-scheduled-task"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      cluster_arn = module.ecs_cluster.cluster_arn
+      schedule    = node.inputs.schedule
+      image       = node.inputs.image
+      command     = node.inputs.command
+      environment = node.inputs.environment
+      cpu         = node.inputs.cpu
+      memory      = node.inputs.memory
+    }
+  }
+
+  outputs = {
+    id = module.ecs_scheduled.rule_arn
+  }
+}
+```
+
+## Job History and Cleanup
+
+Configure job history limits:
+
+```hcl
+cronjob {
+  module "cronjob" {
+    build = "./modules/k8s-cronjob"
+    inputs = {
+      name                       = "${environment.name}-${node.component}-${node.name}"
+      namespace                  = module.namespace.id
+      schedule                   = node.inputs.schedule
+      image                      = node.inputs.image
+      command                    = node.inputs.command
+      environment                = node.inputs.environment
+      successful_jobs_history    = 3
+      failed_jobs_history        = 1
+      concurrency_policy         = "Forbid"  # Don't run if previous is still running
+    }
+  }
+
+  outputs = {
+    id = module.cronjob.cronjob_id
+  }
+}
+```
