@@ -10,7 +10,6 @@ import (
 
 	"github.com/architect-io/arcctl/pkg/schema/component"
 	"github.com/architect-io/arcctl/pkg/state"
-	"github.com/architect-io/arcctl/pkg/state/backend"
 	"github.com/architect-io/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 )
@@ -243,11 +242,8 @@ The up command:
 // Helper functions for up command
 
 func upCreateStateManager() (state.Manager, error) {
-	config := backend.Config{
-		Type:   "local",
-		Config: make(map[string]string),
-	}
-	return state.NewManagerFromConfig(config)
+	// Use config file defaults with no CLI overrides
+	return createStateManagerWithConfig("", nil)
 }
 
 func upParseVarFile(data []byte, vars map[string]string) error {

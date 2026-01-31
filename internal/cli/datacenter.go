@@ -14,7 +14,6 @@ import (
 	"github.com/architect-io/arcctl/pkg/oci"
 	"github.com/architect-io/arcctl/pkg/schema/datacenter"
 	"github.com/architect-io/arcctl/pkg/state"
-	"github.com/architect-io/arcctl/pkg/state/backend"
 	"github.com/architect-io/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -733,23 +732,7 @@ func newDatacenterValidateCmd() *cobra.Command {
 // Helper functions (prefixed to avoid conflicts with component.go)
 
 func dcCreateStateManager(backendType string, backendConfig []string) (state.Manager, error) {
-	if backendType == "" {
-		backendType = "local"
-	}
-
-	config := backend.Config{
-		Type:   backendType,
-		Config: make(map[string]string),
-	}
-
-	for _, c := range backendConfig {
-		parts := strings.SplitN(c, "=", 2)
-		if len(parts) == 2 {
-			config.Config[parts[0]] = parts[1]
-		}
-	}
-
-	return state.NewManagerFromConfig(config)
+	return createStateManagerWithConfig(backendType, backendConfig)
 }
 
 func dcTruncateString(s string, maxLen int) string {

@@ -6,6 +6,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	// Import state backends to register them via init()
+	_ "github.com/architect-io/arcctl/pkg/state/backend/azurerm"
+	_ "github.com/architect-io/arcctl/pkg/state/backend/gcs"
+	_ "github.com/architect-io/arcctl/pkg/state/backend/local"
+	_ "github.com/architect-io/arcctl/pkg/state/backend/s3"
 )
 
 var (
