@@ -1,0 +1,66 @@
+# Native module for running deployments as local processes
+# Ideal for fast local development without Docker build overhead
+# Assumes system dependencies are already installed
+plugin: native
+type: process
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: Process identifier
+  context:
+    type: string
+    required: true
+    description: Working directory (build context location)
+  command:
+    type: list
+    description: Command to run (if not specified, attempts to extract from Dockerfile)
+  dockerfile:
+    type: string
+    default: "Dockerfile"
+    description: Dockerfile path (used to extract CMD if command not specified)
+  environment:
+    type: map
+    default: {}
+    description: Environment variables
+  cpu:
+    type: string
+    description: CPU limit (ignored for local processes)
+  memory:
+    type: string
+    description: Memory limit (ignored for local processes)
+  liveness_probe:
+    type: map
+    description: Health check configuration
+
+resources:
+  process:
+    type: process
+    properties:
+      name: "${inputs.name}"
+      working_dir: "${inputs.context}"
+      # Use provided command or extract from Dockerfile
+      command: "${coalesce(inputs.command, dockerfile_cmd(inputs.context, inputs.dockerfile))}"
+      environment: "${merge(inputs.environment, { PORT: 'auto' })}"
+      # Readiness check based on liveness probe
+      readiness:
+        type: http
+        endpoint: "http://localhost:${self.environment.PORT}${coalesce(inputs.liveness_probe.path, '/health')}"
+        interval: 2s
+        timeout: 120s  # Dev servers can take a while to start
+      # Graceful shutdown
+      graceful_stop:
+        signal: SIGTERM
+        timeout: 10s
+
+outputs:
+  pid:
+    value: "${resources.process.pid}"
+    description: Process ID
+  port:
+    value: "${resources.process.environment.PORT}"
+    description: Assigned port
+  id:
+    value: "${inputs.name}"
+    description: Deployment identifier

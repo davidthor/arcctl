@@ -213,26 +213,26 @@ environment {
     }
   }
   
-  # Deployment hook - run as Docker container
+  # Deployment hook - run as local process for fast development
+  # Assumes system dependencies are installed; no Docker build needed
   deployment {
-    module "container" {
+    module "process" {
       plugin = "native"
-      build  = "./modules/docker-deployment"
+      build  = "./modules/process-deployment"
       inputs = {
-        name          = "${environment.name}-${node.component}-${node.name}"
-        image         = node.inputs.image
-        command       = node.inputs.command
-        entrypoint    = node.inputs.entrypoint
-        environment   = node.inputs.environment
-        cpu           = node.inputs.cpu
-        memory        = node.inputs.memory
-        network       = variable.network_name
+        name           = "${environment.name}-${node.component}-${node.name}"
+        context        = node.inputs.context
+        dockerfile     = node.inputs.dockerfile
+        command        = node.inputs.command
+        environment    = node.inputs.environment
+        cpu            = node.inputs.cpu
+        memory         = node.inputs.memory
         liveness_probe = node.inputs.liveness_probe
       }
     }
     
     outputs = {
-      id = module.container.container_id
+      id = module.process.id
     }
   }
   
