@@ -214,8 +214,11 @@ environment {
   }
   
   # Deployment hook - run as local process for fast development
+  # For components built from source (have build.context)
   # Assumes system dependencies are installed; no Docker build needed
   deployment {
+    when = node.inputs.context != null
+    
     module "process" {
       plugin = "native"
       build  = "./modules/process-deployment"
@@ -233,6 +236,32 @@ environment {
     
     outputs = {
       id = module.process.id
+    }
+  }
+  
+  # Deployment hook - run pre-built Docker images
+  # For components using existing images (no build context)
+  deployment {
+    when = node.inputs.image != null
+    
+    module "container" {
+      plugin = "native"
+      build  = "./modules/docker-deployment"
+      inputs = {
+        name          = "${environment.name}-${node.component}-${node.name}"
+        image         = node.inputs.image
+        command       = node.inputs.command
+        entrypoint    = node.inputs.entrypoint
+        environment   = node.inputs.environment
+        cpu           = node.inputs.cpu
+        memory        = node.inputs.memory
+        network       = variable.network_name
+        liveness_probe = node.inputs.liveness_probe
+      }
+    }
+    
+    outputs = {
+      id = module.container.container_id
     }
   }
   

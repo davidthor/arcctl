@@ -22,7 +22,8 @@ A lightweight datacenter for local development using arcctl's native plugin. Opt
 | Buckets | MinIO container (S3-compatible) |
 | Encryption Keys | Generated locally (RSA, ECDSA, symmetric) |
 | SMTP | MailHog container (email capture with web UI) |
-| **Deployments** | **Local processes (no Docker build)** |
+| **Deployments (from source)** | **Local processes (no Docker build)** |
+| **Deployments (pre-built)** | **Docker containers (existing images)** |
 | Functions | Local processes |
 | Services | Port mapping lookup |
 | Routes | nginx reverse proxy |
@@ -76,7 +77,11 @@ The native plugin executes Docker and process commands directly, without going t
 
 ### Deployment Strategy
 
-**For maximum development speed**, deployments run as **local processes** instead of Docker containers:
+The datacenter supports **two deployment modes** depending on your component configuration:
+
+#### 1. Source-Based Deployments (Fast Development)
+
+**For maximum development speed**, components with `build.context` run as **local processes**:
 
 1. **No Docker Build**: Skips time-consuming image builds
 2. **Direct Execution**: Runs commands directly in the build context directory
@@ -89,7 +94,7 @@ The native plugin executes Docker and process commands directly, without going t
 
 **Example**:
 ```yaml
-# architect.yml
+# architect.yml - Built from source
 deployments:
   api:
     build:
@@ -105,11 +110,31 @@ The datacenter will:
 3. Run the command directly as a local process
 4. Auto-assign a PORT environment variable
 
+#### 2. Image-Based Deployments (Pre-Built Images)
+
+For components using **pre-built Docker images** (e.g., third-party services like Zookeeper), the datacenter runs them as **Docker containers**:
+
+**Example**:
+```yaml
+# architect.yml - Pre-built image
+deployments:
+  zookeeper:
+    image: zookeeper:3.9
+    environment:
+      ZOO_TICK_TIME: "2000"
+```
+
+The datacenter will:
+1. Pull the Docker image if not present
+2. Run it as a Docker container
+3. Connect it to the local network
+4. No build step required
+
 ### State Management
 
 Despite being lightweight, state IS persisted:
 - Enables dependency wiring between components
-- Tracks process IDs for cleanup
+- Tracks process IDs and container IDs for cleanup
 - Stores outputs (ports, credentials) for other resources
 
 ### Trade-offs
