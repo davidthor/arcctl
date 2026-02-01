@@ -2,6 +2,7 @@ package native
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -113,13 +114,123 @@ func navigatePath(data interface{}, path []string) (interface{}, error) {
 
 // evaluateFunction evaluates a function call like "random_password(16)"
 func evaluateFunction(expr string, ctx *EvalContext) (interface{}, error) {
-	// Simple function parsing
-	if strings.HasPrefix(expr, "random_password(") {
-		// Generate random password (simplified)
-		return generateRandomString(16), nil
+	// Parse function name and arguments
+	openParen := strings.Index(expr, "(")
+	if openParen == -1 {
+		return nil, fmt.Errorf("unknown function or reference: %s", expr)
 	}
 
-	return nil, fmt.Errorf("unknown function or reference: %s", expr)
+	funcName := strings.TrimSpace(expr[:openParen])
+	argsStr := strings.TrimSpace(expr[openParen+1:])
+	if !strings.HasSuffix(argsStr, ")") {
+		return nil, fmt.Errorf("invalid function call: %s", expr)
+	}
+	argsStr = argsStr[:len(argsStr)-1]
+
+	switch funcName {
+	case "random_password":
+		return generateRandomString(16), nil
+
+	case "coalesce":
+		// Return first non-empty value
+		args := splitFunctionArgs(argsStr)
+		for _, arg := range args {
+			val, err := resolveReference(arg, ctx)
+			if err == nil && val != nil {
+				// Check if value is non-empty
+				switch v := val.(type) {
+				case string:
+					if v != "" {
+						return v, nil
+					}
+				case []interface{}:
+					if len(v) > 0 {
+						return v, nil
+					}
+				default:
+					return v, nil
+				}
+			}
+		}
+		return nil, nil
+
+	case "dockerfile_cmd":
+		// Extract CMD from Dockerfile
+		args := splitFunctionArgs(argsStr)
+		if len(args) < 1 {
+			return nil, fmt.Errorf("dockerfile_cmd requires at least 1 argument")
+		}
+
+		// Resolve context path
+		contextPath, err := resolveReference(args[0], ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve context path: %w", err)
+		}
+
+		// Resolve dockerfile path (optional)
+		dockerfilePath := "Dockerfile"
+		if len(args) > 1 {
+			dfPath, err := resolveReference(args[1], ctx)
+			if err == nil {
+				if dfPathStr, ok := dfPath.(string); ok {
+					dockerfilePath = dfPathStr
+				}
+			}
+		}
+
+		contextStr, ok := contextPath.(string)
+		if !ok {
+			return nil, fmt.Errorf("context path must be a string")
+		}
+
+		cmd, err := ExtractDockerfileCmdFromContext(contextStr, dockerfilePath)
+		if err != nil {
+			// Log the error for debugging but return nil so coalesce can fall back
+			fmt.Fprintf(os.Stderr, "Warning: Failed to extract CMD from Dockerfile: %v\n", err)
+			return nil, nil
+		}
+		return cmd, nil
+
+	default:
+		return nil, fmt.Errorf("unknown function: %s", funcName)
+	}
+}
+
+// splitFunctionArgs splits function arguments by commas (simplified).
+func splitFunctionArgs(argsStr string) []string {
+	if argsStr == "" {
+		return nil
+	}
+
+	var args []string
+	var current strings.Builder
+	depth := 0
+
+	for _, ch := range argsStr {
+		switch ch {
+		case '(':
+			depth++
+			current.WriteRune(ch)
+		case ')':
+			depth--
+			current.WriteRune(ch)
+		case ',':
+			if depth == 0 {
+				args = append(args, strings.TrimSpace(current.String()))
+				current.Reset()
+			} else {
+				current.WriteRune(ch)
+			}
+		default:
+			current.WriteRune(ch)
+		}
+	}
+
+	if current.Len() > 0 {
+		args = append(args, strings.TrimSpace(current.String()))
+	}
+
+	return args
 }
 
 // generateRandomString generates a random alphanumeric string.

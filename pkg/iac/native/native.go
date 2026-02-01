@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/architect-io/arcctl/pkg/iac"
 )
@@ -18,6 +21,7 @@ func init() {
 // Plugin implements the IaC plugin interface for native execution.
 type Plugin struct {
 	docker  *DockerClient
+	process *ProcessManager
 }
 
 // NewPlugin creates a new native plugin instance.
@@ -28,7 +32,8 @@ func NewPlugin() (*Plugin, error) {
 	}
 
 	return &Plugin{
-		docker: docker,
+		docker:  docker,
+		process: NewProcessManager(),
 	}, nil
 }
 
@@ -181,6 +186,8 @@ func (p *Plugin) applyResource(ctx context.Context, name string, resource Resour
 		return p.applyDockerNetwork(ctx, name, props, existing)
 	case "docker:volume":
 		return p.applyDockerVolume(ctx, name, props, existing)
+	case "process":
+		return p.applyProcess(ctx, name, props, existing)
 	case "exec":
 		return p.applyExec(ctx, name, props)
 	default:
@@ -201,6 +208,10 @@ func (p *Plugin) destroyResource(ctx context.Context, name string, rs *ResourceS
 	case "docker:volume":
 		if id, ok := rs.ID.(string); ok {
 			return p.docker.RemoveVolume(ctx, id)
+		}
+	case "process":
+		if processName, ok := rs.ID.(string); ok {
+			return p.process.StopProcess(processName, 10*time.Second)
 		}
 	case "exec":
 		return nil // One-time execution, nothing to destroy
@@ -348,6 +359,72 @@ func (p *Plugin) applyExec(ctx context.Context, name string, props map[string]in
 	}, nil
 }
 
+func (p *Plugin) applyProcess(ctx context.Context, name string, props map[string]interface{}, existing *State) (*ResourceState, error) {
+	// Check if process already exists and is running
+	processName := getString(props, "name")
+	if existing != nil {
+		if rs, ok := existing.Resources[name]; ok {
+			if pName, ok := rs.ID.(string); ok && p.process.IsProcessRunning(pName) {
+				// Process still running, reuse it
+				return rs, nil
+			}
+		}
+	}
+
+	// Get environment variables first (so we can resolve PORT for readiness)
+	env := getStringMap(props, "environment")
+
+	// Pre-assign PORT if set to "auto"
+	if portVal, ok := env["PORT"]; ok && portVal == "auto" {
+		port, err := findAvailablePort()
+		if err != nil {
+			return nil, fmt.Errorf("failed to find available port: %w", err)
+		}
+		env["PORT"] = strconv.Itoa(port)
+	}
+
+	// Parse readiness check if present and substitute PORT
+	var readiness *ReadinessCheck
+	if readinessMap, ok := props["readiness"].(map[string]interface{}); ok {
+		endpoint := getString(readinessMap, "endpoint")
+		// Substitute PORT if present
+		if port, ok := env["PORT"]; ok {
+			endpoint = strings.ReplaceAll(endpoint, "${self.environment.PORT}", port)
+		}
+
+		readiness = &ReadinessCheck{
+			Type:     getString(readinessMap, "type"),
+			Endpoint: endpoint,
+			Interval: parseDuration(getString(readinessMap, "interval"), 2*time.Second),
+			Timeout:  parseDuration(getString(readinessMap, "timeout"), 120*time.Second),
+		}
+	}
+
+	// Start the process
+	opts := ProcessOptions{
+		Name:        processName,
+		WorkingDir:  getString(props, "working_dir"),
+		Command:     getStringSlice(props, "command"),
+		Environment: env,
+		Readiness:   readiness,
+	}
+
+	info, err := p.process.StartProcess(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ResourceState{
+		Type:       "process",
+		ID:         processName,
+		Properties: props,
+		Outputs: map[string]interface{}{
+			"pid":         info.PID,
+			"environment": info.Environment,
+		},
+	}, nil
+}
+
 // Helper functions for type conversion
 
 func getString(props map[string]interface{}, key string) string {
@@ -438,4 +515,15 @@ func getString2(m map[string]interface{}, key string) string {
 		}
 	}
 	return ""
+}
+
+func parseDuration(s string, defaultDuration time.Duration) time.Duration {
+	if s == "" {
+		return defaultDuration
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return defaultDuration
+	}
+	return d
 }
