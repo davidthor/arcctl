@@ -37,6 +37,7 @@ Examples:
   arcctl create environment staging -d my-datacenter
   arcctl list environment
   arcctl destroy component my-app -e staging`,
+	SilenceErrors: true,
 }
 
 // Execute runs the root command.
@@ -69,6 +70,7 @@ func init() {
 	rootCmd.AddCommand(newPushCmd())
 	rootCmd.AddCommand(newPullCmd())
 	rootCmd.AddCommand(newValidateCmd())
+	rootCmd.AddCommand(newInspectCmd())
 
 	// Keep the up command and version command
 	rootCmd.AddCommand(newUpCmd())

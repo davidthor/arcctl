@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/architect-io/arcctl/pkg/errors"
 	"github.com/architect-io/arcctl/pkg/schema/component"
 	"github.com/architect-io/arcctl/pkg/schema/datacenter"
 	"github.com/architect-io/arcctl/pkg/schema/environment"
@@ -39,7 +40,8 @@ Examples:
   arcctl validate component
   arcctl validate component ./my-app
   arcctl validate component -f custom-component.yml`,
-		Args: cobra.MaximumNArgs(1),
+		Args:         cobra.MaximumNArgs(1),
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := "architect.yml"
 			if len(args) > 0 {
@@ -55,7 +57,7 @@ Examples:
 
 			loader := component.NewLoader()
 			if err := loader.Validate(path); err != nil {
-				return fmt.Errorf("validation failed: %w", err)
+				return formatValidationError(err)
 			}
 
 			fmt.Println("Component configuration is valid!")
@@ -66,6 +68,44 @@ Examples:
 	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to architect.yml if not in default location")
 
 	return cmd
+}
+
+// formatValidationError extracts and displays validation error details
+func formatValidationError(err error) error {
+	// Try to extract arcctl error with details
+	var arcErr *errors.Error
+	if e, ok := err.(*errors.Error); ok {
+		arcErr = e
+	} else {
+		// Check wrapped errors
+		unwrapped := err
+		for unwrapped != nil {
+			if e, ok := unwrapped.(*errors.Error); ok {
+				arcErr = e
+				break
+			}
+			if u, ok := unwrapped.(interface{ Unwrap() error }); ok {
+				unwrapped = u.Unwrap()
+			} else {
+				break
+			}
+		}
+	}
+
+	if arcErr != nil && arcErr.Code == errors.ErrCodeValidation {
+		// Extract validation error details
+		if errList, ok := arcErr.Details["errors"].([]string); ok && len(errList) > 0 {
+			var sb strings.Builder
+			sb.WriteString("validation failed\n")
+			sb.WriteString("\nValidation errors:\n")
+			for _, e := range errList {
+				sb.WriteString(fmt.Sprintf("  - %s\n", e))
+			}
+			return fmt.Errorf("%s", sb.String())
+		}
+	}
+
+	return fmt.Errorf("validation failed: %w", err)
 }
 
 func newValidateDatacenterCmd() *cobra.Command {
@@ -81,7 +121,8 @@ Examples:
   arcctl validate datacenter
   arcctl validate datacenter ./my-datacenter
   arcctl validate datacenter -f custom-datacenter.hcl`,
-		Args: cobra.MaximumNArgs(1),
+		Args:         cobra.MaximumNArgs(1),
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var dcPath string
 			if file != "" {
@@ -110,7 +151,7 @@ Examples:
 
 			loader := datacenter.NewLoader()
 			if err := loader.Validate(dcFile); err != nil {
-				return fmt.Errorf("validation failed: %w", err)
+				return formatValidationError(err)
 			}
 
 			fmt.Println("Datacenter configuration is valid!")
@@ -136,7 +177,8 @@ Examples:
   arcctl validate environment
   arcctl validate environment ./envs/staging.yml
   arcctl validate environment -f custom-environment.yml`,
-		Args: cobra.MaximumNArgs(1),
+		Args:         cobra.MaximumNArgs(1),
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := "environment.yml"
 			if len(args) > 0 {
@@ -152,7 +194,7 @@ Examples:
 
 			loader := environment.NewLoader()
 			if err := loader.Validate(path); err != nil {
-				return fmt.Errorf("validation failed: %w", err)
+				return formatValidationError(err)
 			}
 
 			fmt.Println("Environment configuration is valid!")

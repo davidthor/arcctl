@@ -20,6 +20,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// resourceID generates a unique ID for a resource.
+func resourceID(component, resourceType, name string) string {
+	return fmt.Sprintf("%s/%s/%s", component, resourceType, name)
+}
+
 func newUpCmd() *cobra.Command {
 	var (
 		file      string
@@ -179,8 +184,68 @@ The up command:
 			}
 			provisioner := NewDockerProvisioner(envName, basePort)
 
-			// Ensure Docker network exists
-			fmt.Println("[network] Creating Docker network...")
+			// Create progress table
+			progress := NewProgressTable(os.Stdout)
+
+			// Add resources to progress table with dependencies
+			// Databases have no dependencies
+			for _, db := range comp.Databases() {
+				id := resourceID(componentName, "database", db.Name())
+				progress.AddResource(id, db.Name(), "database", componentName, nil)
+			}
+
+			// Buckets have no dependencies
+			for _, bucket := range comp.Buckets() {
+				id := resourceID(componentName, "bucket", bucket.Name())
+				progress.AddResource(id, bucket.Name(), "bucket", componentName, nil)
+			}
+
+			// Functions depend on databases
+			var dbDeps []string
+			for _, db := range comp.Databases() {
+				dbDeps = append(dbDeps, resourceID(componentName, "database", db.Name()))
+			}
+			for _, fn := range comp.Functions() {
+				id := resourceID(componentName, "function", fn.Name())
+				progress.AddResource(id, fn.Name(), "function", componentName, dbDeps)
+			}
+
+			// Deployments depend on databases
+			for _, depl := range comp.Deployments() {
+				id := resourceID(componentName, "deployment", depl.Name())
+				progress.AddResource(id, depl.Name(), "deployment", componentName, dbDeps)
+			}
+
+			// Services depend on deployments/functions
+			var workloadDeps []string
+			for _, fn := range comp.Functions() {
+				workloadDeps = append(workloadDeps, resourceID(componentName, "function", fn.Name()))
+			}
+			for _, depl := range comp.Deployments() {
+				workloadDeps = append(workloadDeps, resourceID(componentName, "deployment", depl.Name()))
+			}
+			for _, svc := range comp.Services() {
+				id := resourceID(componentName, "service", svc.Name())
+				progress.AddResource(id, svc.Name(), "service", componentName, workloadDeps)
+			}
+
+			// Routes depend on services/functions
+			for _, route := range comp.Routes() {
+				id := resourceID(componentName, "route", route.Name())
+				// Routes can depend on services or directly on functions
+				var routeDeps []string
+				if route.Service() != "" {
+					routeDeps = append(routeDeps, resourceID(componentName, "service", route.Service()))
+				} else if route.Function() != "" {
+					routeDeps = append(routeDeps, resourceID(componentName, "function", route.Function()))
+				}
+				progress.AddResource(id, route.Name(), "route", componentName, routeDeps)
+			}
+
+			// Print initial progress table
+			progress.PrintInitial()
+
+			// Ensure Docker network exists (not tracked as a resource)
 			if err := provisioner.EnsureNetwork(ctx); err != nil {
 				return fmt.Errorf("failed to create network: %w", err)
 			}
@@ -190,18 +255,26 @@ The up command:
 
 			// Provision databases
 			for _, db := range comp.Databases() {
-				fmt.Printf("[provision] Creating database %q (%s)...\n", db.Name(), db.Type())
+				id := resourceID(componentName, "database", db.Name())
+				progress.UpdateStatus(id, StatusInProgress, "")
+				progress.PrintUpdate(id)
+
 				conn, err := provisioner.ProvisionDatabase(ctx, db, componentName)
 				if err != nil {
+					progress.SetError(id, err)
+					progress.PrintUpdate(id)
 					return fmt.Errorf("failed to provision database %q: %w", db.Name(), err)
 				}
 				dbConnections[db.Name()] = conn
-				fmt.Printf("[provision] Database %q ready at localhost:%d\n", db.Name(), conn.Port)
+				progress.UpdateStatus(id, StatusCompleted, fmt.Sprintf("localhost:%d", conn.Port))
+				progress.PrintUpdate(id)
 			}
 
 			// Provision buckets (placeholder - would need MinIO or similar)
 			for _, bucket := range comp.Buckets() {
-				fmt.Printf("[provision] Bucket %q not yet implemented (skipping)\n", bucket.Name())
+				id := resourceID(componentName, "bucket", bucket.Name())
+				progress.UpdateStatus(id, StatusSkipped, "not yet implemented")
+				progress.PrintUpdate(id)
 			}
 
 			// Build and deploy containers (deployments and functions)
@@ -209,29 +282,32 @@ The up command:
 
 			// Helper function to build environment variables
 			buildEnv := func() map[string]string {
-				env := make(map[string]string)
+				envVars := make(map[string]string)
 				// Add database URLs
 				for dbName, conn := range dbConnections {
 					containerDBHost := fmt.Sprintf("%s-%s-%s", envName, componentName, dbName)
 					containerURL := fmt.Sprintf("postgres://app:%s@%s:5432/%s?sslmode=disable",
 						conn.Password, containerDBHost, conn.Database)
-					env["DATABASE_URL"] = containerURL
-					env[fmt.Sprintf("DB_%s_URL", strings.ToUpper(dbName))] = containerURL
-					env[fmt.Sprintf("DB_%s_HOST", strings.ToUpper(dbName))] = containerDBHost
-					env[fmt.Sprintf("DB_%s_PORT", strings.ToUpper(dbName))] = "5432"
-					env[fmt.Sprintf("DB_%s_USER", strings.ToUpper(dbName))] = conn.Username
-					env[fmt.Sprintf("DB_%s_PASSWORD", strings.ToUpper(dbName))] = conn.Password
-					env[fmt.Sprintf("DB_%s_NAME", strings.ToUpper(dbName))] = conn.Database
+					envVars["DATABASE_URL"] = containerURL
+					envVars[fmt.Sprintf("DB_%s_URL", strings.ToUpper(dbName))] = containerURL
+					envVars[fmt.Sprintf("DB_%s_HOST", strings.ToUpper(dbName))] = containerDBHost
+					envVars[fmt.Sprintf("DB_%s_PORT", strings.ToUpper(dbName))] = "5432"
+					envVars[fmt.Sprintf("DB_%s_USER", strings.ToUpper(dbName))] = conn.Username
+					envVars[fmt.Sprintf("DB_%s_PASSWORD", strings.ToUpper(dbName))] = conn.Password
+					envVars[fmt.Sprintf("DB_%s_NAME", strings.ToUpper(dbName))] = conn.Database
 				}
 				// Add user-provided variables
 				for k, v := range vars {
-					env[k] = v
+					envVars[k] = v
 				}
-				return env
+				return envVars
 			}
 
 			// Helper function to build and run a workload (deployment or function)
-			buildAndRun := func(name string, build component.Build, image string, resourceType string) error {
+			buildAndRun := func(name string, build component.Build, image string, resourceType string, resID string) error {
+				progress.UpdateStatus(resID, StatusInProgress, "building")
+				progress.PrintUpdate(resID)
+
 				workloadEnv := buildEnv()
 
 				var imageTag string
@@ -259,30 +335,33 @@ The up command:
 						}
 					}
 
-					fmt.Printf("[build] Building %s %q from %s...\n", resourceType, name, buildCtx)
 					var err error
 					imageTag, err = provisioner.BuildImage(ctx, name, buildCtx, dockerfile, buildArgs)
 					if err != nil {
+						progress.SetError(resID, err)
+						progress.PrintUpdate(resID)
 						return fmt.Errorf("failed to build %s %q: %w", resourceType, name, err)
 					}
-					fmt.Printf("[build] Built image %s\n", imageTag)
 				} else if image != "" {
 					imageTag = image
 				} else {
-					fmt.Printf("[%s] %s %q has no build context or image (skipping)\n", resourceType, resourceType, name)
+					progress.UpdateStatus(resID, StatusSkipped, "no build context or image")
+					progress.PrintUpdate(resID)
 					return nil
 				}
 
 				containerPort := 3000 // Default for Next.js/Node apps
 				ports := map[int]int{containerPort: 0}
 
-				fmt.Printf("[%s] Starting %s %q...\n", resourceType, resourceType, name)
 				_, hostPort, err := provisioner.RunContainer(ctx, name, imageTag, componentName, workloadEnv, ports)
 				if err != nil {
+					progress.SetError(resID, err)
+					progress.PrintUpdate(resID)
 					return fmt.Errorf("failed to run %s %q: %w", resourceType, name, err)
 				}
 				appPort = hostPort
-				fmt.Printf("[%s] %s %q running on port %d\n", resourceType, resourceType, name, hostPort)
+				progress.UpdateStatus(resID, StatusCompleted, fmt.Sprintf("port %d", hostPort))
+				progress.PrintUpdate(resID)
 				return nil
 			}
 
@@ -291,7 +370,12 @@ The up command:
 
 			// Process functions (preferred for Next.js apps)
 			for _, fn := range comp.Functions() {
+				fnID := resourceID(componentName, "function", fn.Name())
+
 				if fn.IsSourceBased() {
+					progress.UpdateStatus(fnID, StatusInProgress, "starting")
+					progress.PrintUpdate(fnID)
+
 					// Source-based functions run as local processes
 					src := fn.Src()
 					srcPath := src.Path()
@@ -302,13 +386,15 @@ The up command:
 					// Use inference to fill in missing values
 					inferredInfo, err := inference.InferProjectWithOverrides(srcPath, src.Language(), src.Framework())
 					if err != nil {
-						fmt.Printf("[function] Warning: could not infer project info for %q: %v\n", fn.Name(), err)
+						// Warning only, continue
+						_ = err
 					}
 
 					// Determine dev command (explicit > inferred)
 					devCommand := inference.FirstNonEmpty(src.Dev(), inferredInfo.DevCommand)
 					if devCommand == "" {
-						fmt.Printf("[function] No dev command found for %q - skipping\n", fn.Name())
+						progress.UpdateStatus(fnID, StatusSkipped, "no dev command")
+						progress.PrintUpdate(fnID)
 						continue
 					}
 
@@ -316,28 +402,22 @@ The up command:
 					installCommand := inference.FirstNonEmpty(src.Install(), inferredInfo.InstallCommand)
 
 					// Determine port
-					port := inference.FirstNonZero(fn.Port(), inferredInfo.Port, 3000)
-
-					fmt.Printf("[function] Starting source-based function %q\n", fn.Name())
-					fmt.Printf("           Path: %s\n", srcPath)
-					if inferredInfo != nil && inferredInfo.Framework != "" {
-						fmt.Printf("           Framework: %s\n", inferredInfo.Framework)
-					}
+					fnPort := inference.FirstNonZero(fn.Port(), inferredInfo.Port, 3000)
 
 					// Run install command if specified
 					if installCommand != "" {
-						fmt.Printf("[install] Running %q...\n", installCommand)
 						installCmd := exec.CommandContext(ctx, "sh", "-c", installCommand)
 						installCmd.Dir = srcPath
 						installCmd.Stdout = os.Stdout
 						installCmd.Stderr = os.Stderr
 						if err := installCmd.Run(); err != nil {
+							progress.SetError(fnID, fmt.Errorf("install failed: %w", err))
+							progress.PrintUpdate(fnID)
 							return fmt.Errorf("install command failed for %q: %w", fn.Name(), err)
 						}
 					}
 
 					// Start the dev server
-					fmt.Printf("[dev] Running %q\n", devCommand)
 					devCmd := exec.CommandContext(ctx, "sh", "-c", devCommand)
 					devCmd.Dir = srcPath
 
@@ -350,13 +430,15 @@ The up command:
 						devCmd.Env = append(devCmd.Env, fmt.Sprintf("%s=%s", k, v))
 					}
 					// Set PORT environment variable
-					devCmd.Env = append(devCmd.Env, fmt.Sprintf("PORT=%d", port))
+					devCmd.Env = append(devCmd.Env, fmt.Sprintf("PORT=%d", fnPort))
 
 					// Create pipes for output
 					stdout, _ := devCmd.StdoutPipe()
 					stderr, _ := devCmd.StderrPipe()
 
 					if err := devCmd.Start(); err != nil {
+						progress.SetError(fnID, err)
+						progress.PrintUpdate(fnID)
 						return fmt.Errorf("failed to start function %q: %w", fn.Name(), err)
 					}
 
@@ -366,8 +448,9 @@ The up command:
 					go streamWithPrefix(stdout, fmt.Sprintf("[%s] ", fn.Name()))
 					go streamWithPrefix(stderr, fmt.Sprintf("[%s] ", fn.Name()))
 
-					appPort = port
-					fmt.Printf("[function] Function %q running on port %d\n", fn.Name(), port)
+					appPort = fnPort
+					progress.UpdateStatus(fnID, StatusCompleted, fmt.Sprintf("port %d", fnPort))
+					progress.PrintUpdate(fnID)
 					continue
 				}
 				// Container-based functions
@@ -377,7 +460,7 @@ The up command:
 					build = fn.Container().Build()
 					image = fn.Container().Image()
 				}
-				if err := buildAndRun(fn.Name(), build, image, "function"); err != nil {
+				if err := buildAndRun(fn.Name(), build, image, "function", fnID); err != nil {
 					return err
 				}
 			}
@@ -401,7 +484,8 @@ The up command:
 
 			// Process deployments
 			for _, depl := range comp.Deployments() {
-				if err := buildAndRun(depl.Name(), depl.Build(), depl.Image(), "deployment"); err != nil {
+				deplID := resourceID(componentName, "deployment", depl.Name())
+				if err := buildAndRun(depl.Name(), depl.Build(), depl.Image(), "deployment", deplID); err != nil {
 					return err
 				}
 			}
@@ -409,19 +493,27 @@ The up command:
 			// Expose routes
 			routeURLs := make(map[string]string)
 			for _, route := range comp.Routes() {
+				routeID := resourceID(componentName, "route", route.Name())
+				progress.UpdateStatus(routeID, StatusInProgress, "")
+				progress.PrintUpdate(routeID)
+
 				url := fmt.Sprintf("http://localhost:%d", appPort)
 				routeURLs[route.Name()] = url
-				fmt.Printf("[expose] Route %q available at %s\n", route.Name(), url)
+
+				progress.UpdateStatus(routeID, StatusCompleted, url)
+				progress.PrintUpdate(routeID)
 			}
 
-			fmt.Println()
+			// Print final progress summary
+			progress.PrintFinalSummary()
+
 			if len(routeURLs) > 0 {
 				var primaryURL string
 				for _, url := range routeURLs {
 					primaryURL = url
 					break
 				}
-				fmt.Printf("Application running at %s\n", primaryURL)
+				fmt.Printf("\nApplication running at %s\n", primaryURL)
 
 				// Open browser unless --no-open is specified
 				if !noOpen && !detach {

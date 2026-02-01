@@ -37,6 +37,19 @@ type NodeResult struct {
 	Outputs  map[string]interface{}
 }
 
+// ProgressEvent represents a progress update during execution.
+type ProgressEvent struct {
+	NodeID   string
+	NodeName string
+	NodeType string
+	Status   string // "pending", "running", "completed", "failed", "skipped"
+	Message  string
+	Error    error
+}
+
+// ProgressCallback is called when resource status changes.
+type ProgressCallback func(event ProgressEvent)
+
 // Options configures the executor.
 type Options struct {
 	// Parallelism is the max number of concurrent operations
@@ -50,6 +63,9 @@ type Options struct {
 
 	// StopOnError stops execution on first error
 	StopOnError bool
+
+	// OnProgress is called when resource status changes
+	OnProgress ProgressCallback
 }
 
 // DefaultOptions returns default executor options.
@@ -218,6 +234,17 @@ func (e *Executor) executeChange(ctx context.Context, change *planner.ResourceCh
 		result.NodeID = change.Node.ID
 	}
 
+	// Notify progress: starting
+	if e.options.OnProgress != nil && change.Node != nil {
+		e.options.OnProgress(ProgressEvent{
+			NodeID:   change.Node.ID,
+			NodeName: change.Node.Name,
+			NodeType: string(change.Node.Type),
+			Status:   "running",
+			Message:  fmt.Sprintf("%s %s", change.Action, change.Node.Name),
+		})
+	}
+
 	// Handle dry run
 	if e.options.DryRun {
 		result.Success = true
@@ -235,6 +262,27 @@ func (e *Executor) executeChange(ctx context.Context, change *planner.ResourceCh
 	}
 
 	result.Duration = time.Since(startTime)
+
+	// Notify progress: completed or failed
+	if e.options.OnProgress != nil && change.Node != nil {
+		status := "completed"
+		msg := ""
+		if !result.Success {
+			status = "failed"
+			if result.Error != nil {
+				msg = result.Error.Error()
+			}
+		}
+		e.options.OnProgress(ProgressEvent{
+			NodeID:   change.Node.ID,
+			NodeName: change.Node.Name,
+			NodeType: string(change.Node.Type),
+			Status:   status,
+			Message:  msg,
+			Error:    result.Error,
+		})
+	}
+
 	return result
 }
 

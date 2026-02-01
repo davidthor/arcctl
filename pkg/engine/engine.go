@@ -60,6 +60,9 @@ type DeployOptions struct {
 
 	// Parallelism for parallel execution
 	Parallelism int
+
+	// OnProgress is called when resource status changes
+	OnProgress executor.ProgressCallback
 }
 
 // DeployResult contains the results of a deployment.
@@ -124,6 +127,7 @@ func (e *Engine) Deploy(ctx context.Context, opts DeployOptions) (*DeployResult,
 		Output:      opts.Output,
 		DryRun:      false,
 		StopOnError: true,
+		OnProgress:  opts.OnProgress,
 	}
 
 	exec := executor.NewExecutor(e.stateManager, e.iacRegistry, execOpts)

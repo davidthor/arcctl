@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/architect-io/arcctl/pkg/engine"
+	"github.com/architect-io/arcctl/pkg/engine/executor"
 	"github.com/architect-io/arcctl/pkg/schema/component"
 	"github.com/architect-io/arcctl/pkg/schema/datacenter"
 	"github.com/architect-io/arcctl/pkg/state/types"
@@ -213,7 +214,6 @@ Examples:
 			}
 
 			fmt.Println()
-			fmt.Printf("[deploy] Deploying component %q to environment %q...\n", componentName, environment)
 
 			// Create the engine
 			eng := createEngine(mgr)
@@ -230,6 +230,80 @@ Examples:
 				componentPath = filepath.Join(source, "architect.yml")
 			}
 
+			// Build progress table from component resources
+			progress := NewProgressTable(os.Stdout)
+
+			if comp != nil {
+				// Build dependency graph for progress display
+				var dbDeps []string
+				for _, db := range comp.Databases() {
+					id := fmt.Sprintf("%s/database/%s", componentName, db.Name())
+					progress.AddResource(id, db.Name(), "database", componentName, nil)
+					dbDeps = append(dbDeps, id)
+				}
+
+				for _, bucket := range comp.Buckets() {
+					id := fmt.Sprintf("%s/bucket/%s", componentName, bucket.Name())
+					progress.AddResource(id, bucket.Name(), "bucket", componentName, nil)
+				}
+
+				var workloadDeps []string
+				for _, fn := range comp.Functions() {
+					id := fmt.Sprintf("%s/function/%s", componentName, fn.Name())
+					progress.AddResource(id, fn.Name(), "function", componentName, dbDeps)
+					workloadDeps = append(workloadDeps, id)
+				}
+
+				for _, depl := range comp.Deployments() {
+					id := fmt.Sprintf("%s/deployment/%s", componentName, depl.Name())
+					progress.AddResource(id, depl.Name(), "deployment", componentName, dbDeps)
+					workloadDeps = append(workloadDeps, id)
+				}
+
+				for _, svc := range comp.Services() {
+					id := fmt.Sprintf("%s/service/%s", componentName, svc.Name())
+					progress.AddResource(id, svc.Name(), "service", componentName, workloadDeps)
+				}
+
+				for _, route := range comp.Routes() {
+					id := fmt.Sprintf("%s/route/%s", componentName, route.Name())
+					var routeDeps []string
+					if route.Service() != "" {
+						routeDeps = append(routeDeps, fmt.Sprintf("%s/service/%s", componentName, route.Service()))
+					} else if route.Function() != "" {
+						routeDeps = append(routeDeps, fmt.Sprintf("%s/function/%s", componentName, route.Function()))
+					}
+					progress.AddResource(id, route.Name(), "route", componentName, routeDeps)
+				}
+
+				// Print initial progress table
+				progress.PrintInitial()
+			}
+
+			// Create progress callback
+			onProgress := func(event executor.ProgressEvent) {
+				var status ResourceStatus
+				switch event.Status {
+				case "running":
+					status = StatusInProgress
+				case "completed":
+					status = StatusCompleted
+				case "failed":
+					status = StatusFailed
+				case "skipped":
+					status = StatusSkipped
+				default:
+					status = StatusPending
+				}
+
+				if event.Error != nil {
+					progress.SetError(event.NodeID, event.Error)
+				} else {
+					progress.UpdateStatus(event.NodeID, status, event.Message)
+				}
+				progress.PrintUpdate(event.NodeID)
+			}
+
 			// Execute deployment using the engine
 			result, err := eng.Deploy(ctx, engine.DeployOptions{
 				Environment: environment,
@@ -240,6 +314,7 @@ Examples:
 				DryRun:      false,
 				AutoApprove: autoApprove,
 				Parallelism: defaultParallelism,
+				OnProgress:  onProgress,
 			})
 			if err != nil {
 				return fmt.Errorf("deployment failed: %w", err)
@@ -252,15 +327,8 @@ Examples:
 				return fmt.Errorf("deployment failed")
 			}
 
-			// Display results
-			if result.Execution != nil {
-				fmt.Printf("\n[success] Deployment completed in %v\n", result.Duration.Round(time.Millisecond))
-				fmt.Printf("  Created: %d\n", result.Execution.Created)
-				fmt.Printf("  Updated: %d\n", result.Execution.Updated)
-				fmt.Printf("  Deleted: %d\n", result.Execution.Deleted)
-			} else {
-				fmt.Printf("[success] Component deployed successfully\n")
-			}
+			// Print final summary
+			progress.PrintFinalSummary()
 
 			return nil
 		},
