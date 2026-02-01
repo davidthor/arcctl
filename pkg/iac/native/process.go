@@ -5,10 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -92,15 +93,6 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, opts ProcessOptions)
 	// Prepare environment
 	env := os.Environ()
 	for k, v := range opts.Environment {
-		// Auto-assign PORT if set to "auto"
-		if k == "PORT" && v == "auto" {
-			port, err := findAvailablePort()
-			if err != nil {
-				return nil, fmt.Errorf("failed to find available port: %w", err)
-			}
-			v = strconv.Itoa(port)
-			opts.Environment[k] = v
-		}
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
@@ -242,15 +234,26 @@ func (pm *ProcessManager) waitForReady(ctx context.Context, readiness *Readiness
 	ticker := time.NewTicker(readiness.Interval)
 	defer ticker.Stop()
 
+	// Create HTTP client with short timeout
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+
 	for time.Now().Before(deadline) {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			// Simple HTTP check - just try to connect
-			// TODO: Actually make HTTP request when needed
-			// For now, just wait the interval
-			return nil
+			// Try to make HTTP request
+			resp, err := client.Get(readiness.Endpoint)
+			if err == nil {
+				resp.Body.Close()
+				if resp.StatusCode >= 200 && resp.StatusCode < 500 {
+					// Service is ready
+					return nil
+				}
+			}
+			// Continue waiting
 		}
 	}
 
@@ -267,14 +270,16 @@ func streamOutput(r io.Reader, prefix string) {
 
 // findAvailablePort finds an available port to use.
 func findAvailablePort() (int, error) {
-	// Simple strategy: start at 3000 and increment
-	// In a real implementation, we'd bind to :0 to get an available port
-	for port := 3000; port < 4000; port++ {
-		// TODO: Actually check if port is available
-		// For now, just return the first port in range
-		return port, nil
+	// Try to bind to port 0 to let the OS assign an available port
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, fmt.Errorf("failed to find available port: %w", err)
 	}
-	return 0, fmt.Errorf("no available ports found")
+	defer listener.Close()
+
+	// Get the assigned port
+	addr := listener.Addr().(*net.TCPAddr)
+	return addr.Port, nil
 }
 
 // ParseDockerfileCmd parses a Dockerfile and extracts the CMD instruction.

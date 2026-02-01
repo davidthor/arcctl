@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/architect-io/arcctl/pkg/iac"
@@ -369,12 +371,30 @@ func (p *Plugin) applyProcess(ctx context.Context, name string, props map[string
 		}
 	}
 
-	// Parse readiness check if present
+	// Get environment variables first (so we can resolve PORT for readiness)
+	env := getStringMap(props, "environment")
+	
+	// Pre-assign PORT if set to "auto"
+	if portVal, ok := env["PORT"]; ok && portVal == "auto" {
+		port, err := findAvailablePort()
+		if err != nil {
+			return nil, fmt.Errorf("failed to find available port: %w", err)
+		}
+		env["PORT"] = strconv.Itoa(port)
+	}
+
+	// Parse readiness check if present and substitute PORT
 	var readiness *ReadinessCheck
 	if readinessMap, ok := props["readiness"].(map[string]interface{}); ok {
+		endpoint := getString(readinessMap, "endpoint")
+		// Substitute PORT if present
+		if port, ok := env["PORT"]; ok {
+			endpoint = strings.ReplaceAll(endpoint, "${self.environment.PORT}", port)
+		}
+		
 		readiness = &ReadinessCheck{
 			Type:     getString(readinessMap, "type"),
-			Endpoint: getString(readinessMap, "endpoint"),
+			Endpoint: endpoint,
 			Interval: parseDuration(getString(readinessMap, "interval"), 2*time.Second),
 			Timeout:  parseDuration(getString(readinessMap, "timeout"), 120*time.Second),
 		}
@@ -385,7 +405,7 @@ func (p *Plugin) applyProcess(ctx context.Context, name string, props map[string
 		Name:        processName,
 		WorkingDir:  getString(props, "working_dir"),
 		Command:     getStringSlice(props, "command"),
-		Environment: getStringMap(props, "environment"),
+		Environment: env,
 		Readiness:   readiness,
 	}
 

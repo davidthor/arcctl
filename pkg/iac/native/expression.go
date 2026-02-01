@@ -2,6 +2,7 @@ package native
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -184,7 +185,8 @@ func evaluateFunction(expr string, ctx *EvalContext) (interface{}, error) {
 
 		cmd, err := ExtractDockerfileCmdFromContext(contextStr, dockerfilePath)
 		if err != nil {
-			// If we can't extract CMD, return nil so coalesce can fall back
+			// Log the error for debugging but return nil so coalesce can fall back
+			fmt.Fprintf(os.Stderr, "Warning: Failed to extract CMD from Dockerfile: %v\n", err)
 			return nil, nil
 		}
 		return cmd, nil
