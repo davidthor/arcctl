@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -147,20 +148,136 @@ When building a component, arcctl creates multiple artifacts:
 				return nil
 			}
 
+			ctx := context.Background()
+
+			// Collect build info for each child artifact
+			type buildInfo struct {
+				context    string
+				dockerfile string
+				target     string
+				args       map[string]string
+			}
+			childBuilds := make(map[string]buildInfo)
+
+			// Collect build info from deployments
+			for _, depl := range comp.Deployments() {
+				if depl.Build() != nil {
+					key := fmt.Sprintf("deployments/%s", depl.Name())
+					childBuilds[key] = buildInfo{
+						context:    depl.Build().Context(),
+						dockerfile: depl.Build().Dockerfile(),
+						target:     depl.Build().Target(),
+						args:       depl.Build().Args(),
+					}
+				}
+			}
+
+			// Collect build info from functions
+			for _, fn := range comp.Functions() {
+				if fn.Build() != nil {
+					key := fmt.Sprintf("functions/%s", fn.Name())
+					childBuilds[key] = buildInfo{
+						context:    fn.Build().Context(),
+						dockerfile: fn.Build().Dockerfile(),
+						target:     fn.Build().Target(),
+						args:       fn.Build().Args(),
+					}
+				}
+			}
+
+			// Collect build info from cronjobs
+			for _, cj := range comp.Cronjobs() {
+				if cj.Build() != nil {
+					key := fmt.Sprintf("cronjobs/%s", cj.Name())
+					childBuilds[key] = buildInfo{
+						context:    cj.Build().Context(),
+						dockerfile: cj.Build().Dockerfile(),
+						target:     cj.Build().Target(),
+						args:       cj.Build().Args(),
+					}
+				}
+			}
+
+			// Collect build info from migrations
+			for _, db := range comp.Databases() {
+				if db.Migrations() != nil && db.Migrations().Build() != nil {
+					key := fmt.Sprintf("migrations/%s", db.Name())
+					childBuilds[key] = buildInfo{
+						context:    db.Migrations().Build().Context(),
+						dockerfile: db.Migrations().Build().Dockerfile(),
+						target:     db.Migrations().Build().Target(),
+						args:       db.Migrations().Build().Args(),
+					}
+				}
+			}
+
 			// Build child artifacts (container images)
 			fmt.Println()
 			for resource, ref := range childArtifacts {
 				fmt.Printf("[build] Building %s...\n", resource)
-				_ = ref
-				_ = platform
-				_ = noCache
-				// TODO: Implement actual Docker build
+
+				build, ok := childBuilds[resource]
+				if !ok {
+					fmt.Printf("[warn] No build info found for %s, skipping\n", resource)
+					continue
+				}
+
+				// Resolve build context relative to component directory
+				buildContext := build.context
+				if !filepath.IsAbs(buildContext) {
+					buildContext = filepath.Join(path, buildContext)
+				}
+
+				// Build Docker image
+				dockerArgs := []string{"build", "-t", ref}
+
+				// Add dockerfile if specified
+				if build.dockerfile != "" {
+					dockerfilePath := build.dockerfile
+					if !filepath.IsAbs(dockerfilePath) {
+						dockerfilePath = filepath.Join(path, dockerfilePath)
+					}
+					dockerArgs = append(dockerArgs, "-f", dockerfilePath)
+				}
+
+				// Add build target if specified
+				if build.target != "" {
+					dockerArgs = append(dockerArgs, "--target", build.target)
+				}
+
+				// Add platform if specified
+				if platform != "" {
+					dockerArgs = append(dockerArgs, "--platform", platform)
+				}
+
+				// Add no-cache if specified
+				if noCache {
+					dockerArgs = append(dockerArgs, "--no-cache")
+				}
+
+				// Add build arguments
+				for k, v := range build.args {
+					dockerArgs = append(dockerArgs, "--build-arg", fmt.Sprintf("%s=%s", k, v))
+				}
+
+				// Add build context
+				dockerArgs = append(dockerArgs, buildContext)
+
+				// Execute docker build
+				dockerCmd := exec.CommandContext(ctx, "docker", dockerArgs...)
+				dockerCmd.Stdout = os.Stdout
+				dockerCmd.Stderr = os.Stderr
+
+				if err := dockerCmd.Run(); err != nil {
+					return fmt.Errorf("failed to build %s: %w", resource, err)
+				}
+
+				fmt.Printf("[success] Built %s → %s\n", resource, ref)
 			}
 
 			// Build root artifact
 			fmt.Printf("[build] Building root artifact...\n")
 
-			ctx := context.Background()
 			client := oci.NewClient()
 
 			// Create artifact config

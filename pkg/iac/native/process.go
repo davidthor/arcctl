@@ -143,7 +143,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, opts ProcessOptions)
 	// Wait for readiness if configured
 	if opts.Readiness != nil {
 		if err := pm.waitForReady(ctx, opts.Readiness); err != nil {
-			pm.StopProcess(opts.Name, 5*time.Second)
+			_ = pm.StopProcess(opts.Name, 5*time.Second) // Best effort cleanup; ignore error
 			return nil, fmt.Errorf("process failed readiness check: %w", err)
 		}
 	}
