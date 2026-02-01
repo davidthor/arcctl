@@ -25,7 +25,7 @@ cronjobs: map<string, Cronjob>
 
 # Configuration
 variables: map<string, Variable>
-dependencies: map<string, Dependency>
+dependencies: map<string, string>  # key: reference name, value: repo:tag
 ```
 
 ## Expression Syntax

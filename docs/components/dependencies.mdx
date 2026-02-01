@@ -9,47 +9,32 @@ Components can declare dependencies on other components, enabling modular applic
 
 ## Declaring Dependencies
 
-```yaml
-dependencies:
-  auth:
-    component: ghcr.io/myorg/auth-service:v1.0.0
-    variables:
-      log_level: debug
-```
-
-## Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `component` | string | Component reference (OCI image or local path) |
-| `variables` | map | Variable values for the dependency |
-
-## Component References
-
-### OCI Registry
+Dependencies are declared as a simple key-value map where the key is the name you'll use to reference the dependency, and the value is the OCI registry reference (`repo:tag`):
 
 ```yaml
 dependencies:
-  auth:
-    component: ghcr.io/myorg/auth-service:v1.0.0
+  auth: ghcr.io/myorg/auth-service:v1.0.0
+  cache: ghcr.io/myorg/redis-cache
 ```
 
-### Local Path (Development)
+### Tag Expressions
 
-```yaml
-dependencies:
-  auth:
-    component: ./services/auth
-```
+The tag portion is optional and supports semver version constraints:
+
+| Format | Description | Example |
+|--------|-------------|---------|
+| `repo:v1.0.0` | Exact version | `ghcr.io/myorg/auth:v1.0.0` |
+| `repo:^1` | Compatible with major version 1 | `ghcr.io/myorg/auth:^1` |
+| `repo:~1.2` | Compatible with 1.2.x | `ghcr.io/myorg/auth:~1.2` |
+| `repo` | Latest version (no tag) | `ghcr.io/myorg/auth` |
 
 ## Accessing Dependency Outputs
 
-Reference dependency services and routes:
+Reference dependency services, routes, and custom outputs:
 
 ```yaml
 dependencies:
-  auth:
-    component: ghcr.io/myorg/auth-service:v1.0.0
+  auth: ghcr.io/myorg/auth-service:v1.0.0
 
 deployments:
   api:
@@ -58,6 +43,7 @@ deployments:
     environment:
       AUTH_SERVICE_URL: ${{ dependencies.auth.services.api.url }}
       AUTH_PUBLIC_URL: ${{ dependencies.auth.routes.public.url }}
+      AUTH_SECRET: ${{ dependencies.auth.outputs.api_key }}
 ```
 
 ### Available Outputs
@@ -68,6 +54,7 @@ deployments:
 | `${{ dependencies.<name>.services.<service>.host }}` | Service hostname |
 | `${{ dependencies.<name>.services.<service>.port }}` | Service port |
 | `${{ dependencies.<name>.routes.<route>.url }}` | Route URL from dependency |
+| `${{ dependencies.<name>.outputs.<output> }}` | Custom output value from dependency |
 
 ## Dependents (Reverse Dependencies)
 
@@ -121,7 +108,6 @@ arcctl automatically manages the dependency graph:
 
 ```yaml
 # auth-service/architect.yml
-name: auth-service
 
 variables:
   jwt_secret:
@@ -149,19 +135,21 @@ routes:
   public:
     type: http
     service: api
+
+# Expose outputs for dependents to reference
+outputs:
+  api_endpoint:
+    value: ${{ services.api.url }}
+    description: "Internal API endpoint"
 ```
 
 ### Main Application (Dependent)
 
 ```yaml
 # my-app/architect.yml
-name: my-app
 
 dependencies:
-  auth:
-    component: ghcr.io/myorg/auth-service:v1.0.0
-    variables:
-      jwt_secret: ${{ variables.jwt_secret }}
+  auth: ghcr.io/myorg/auth-service:v1.0.0
 
 variables:
   jwt_secret:
@@ -203,7 +191,6 @@ routes:
 
 ```yaml
 # auth-service/architect.yml (updated to support CORS)
-name: auth-service
 
 deployments:
   api:
@@ -220,35 +207,43 @@ deployments:
 
 ### Version Dependencies
 
-Always use specific versions in production:
+Always use specific versions or semver constraints in production:
 
 ```yaml
 dependencies:
-  auth:
-    # Good - specific version
-    component: ghcr.io/myorg/auth-service:v1.0.0
-    
-  # Avoid in production
-  # component: ghcr.io/myorg/auth-service:latest
+  # Good - specific version
+  auth: ghcr.io/myorg/auth-service:v1.0.0
+  
+  # Good - semver constraint (allows compatible updates)
+  cache: ghcr.io/myorg/redis-cache:^2
+  
+  # Avoid in production - unpredictable version
+  # other: ghcr.io/myorg/other-service
 ```
 
-### Use Local Paths for Development
+### Use Outputs for Shared Configuration
+
+When dependencies need to share sensitive values or complex configuration, use the dependency's outputs rather than passing variables:
 
 ```yaml
-dependencies:
-  auth:
-    # Use local path during development
-    component: ../auth-service
-```
+# In the dependency component (auth-service)
+outputs:
+  publishable_key:
+    value: ${{ variables.clerk_publishable_key }}
+    description: "Clerk publishable key for frontend"
+  
+  secret_key:
+    value: ${{ variables.clerk_secret_key }}
+    description: "Clerk secret key for backend"
+    sensitive: true
 
-### Pass Required Variables
-
-```yaml
+# In the dependent component
 dependencies:
-  auth:
-    component: ghcr.io/myorg/auth-service:v1.0.0
-    variables:
-      # Pass through shared secrets
-      jwt_secret: ${{ variables.jwt_secret }}
-      log_level: ${{ variables.log_level }}
+  auth: ghcr.io/myorg/auth-service:v1.0.0
+
+deployments:
+  api:
+    environment:
+      CLERK_PUBLISHABLE_KEY: ${{ dependencies.auth.outputs.publishable_key }}
+      CLERK_SECRET_KEY: ${{ dependencies.auth.outputs.secret_key }}
 ```

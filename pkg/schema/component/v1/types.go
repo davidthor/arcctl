@@ -15,9 +15,9 @@ type SchemaV1 struct {
 	Routes         map[string]RouteV1         `yaml:"routes,omitempty" json:"routes,omitempty"`
 	Cronjobs       map[string]CronjobV1       `yaml:"cronjobs,omitempty" json:"cronjobs,omitempty"`
 
-	Variables    map[string]VariableV1   `yaml:"variables,omitempty" json:"variables,omitempty"`
-	Dependencies map[string]DependencyV1 `yaml:"dependencies,omitempty" json:"dependencies,omitempty"`
-	Outputs      map[string]OutputV1     `yaml:"outputs,omitempty" json:"outputs,omitempty"`
+	Variables    map[string]VariableV1 `yaml:"variables,omitempty" json:"variables,omitempty"`
+	Dependencies map[string]string     `yaml:"dependencies,omitempty" json:"dependencies,omitempty"`
+	Outputs      map[string]OutputV1   `yaml:"outputs,omitempty" json:"outputs,omitempty"`
 }
 
 // DatabaseV1 represents a database in the v1 schema.
@@ -242,12 +242,6 @@ type VariableV1 struct {
 	Required    bool        `yaml:"required,omitempty" json:"required,omitempty"`
 	Sensitive   bool        `yaml:"sensitive,omitempty" json:"sensitive,omitempty"`
 	Secret      bool        `yaml:"secret,omitempty" json:"secret,omitempty"` // Alias for sensitive
-}
-
-// DependencyV1 represents a dependency in the v1 schema.
-type DependencyV1 struct {
-	Component string            `yaml:"component" json:"component"`
-	Variables map[string]string `yaml:"variables,omitempty" json:"variables,omitempty"`
 }
 
 // OutputV1 represents an output value in the v1 schema.

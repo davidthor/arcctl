@@ -482,9 +482,8 @@ type dependencyWrapper struct {
 	d *internal.InternalDependency
 }
 
-func (d *dependencyWrapper) Name() string                  { return d.d.Name }
-func (d *dependencyWrapper) Component() string             { return d.d.Component }
-func (d *dependencyWrapper) Variables() map[string]string  { return d.d.Variables }
+func (d *dependencyWrapper) Name() string      { return d.d.Name }
+func (d *dependencyWrapper) Component() string { return d.d.Component }
 
 // Output wrapper
 type outputWrapper struct {

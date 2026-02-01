@@ -119,12 +119,7 @@ func (r *DependencyResolver) resolveWithDeps(ctx context.Context, name, ref stri
 
 	// Resolve transitive dependencies
 	for _, dep := range comp.Dependencies() {
-		depVars := make(map[string]string)
-		for k, v := range dep.Variables() {
-			depVars[k] = v
-		}
-
-		depResolved, err := r.resolveWithDeps(ctx, dep.Name(), dep.Component(), depVars, depth+1)
+		depResolved, err := r.resolveWithDeps(ctx, dep.Name(), dep.Component(), nil, depth+1)
 		if err != nil {
 			return ResolvedDependency{}, fmt.Errorf("failed to resolve dependency %s: %w", dep.Name(), err)
 		}

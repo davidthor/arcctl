@@ -223,10 +223,11 @@ type Variable interface {
 }
 
 // Dependency represents a dependency on another component.
+// The Component value is a repo:tag reference (tag is optional).
+// Tag supports semver expressions like "^1" or "~2.0".
 type Dependency interface {
 	Name() string
 	Component() string
-	Variables() map[string]string
 }
 
 // Output represents an output value exposed to dependents.

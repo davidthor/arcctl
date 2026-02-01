@@ -73,8 +73,7 @@ routes:
 #
 # name: frontend-app
 # dependencies:
-#   api:
-#     component: ./path/to/api-with-cors  # or registry.example.com/org/api-with-cors:v1
+#   api: registry.example.com/org/api-with-cors:v1
 #
 # deployments:
 #   web:

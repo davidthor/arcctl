@@ -296,10 +296,11 @@ type InternalVariable struct {
 }
 
 // InternalDependency represents a dependency on another component.
+// The Component field contains a repo:tag reference (e.g., "ghcr.io/org/app:v1").
+// Tag is optional and supports semver expressions (e.g., "^1", "~2.0").
 type InternalDependency struct {
 	Name      string
-	Component string            // OCI reference or local path
-	Variables map[string]string // Variable overrides
+	Component string // OCI reference in repo:tag format
 }
 
 // InternalOutput represents an output value exposed to dependents.

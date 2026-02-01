@@ -6,12 +6,11 @@
 # - Serverless function deployment (recommended for Next.js)
 # - Routes pointing directly to functions (no service needed)
 #
-# Dependencies are referenced by their component identifier.
-# The actual source (OCI registry or file path) is configured in environment.yml.
+# Dependencies are referenced by name with an OCI repo:tag reference.
+# Tag is optional and supports semver expressions (e.g., "^1", "~2.0").
 
 dependencies:
-  clerk:
-    component: clerk
+  clerk: clerk
 
 databases:
   main:

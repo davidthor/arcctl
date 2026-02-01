@@ -49,12 +49,10 @@ variables:
     default: "true"
 
 # Dependencies
+# Dependencies are repo:tag references. Tag is optional and supports semver (e.g., "^1", "~2.0").
 dependencies:
   # ZooKeeper is required for ClickHouse distributed coordination
-  zookeeper:
-    component: ../zookeeper
-    variables:
-      max_client_connections: "100"
+  zookeeper: ghcr.io/architect-io/zookeeper
 
 # Databases
 databases:
