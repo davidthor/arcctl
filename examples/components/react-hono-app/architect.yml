@@ -50,9 +50,9 @@ deployments:
 
 functions:
   frontend:
-    build:
-      context: ./frontend
-    framework: react
+    src:
+      path: ./frontend
+      framework: react
     environment:
       VITE_API_URL: ${{ services.api.url }}
     memory: "512Mi"

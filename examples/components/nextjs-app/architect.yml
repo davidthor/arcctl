@@ -24,9 +24,9 @@ buckets:
 
 functions:
   web:
-    build:
-      context: .
-    framework: nextjs
+    src:
+      path: .
+      framework: nextjs
     environment:
       DATABASE_URL: ${{ databases.main.url }}
       S3_ENDPOINT: ${{ buckets.uploads.endpoint }}

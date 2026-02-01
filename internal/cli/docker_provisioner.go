@@ -446,18 +446,74 @@ func CleanupByEnvName(ctx context.Context, envName string) error {
 
 func (p *DockerProvisioner) waitForHealthy(ctx context.Context, containerName string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	var lastStatus string
+	unhealthyCount := 0
+
 	for time.Now().Before(deadline) {
-		cmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Health.Status}}", containerName)
-		output, err := cmd.Output()
-		if err == nil {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			// Check container health status
+			cmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Health.Status}}", containerName)
+			output, err := cmd.Output()
+			if err != nil {
+				// Check if container even exists
+				checkCmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Status}}", containerName)
+				checkOutput, checkErr := checkCmd.Output()
+				if checkErr != nil {
+					return fmt.Errorf("container %s not found: %w", containerName, checkErr)
+				}
+				containerState := strings.TrimSpace(string(checkOutput))
+				if containerState == "exited" {
+					// Get container logs for debugging
+					logsCmd := exec.CommandContext(ctx, "docker", "logs", "--tail", "20", containerName)
+					logsOutput, _ := logsCmd.CombinedOutput()
+					return fmt.Errorf("container exited unexpectedly. Last logs:\n%s", string(logsOutput))
+				}
+				continue
+			}
+
 			status := strings.TrimSpace(string(output))
+
+			// Log status changes
+			if status != lastStatus {
+				if status == "starting" {
+					fmt.Printf("  Waiting for container to be ready...")
+				} else if status == "unhealthy" {
+					fmt.Printf(" (health check failing)")
+				}
+				lastStatus = status
+			}
+
 			if status == "healthy" {
+				if lastStatus == "starting" || lastStatus == "unhealthy" {
+					fmt.Println(" ready!")
+				}
 				return nil
 			}
+
+			if status == "unhealthy" {
+				unhealthyCount++
+				// If unhealthy for too long (3 consecutive checks), fail fast with logs
+				if unhealthyCount >= 3 {
+					logsCmd := exec.CommandContext(ctx, "docker", "logs", "--tail", "30", containerName)
+					logsOutput, _ := logsCmd.CombinedOutput()
+					return fmt.Errorf("container health check failed repeatedly. Container logs:\n%s", string(logsOutput))
+				}
+			} else {
+				unhealthyCount = 0
+			}
 		}
-		time.Sleep(2 * time.Second)
 	}
-	return fmt.Errorf("timeout waiting for container to become healthy")
+
+	// On timeout, provide helpful debugging info
+	logsCmd := exec.CommandContext(ctx, "docker", "logs", "--tail", "30", containerName)
+	logsOutput, _ := logsCmd.CombinedOutput()
+	return fmt.Errorf("timeout waiting for container to become healthy (last status: %s). Container logs:\n%s", lastStatus, string(logsOutput))
 }
 
 func generatePassword(length int) string {

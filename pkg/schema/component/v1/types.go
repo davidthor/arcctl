@@ -81,15 +81,40 @@ type DeploymentV1 struct {
 }
 
 // FunctionV1 represents a function in the v1 schema.
+// Functions use a discriminated union: either Src OR Container must be set (not both).
 type FunctionV1 struct {
-	Image       string            `yaml:"image,omitempty" json:"image,omitempty"`
-	Build       *BuildV1          `yaml:"build,omitempty" json:"build,omitempty"`
-	Runtime     string            `yaml:"runtime,omitempty" json:"runtime,omitempty"`
-	Framework   string            `yaml:"framework,omitempty" json:"framework,omitempty"`
+	// Discriminated union - exactly one must be set
+	Src       *FunctionSourceV1    `yaml:"src,omitempty" json:"src,omitempty"`
+	Container *FunctionContainerV1 `yaml:"container,omitempty" json:"container,omitempty"`
+
+	// Common fields (valid for both src and container)
+	Port        int               `yaml:"port,omitempty" json:"port,omitempty"`
 	Environment map[string]string `yaml:"environment,omitempty" json:"environment,omitempty"`
 	CPU         string            `yaml:"cpu,omitempty" json:"cpu,omitempty"`
 	Memory      string            `yaml:"memory,omitempty" json:"memory,omitempty"`
 	Timeout     int               `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+}
+
+// FunctionSourceV1 represents a source-based function configuration.
+// Most fields are optional and can be inferred from project files.
+type FunctionSourceV1 struct {
+	Path      string `yaml:"path" json:"path"`                         // Required: path to source code
+	Language  string `yaml:"language,omitempty" json:"language,omitempty"`   // e.g., "javascript", "typescript", "python", "go"
+	Runtime   string `yaml:"runtime,omitempty" json:"runtime,omitempty"`     // e.g., "nodejs20.x", "python3.11" (for Lambda)
+	Framework string `yaml:"framework,omitempty" json:"framework,omitempty"` // e.g., "nextjs", "fastapi", "express"
+	Install   string `yaml:"install,omitempty" json:"install,omitempty"`     // e.g., "npm install", "pip install -r requirements.txt"
+	Dev       string `yaml:"dev,omitempty" json:"dev,omitempty"`             // Development command, e.g., "npm run dev"
+	Build     string `yaml:"build,omitempty" json:"build,omitempty"`         // Build command, e.g., "npm run build"
+	Start     string `yaml:"start,omitempty" json:"start,omitempty"`         // Production start command
+	Handler   string `yaml:"handler,omitempty" json:"handler,omitempty"`     // Lambda-style handler, e.g., "index.handler"
+	Entry     string `yaml:"entry,omitempty" json:"entry,omitempty"`         // Entry point file
+}
+
+// FunctionContainerV1 represents a container-based function configuration.
+// Either Build or Image must be set (not both).
+type FunctionContainerV1 struct {
+	Build *BuildV1 `yaml:"build,omitempty" json:"build,omitempty"` // Build from Dockerfile
+	Image string   `yaml:"image,omitempty" json:"image,omitempty"` // Pre-built image reference
 }
 
 // ServiceV1 represents a service in the v1 schema.

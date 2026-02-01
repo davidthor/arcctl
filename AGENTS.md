@@ -99,9 +99,9 @@ databases:
 
 functions:
   web:
-    build:
-      context: .
-    framework: nextjs
+    src:
+      path: .
+      framework: nextjs
     environment:
       DATABASE_URL: ${{ databases.main.url }}
     memory: "1024Mi"

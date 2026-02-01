@@ -105,16 +105,47 @@ type Deployment interface {
 }
 
 // Function represents a serverless function.
+// Uses a discriminated union: either Src() or Container() returns non-nil (not both).
 type Function interface {
 	Name() string
-	Image() string
-	Build() Build
-	Runtime() string
-	Framework() string
+
+	// Discriminated union - exactly one returns non-nil
+	Src() FunctionSource
+	Container() FunctionContainer
+
+	// Common configuration
+	Port() int
 	Environment() map[string]string
 	CPU() string
 	Memory() string
 	Timeout() int
+
+	// IsSourceBased returns true if this is a source-based function
+	IsSourceBased() bool
+	// IsContainerBased returns true if this is a container-based function
+	IsContainerBased() bool
+}
+
+// FunctionSource represents source-based function configuration.
+// Most fields are optional and can be inferred from project files.
+type FunctionSource interface {
+	Path() string      // Required: path to source code
+	Language() string  // e.g., "javascript", "typescript", "python", "go"
+	Runtime() string   // e.g., "nodejs20.x", "python3.11" (for Lambda)
+	Framework() string // e.g., "nextjs", "fastapi", "express"
+	Install() string   // Dependency installation command
+	Dev() string       // Development server command
+	Build() string     // Production build command
+	Start() string     // Production start command
+	Handler() string   // Lambda-style handler (e.g., "index.handler")
+	Entry() string     // Entry point file
+}
+
+// FunctionContainer represents container-based function configuration.
+// Either Build() or Image() returns non-empty (not both).
+type FunctionContainer interface {
+	Build() Build  // Build from Dockerfile (nil if using image)
+	Image() string // Pre-built image reference (empty if using build)
 }
 
 // Service represents internal service exposure for deployments.

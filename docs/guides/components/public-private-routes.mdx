@@ -40,9 +40,9 @@ databases:
 
 functions:
   storefront:
-    build:
-      context: ./storefront
-    framework: nextjs
+    src:
+      path: ./storefront
+      framework: nextjs
     environment:
       DATABASE_URL: ${{ databases.main.url }}
       REDIS_URL: ${{ databases.cache.url }}
@@ -50,9 +50,9 @@ functions:
     memory: "1024Mi"
 
   admin:
-    build:
-      context: ./admin
-    framework: nextjs
+    src:
+      path: ./admin
+      framework: nextjs
     environment:
       DATABASE_URL: ${{ databases.main.url }}
       REDIS_URL: ${{ databases.cache.url }}
@@ -131,10 +131,14 @@ Both apps share the same databases while having separate routes:
 ```yaml
 functions:
   storefront:
+    src:
+      path: ./storefront
     environment:
       DATABASE_URL: ${{ databases.main.url }}
   
   admin:
+    src:
+      path: ./admin
     environment:
       DATABASE_URL: ${{ databases.main.url }}
 ```

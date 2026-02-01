@@ -9,46 +9,88 @@ Define serverless functions for auto-scaling workloads. Functions scale to zero 
 
 ## Basic Usage
 
+Functions support two modes: **source-based** (runs from source code) and **container-based** (runs from Docker image).
+
+### Source-Based Functions (Recommended)
+
 ```yaml
 functions:
   web:
-    build:
-      context: ./web
-    runtime: nodejs:20
+    src:
+      path: ./web
+      # Most fields are optional - inferred from project files
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
 ```
 
-## Properties
+### Container-Based Functions
+
+```yaml
+functions:
+  api:
+    container:
+      build:
+        context: ./api
+        dockerfile: Dockerfile
+    port: 8080
+```
+
+## Source-Based Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `build` | object | Build configuration |
-| `image` | string | Pre-built container image |
-| `runtime` | string | Runtime specification (`nodejs:20`, `python:3.11`, `go:1.21`) |
-| `framework` | string | Framework hint for specialized providers (`nextjs`, `nuxt`, `sveltekit`) |
+| `src.path` | string | **Required.** Path to source code directory |
+| `src.language` | string | Language (auto-detected): `javascript`, `typescript`, `python`, `go` |
+| `src.runtime` | string | Runtime for serverless platforms: `nodejs20.x`, `python3.11` |
+| `src.framework` | string | Framework hint: `nextjs`, `nuxt`, `fastapi`, `gin` |
+| `src.install` | string | Install command (auto-detected from lockfiles) |
+| `src.dev` | string | Development command (auto-detected from package.json/Makefile) |
+| `src.build` | string | Production build command |
+| `src.start` | string | Production start command |
+| `src.handler` | string | Lambda-style handler: `index.handler` |
+| `src.entry` | string | Entry point file |
+
+## Container-Based Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `container.build` | object | Build from Dockerfile |
+| `container.build.context` | string | Build context directory |
+| `container.build.dockerfile` | string | Dockerfile path (default: `Dockerfile`) |
+| `container.image` | string | Pre-built container image (mutually exclusive with build) |
+
+## Common Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `port` | number | Port the function listens on |
 | `environment` | map | Environment variables |
 | `memory` | string | Memory allocation per invocation |
 | `timeout` | number | Maximum execution time in seconds |
+| `cpu` | string | CPU allocation |
 
-## Source Configuration
+## Automatic Inference
 
-### Build from Source
+For source-based functions, arcctl automatically detects:
 
-```yaml
-functions:
-  api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    runtime: nodejs:20
-```
+- **Language**: From `package.json`, `go.mod`, `pyproject.toml`, `requirements.txt`
+- **Framework**: From dependencies (Next.js, FastAPI, Gin, etc.)
+- **Package Manager**: From lockfiles (`pnpm-lock.yaml`, `yarn.lock`, `poetry.lock`)
+- **Commands**: From `package.json` scripts or `Makefile` targets
 
-### Use Pre-built Image
+### Example with Minimal Config
 
 ```yaml
 functions:
-  api:
-    image: ghcr.io/myorg/api-function:v1.0.0
-    runtime: nodejs:20
+  web:
+    src:
+      path: ./apps/web
+    # Everything else is inferred:
+    # - Language: typescript (from tsconfig.json)
+    # - Framework: nextjs (from package.json dependencies)
+    # - Install: pnpm install (from pnpm-lock.yaml)
+    # - Dev: pnpm run dev (from package.json scripts)
+    # - Port: 3000 (framework default)
 ```
 
 ## Framework Support
@@ -58,66 +100,55 @@ Specify a framework hint for specialized platform support:
 ```yaml
 functions:
   web:
-    build:
-      context: ./web
-    framework: nextjs
+    src:
+      path: ./web
+      framework: nextjs
     
   docs:
-    build:
-      context: ./docs
-    framework: nuxt
+    src:
+      path: ./docs
+      framework: nuxt
 ```
 
-Supported frameworks:
+Supported frameworks with auto-detection:
 
-| Framework | Description |
-|-----------|-------------|
-| `nextjs` | Next.js applications |
-| `nuxt` | Nuxt.js applications |
-| `sveltekit` | SvelteKit applications |
-| `remix` | Remix applications |
-| `astro` | Astro applications |
-
-## Runtime Configuration
-
-```yaml
-functions:
-  api:
-    build:
-      context: ./api
-    runtime: nodejs:20
-    memory: "1024Mi"      # Memory per invocation
-    timeout: 60           # Timeout in seconds
-```
+| Framework | Language | Default Port | Detection |
+|-----------|----------|--------------|-----------|
+| `nextjs` | TypeScript/JavaScript | 3000 | `next` dependency |
+| `nuxt` | TypeScript/JavaScript | 3000 | `nuxt` dependency |
+| `remix` | TypeScript/JavaScript | 3000 | `@remix-run/*` dependencies |
+| `express` | JavaScript | 3000 | `express` dependency |
+| `hono` | TypeScript | 3000 | `hono` dependency |
+| `nestjs` | TypeScript | 3000 | `@nestjs/core` dependency |
+| `fastapi` | Python | 8000 | `fastapi` dependency |
+| `flask` | Python | 5000 | `flask` dependency |
+| `django` | Python | 8000 | `django` dependency |
+| `gin` | Go | 8080 | `github.com/gin-gonic/gin` import |
+| `echo` | Go | 8080 | `github.com/labstack/echo` import |
+| `fiber` | Go | 3000 | `github.com/gofiber/fiber` import |
 
 ## Environment Variables
 
 ```yaml
 functions:
   web:
-    build:
-      context: ./web
+    src:
+      path: ./web
     environment:
       DATABASE_URL: ${{ databases.main.url }}
       REDIS_URL: ${{ databases.cache.url }}
       LOG_LEVEL: ${{ variables.log_level }}
 ```
 
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| `${{ functions.<name>.url }}` | Function URL (when assigned by route) |
-
 ## Functions vs Deployments
 
-Choose functions when:
+Choose **functions** when:
 - Traffic is sporadic or unpredictable
 - You want to scale to zero during idle periods
-- Response time can tolerate cold starts
+- Using frameworks like Next.js, Nuxt, or similar
 - Cost optimization is important
 
-Choose deployments when:
+Choose **deployments** when:
 - Traffic is consistent
 - You need persistent connections (WebSockets, gRPC streams)
 - Cold start latency is unacceptable
@@ -135,23 +166,36 @@ variables:
     default: "info"
 
 functions:
+  # Source-based Next.js app (minimal config - everything inferred)
   web:
-    build:
-      context: ./web
-    framework: nextjs
+    src:
+      path: ./web
+      framework: nextjs
     environment:
       DATABASE_URL: ${{ databases.main.url }}
     memory: "1024Mi"
     timeout: 60
 
+  # Source-based API with explicit config
   api:
-    build:
-      context: ./api
-    runtime: nodejs:20
+    src:
+      path: ./api
+      language: typescript
+      runtime: nodejs20.x
+      dev: npm run dev
+      start: npm run start
+    port: 3001
     environment:
       DATABASE_URL: ${{ databases.main.url }}
     memory: "512Mi"
     timeout: 30
+
+  # Container-based function (legacy or specialized)
+  legacy:
+    container:
+      image: ghcr.io/myorg/legacy-api:v1.0.0
+    port: 8080
+    memory: "256Mi"
 
 # Routes can point directly to functions - no services needed
 routes:

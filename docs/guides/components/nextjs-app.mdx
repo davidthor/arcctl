@@ -46,9 +46,9 @@ buckets:
 
 functions:
   web:
-    build:
-      context: .
-    framework: nextjs
+    src:
+      path: .
+      framework: nextjs
     environment:
       DATABASE_URL: ${{ databases.main.url }}
       S3_ENDPOINT: ${{ buckets.uploads.endpoint }}
@@ -77,9 +77,9 @@ The `framework: nextjs` hint tells the datacenter to use Next.js-optimized deplo
 ```yaml
 functions:
   web:
-    build:
-      context: .
-    framework: nextjs  # Enables Next.js-specific optimizations
+    src:
+      path: .
+      framework: nextjs  # Enables Next.js-specific optimizations
 ```
 
 Datacenters like Vercel can use this to deploy with native Next.js support, while Kubernetes-based datacenters might use a container-based approach.

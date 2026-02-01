@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/architect-io/arcctl/pkg/schema/component"
+	"github.com/architect-io/arcctl/pkg/schema/component/inference"
 	"github.com/architect-io/arcctl/pkg/state"
 	"github.com/architect-io/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
@@ -122,7 +124,18 @@ The up command:
 				return fmt.Errorf("failed to create state manager: %w", err)
 			}
 
-			ctx := context.Background()
+			// Create cancellable context that responds to Ctrl+C
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			// Set up signal handling for graceful shutdown during provisioning
+			sigChan := make(chan os.Signal, 1)
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+			go func() {
+				<-sigChan
+				fmt.Println("\nInterrupted, cancelling...")
+				cancel()
+			}()
 
 			// Ensure local datacenter exists
 			dcName := "local"
@@ -273,12 +286,118 @@ The up command:
 				return nil
 			}
 
+			// Track running processes for cleanup
+			var runningProcesses []*exec.Cmd
+
 			// Process functions (preferred for Next.js apps)
 			for _, fn := range comp.Functions() {
-				if err := buildAndRun(fn.Name(), fn.Build(), fn.Image(), "function"); err != nil {
+				if fn.IsSourceBased() {
+					// Source-based functions run as local processes
+					src := fn.Src()
+					srcPath := src.Path()
+					if !filepath.IsAbs(srcPath) {
+						srcPath = filepath.Join(absPath, srcPath)
+					}
+
+					// Use inference to fill in missing values
+					inferredInfo, err := inference.InferProjectWithOverrides(srcPath, src.Language(), src.Framework())
+					if err != nil {
+						fmt.Printf("[function] Warning: could not infer project info for %q: %v\n", fn.Name(), err)
+					}
+
+					// Determine dev command (explicit > inferred)
+					devCommand := inference.FirstNonEmpty(src.Dev(), inferredInfo.DevCommand)
+					if devCommand == "" {
+						fmt.Printf("[function] No dev command found for %q - skipping\n", fn.Name())
+						continue
+					}
+
+					// Determine install command
+					installCommand := inference.FirstNonEmpty(src.Install(), inferredInfo.InstallCommand)
+
+					// Determine port
+					port := inference.FirstNonZero(fn.Port(), inferredInfo.Port, 3000)
+
+					fmt.Printf("[function] Starting source-based function %q\n", fn.Name())
+					fmt.Printf("           Path: %s\n", srcPath)
+					if inferredInfo != nil && inferredInfo.Framework != "" {
+						fmt.Printf("           Framework: %s\n", inferredInfo.Framework)
+					}
+
+					// Run install command if specified
+					if installCommand != "" {
+						fmt.Printf("[install] Running %q...\n", installCommand)
+						installCmd := exec.CommandContext(ctx, "sh", "-c", installCommand)
+						installCmd.Dir = srcPath
+						installCmd.Stdout = os.Stdout
+						installCmd.Stderr = os.Stderr
+						if err := installCmd.Run(); err != nil {
+							return fmt.Errorf("install command failed for %q: %w", fn.Name(), err)
+						}
+					}
+
+					// Start the dev server
+					fmt.Printf("[dev] Running %q\n", devCommand)
+					devCmd := exec.CommandContext(ctx, "sh", "-c", devCommand)
+					devCmd.Dir = srcPath
+
+					// Merge environment variables
+					devCmd.Env = os.Environ()
+					for k, v := range buildEnv() {
+						devCmd.Env = append(devCmd.Env, fmt.Sprintf("%s=%s", k, v))
+					}
+					for k, v := range fn.Environment() {
+						devCmd.Env = append(devCmd.Env, fmt.Sprintf("%s=%s", k, v))
+					}
+					// Set PORT environment variable
+					devCmd.Env = append(devCmd.Env, fmt.Sprintf("PORT=%d", port))
+
+					// Create pipes for output
+					stdout, _ := devCmd.StdoutPipe()
+					stderr, _ := devCmd.StderrPipe()
+
+					if err := devCmd.Start(); err != nil {
+						return fmt.Errorf("failed to start function %q: %w", fn.Name(), err)
+					}
+
+					runningProcesses = append(runningProcesses, devCmd)
+
+					// Stream output with prefix
+					go streamWithPrefix(stdout, fmt.Sprintf("[%s] ", fn.Name()))
+					go streamWithPrefix(stderr, fmt.Sprintf("[%s] ", fn.Name()))
+
+					appPort = port
+					fmt.Printf("[function] Function %q running on port %d\n", fn.Name(), port)
+					continue
+				}
+				// Container-based functions
+				var build component.Build
+				var image string
+				if fn.Container() != nil {
+					build = fn.Container().Build()
+					image = fn.Container().Image()
+				}
+				if err := buildAndRun(fn.Name(), build, image, "function"); err != nil {
 					return err
 				}
 			}
+
+			// Cleanup function for processes
+			cleanupProcesses := func() {
+				for _, cmd := range runningProcesses {
+					if cmd.Process != nil {
+						_ = cmd.Process.Signal(syscall.SIGTERM)
+					}
+				}
+				// Give processes time to terminate gracefully
+				time.Sleep(500 * time.Millisecond)
+				for _, cmd := range runningProcesses {
+					if cmd.Process != nil {
+						_ = cmd.Process.Kill()
+					}
+				}
+			}
+			defer cleanupProcesses()
 
 			// Process deployments
 			for _, depl := range comp.Deployments() {
@@ -339,23 +458,24 @@ The up command:
 				fmt.Println()
 				fmt.Println("Press Ctrl+C to stop...")
 
-				// Handle graceful shutdown
-				sigChan := make(chan os.Signal, 1)
-				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-				<-sigChan
+				// Wait for context cancellation (already set up above)
+				<-ctx.Done()
 
 				fmt.Println()
 				fmt.Println("Shutting down...")
 
+				// Use a fresh context for cleanup since the original is cancelled
+				cleanupCtx := context.Background()
+
 				// Cleanup containers
-				if err := CleanupByEnvName(ctx, envName); err != nil {
+				if err := CleanupByEnvName(cleanupCtx, envName); err != nil {
 					fmt.Printf("Warning: failed to cleanup containers: %v\n", err)
 				}
 
 				// Update state
 				env.Status = types.EnvironmentStatusPending
 				env.UpdatedAt = time.Now()
-				_ = mgr.SaveEnvironment(ctx, env)
+				_ = mgr.SaveEnvironment(cleanupCtx, env)
 
 				fmt.Println("Stopped.")
 			}
@@ -414,4 +534,23 @@ func upParseVarFile(data []byte, vars map[string]string) error {
 		}
 	}
 	return nil
+}
+
+// streamWithPrefix reads from a reader and prints each line with a prefix.
+func streamWithPrefix(r io.Reader, prefix string) {
+	buf := make([]byte, 1024)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			lines := strings.Split(string(buf[:n]), "\n")
+			for _, line := range lines {
+				if line != "" {
+					fmt.Printf("%s%s\n", prefix, line)
+				}
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
 }

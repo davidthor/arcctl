@@ -124,27 +124,43 @@ func (b *Builder) AddComponent(componentName string, comp component.Component) e
 	for _, fn := range comp.Functions() {
 		node := NewNode(NodeTypeFunction, componentName, fn.Name())
 
-		if fn.Image() != "" {
-			node.SetInput("image", fn.Image())
-		}
-		node.SetInput("runtime", fn.Runtime())
-		node.SetInput("framework", fn.Framework())
+		// Set common fields
 		node.SetInput("environment", fn.Environment())
 		node.SetInput("cpu", fn.CPU())
 		node.SetInput("memory", fn.Memory())
 		node.SetInput("timeout", fn.Timeout())
+		node.SetInput("port", fn.Port())
 
-		// If has build, add docker build node
-		if fn.Build() != nil {
-			buildNode := NewNode(NodeTypeDockerBuild, componentName, fn.Name()+"-build")
-			buildNode.SetInput("context", resolveBuildContext(compDir, fn.Build().Context()))
-			buildNode.SetInput("dockerfile", resolveBuildContext(compDir, fn.Build().Dockerfile()))
-			buildNode.SetInput("args", fn.Build().Args())
+		// Handle discriminated union
+		if fn.IsSourceBased() {
+			src := fn.Src()
+			node.SetInput("srcPath", src.Path())
+			node.SetInput("language", src.Language())
+			node.SetInput("runtime", src.Runtime())
+			node.SetInput("framework", src.Framework())
+			node.SetInput("install", src.Install())
+			node.SetInput("dev", src.Dev())
+			node.SetInput("build", src.Build())
+			node.SetInput("start", src.Start())
+			node.SetInput("handler", src.Handler())
+			node.SetInput("entry", src.Entry())
+		} else if fn.IsContainerBased() {
+			container := fn.Container()
+			if container.Image() != "" {
+				node.SetInput("image", container.Image())
+			}
+			// If has build, add docker build node
+			if container.Build() != nil {
+				buildNode := NewNode(NodeTypeDockerBuild, componentName, fn.Name()+"-build")
+				buildNode.SetInput("context", resolveBuildContext(compDir, container.Build().Context()))
+				buildNode.SetInput("dockerfile", resolveBuildContext(compDir, container.Build().Dockerfile()))
+				buildNode.SetInput("args", container.Build().Args())
 
-			node.AddDependency(buildNode.ID)
-			buildNode.AddDependent(node.ID)
+				node.AddDependency(buildNode.ID)
+				buildNode.AddDependent(node.ID)
 
-			_ = b.graph.AddNode(buildNode)
+				_ = b.graph.AddNode(buildNode)
+			}
 		}
 
 		// Parse environment for dependencies

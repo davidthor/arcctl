@@ -224,17 +224,36 @@ func (t *Transformer) transformDeployment(name string, dep DeploymentV1) (intern
 
 func (t *Transformer) transformFunction(name string, fn FunctionV1) (internal.InternalFunction, error) {
 	ifn := internal.InternalFunction{
-		Name:      name,
-		Image:     fn.Image,
-		Runtime:   fn.Runtime,
-		Framework: fn.Framework,
-		CPU:       fn.CPU,
-		Memory:    fn.Memory,
-		Timeout:   fn.Timeout,
+		Name:    name,
+		Port:    fn.Port,
+		CPU:     fn.CPU,
+		Memory:  fn.Memory,
+		Timeout: fn.Timeout,
 	}
 
-	if fn.Build != nil {
-		ifn.Build = t.transformBuild(fn.Build)
+	// Transform discriminated union
+	if fn.Src != nil {
+		ifn.Src = &internal.InternalFunctionSource{
+			Path:      fn.Src.Path,
+			Language:  fn.Src.Language,
+			Runtime:   fn.Src.Runtime,
+			Framework: fn.Src.Framework,
+			Install:   fn.Src.Install,
+			Dev:       fn.Src.Dev,
+			Build:     fn.Src.Build,
+			Start:     fn.Src.Start,
+			Handler:   fn.Src.Handler,
+			Entry:     fn.Src.Entry,
+		}
+	}
+
+	if fn.Container != nil {
+		ifn.Container = &internal.InternalFunctionContainer{
+			Image: fn.Container.Image,
+		}
+		if fn.Container.Build != nil {
+			ifn.Container.Build = t.transformBuild(fn.Container.Build)
+		}
 	}
 
 	// Transform environment with expression detection

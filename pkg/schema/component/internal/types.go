@@ -108,22 +108,42 @@ type InternalDeployment struct {
 }
 
 // InternalFunction represents a serverless function.
+// Uses a discriminated union: either Src OR Container is set (not both).
 type InternalFunction struct {
 	Name string
 
-	// Image source (one of these is set)
-	Image string
-	Build *InternalBuild
+	// Discriminated union - exactly one is set
+	Src       *InternalFunctionSource
+	Container *InternalFunctionContainer
 
-	// Function configuration
-	Runtime     string // e.g., "nodejs:20", "python:3.11"
-	Framework   string // e.g., "nextjs", "nuxt"
+	// Common configuration
+	Port        int
 	Environment map[string]Expression
+	CPU         string
+	Memory      string
+	Timeout     int // seconds
+}
 
-	// Resource allocation
-	CPU     string
-	Memory  string
-	Timeout int // seconds
+// InternalFunctionSource represents a source-based function.
+// Most fields are optional and can be inferred from project files at runtime.
+type InternalFunctionSource struct {
+	Path      string // Required: path to source code
+	Language  string // e.g., "javascript", "typescript", "python", "go"
+	Runtime   string // e.g., "nodejs20.x", "python3.11" (for Lambda-style platforms)
+	Framework string // e.g., "nextjs", "fastapi", "express"
+	Install   string // Dependency installation command
+	Dev       string // Development server command
+	Build     string // Production build command
+	Start     string // Production start command
+	Handler   string // Lambda-style handler (e.g., "index.handler")
+	Entry     string // Entry point file
+}
+
+// InternalFunctionContainer represents a container-based function.
+// Either Build or Image is set (not both).
+type InternalFunctionContainer struct {
+	Build *InternalBuild // Build from Dockerfile
+	Image string         // Pre-built image reference
 }
 
 // InternalService represents internal service exposure for deployments.

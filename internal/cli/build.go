@@ -102,9 +102,9 @@ When building a component, arcctl creates multiple artifacts:
 				}
 			}
 
-			// Process functions
+			// Process functions (only container-based functions have builds)
 			for _, fn := range comp.Functions() {
-				if fn.Build() != nil {
+				if fn.IsContainerBased() && fn.Container().Build() != nil {
 					childRef := fmt.Sprintf("%s-function-%s%s", baseRef, fn.Name(), tagPart)
 					childArtifacts[fmt.Sprintf("functions/%s", fn.Name())] = childRef
 				}
@@ -172,15 +172,15 @@ When building a component, arcctl creates multiple artifacts:
 				}
 			}
 
-			// Collect build info from functions
+			// Collect build info from functions (only container-based functions)
 			for _, fn := range comp.Functions() {
-				if fn.Build() != nil {
+				if fn.IsContainerBased() && fn.Container().Build() != nil {
 					key := fmt.Sprintf("functions/%s", fn.Name())
 					childBuilds[key] = buildInfo{
-						context:    fn.Build().Context(),
-						dockerfile: fn.Build().Dockerfile(),
-						target:     fn.Build().Target(),
-						args:       fn.Build().Args(),
+						context:    fn.Container().Build().Context(),
+						dockerfile: fn.Container().Build().Dockerfile(),
+						target:     fn.Container().Build().Target(),
+						args:       fn.Container().Build().Args(),
 					}
 				}
 			}

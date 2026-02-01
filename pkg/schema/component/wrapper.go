@@ -251,20 +251,28 @@ type functionWrapper struct {
 	fn *internal.InternalFunction
 }
 
-func (f *functionWrapper) Name() string      { return f.fn.Name }
-func (f *functionWrapper) Image() string     { return f.fn.Image }
-func (f *functionWrapper) Runtime() string   { return f.fn.Runtime }
-func (f *functionWrapper) Framework() string { return f.fn.Framework }
-func (f *functionWrapper) CPU() string       { return f.fn.CPU }
-func (f *functionWrapper) Memory() string    { return f.fn.Memory }
-func (f *functionWrapper) Timeout() int      { return f.fn.Timeout }
+func (f *functionWrapper) Name() string   { return f.fn.Name }
+func (f *functionWrapper) Port() int      { return f.fn.Port }
+func (f *functionWrapper) CPU() string    { return f.fn.CPU }
+func (f *functionWrapper) Memory() string { return f.fn.Memory }
+func (f *functionWrapper) Timeout() int   { return f.fn.Timeout }
 
-func (f *functionWrapper) Build() Build {
-	if f.fn.Build == nil {
+func (f *functionWrapper) Src() FunctionSource {
+	if f.fn.Src == nil {
 		return nil
 	}
-	return &buildWrapper{b: f.fn.Build}
+	return &functionSourceWrapper{src: f.fn.Src}
 }
+
+func (f *functionWrapper) Container() FunctionContainer {
+	if f.fn.Container == nil {
+		return nil
+	}
+	return &functionContainerWrapper{c: f.fn.Container}
+}
+
+func (f *functionWrapper) IsSourceBased() bool    { return f.fn.Src != nil }
+func (f *functionWrapper) IsContainerBased() bool { return f.fn.Container != nil }
 
 func (f *functionWrapper) Environment() map[string]string {
 	result := make(map[string]string)
@@ -272,6 +280,36 @@ func (f *functionWrapper) Environment() map[string]string {
 		result[k] = v.Raw
 	}
 	return result
+}
+
+// FunctionSource wrapper
+type functionSourceWrapper struct {
+	src *internal.InternalFunctionSource
+}
+
+func (f *functionSourceWrapper) Path() string      { return f.src.Path }
+func (f *functionSourceWrapper) Language() string  { return f.src.Language }
+func (f *functionSourceWrapper) Runtime() string   { return f.src.Runtime }
+func (f *functionSourceWrapper) Framework() string { return f.src.Framework }
+func (f *functionSourceWrapper) Install() string   { return f.src.Install }
+func (f *functionSourceWrapper) Dev() string       { return f.src.Dev }
+func (f *functionSourceWrapper) Build() string     { return f.src.Build }
+func (f *functionSourceWrapper) Start() string     { return f.src.Start }
+func (f *functionSourceWrapper) Handler() string   { return f.src.Handler }
+func (f *functionSourceWrapper) Entry() string     { return f.src.Entry }
+
+// FunctionContainer wrapper
+type functionContainerWrapper struct {
+	c *internal.InternalFunctionContainer
+}
+
+func (f *functionContainerWrapper) Image() string { return f.c.Image }
+
+func (f *functionContainerWrapper) Build() Build {
+	if f.c.Build == nil {
+		return nil
+	}
+	return &buildWrapper{b: f.c.Build}
 }
 
 // Service wrapper

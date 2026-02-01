@@ -268,24 +268,60 @@ func (v *Validator) validateFunctions(functions map[string]FunctionV1) []Validat
 	var errs []ValidationError
 
 	for name, fn := range functions {
-		if fn.Image == "" && fn.Build == nil {
+		// Validate discriminated union: exactly one of src or container must be set
+		hasSrc := fn.Src != nil
+		hasContainer := fn.Container != nil
+
+		if !hasSrc && !hasContainer {
 			errs = append(errs, ValidationError{
 				Field:   fmt.Sprintf("functions.%s", name),
-				Message: "either image or build is required",
+				Message: "either src or container is required",
 			})
 		}
-		if fn.Image != "" && fn.Build != nil {
+		if hasSrc && hasContainer {
 			errs = append(errs, ValidationError{
 				Field:   fmt.Sprintf("functions.%s", name),
-				Message: "image and build are mutually exclusive",
+				Message: "src and container are mutually exclusive",
 			})
 		}
-		if fn.Build != nil && fn.Build.Context == "" {
-			errs = append(errs, ValidationError{
-				Field:   fmt.Sprintf("functions.%s.build.context", name),
-				Message: "context is required for build",
-			})
+
+		// Validate src-based function
+		if fn.Src != nil {
+			if fn.Src.Path == "" {
+				errs = append(errs, ValidationError{
+					Field:   fmt.Sprintf("functions.%s.src.path", name),
+					Message: "path is required",
+				})
+			}
+			// All other src fields are optional (can be inferred)
 		}
+
+		// Validate container-based function
+		if fn.Container != nil {
+			hasBuild := fn.Container.Build != nil
+			hasImage := fn.Container.Image != ""
+
+			if !hasBuild && !hasImage {
+				errs = append(errs, ValidationError{
+					Field:   fmt.Sprintf("functions.%s.container", name),
+					Message: "either build or image is required",
+				})
+			}
+			if hasBuild && hasImage {
+				errs = append(errs, ValidationError{
+					Field:   fmt.Sprintf("functions.%s.container", name),
+					Message: "build and image are mutually exclusive",
+				})
+			}
+			if fn.Container.Build != nil && fn.Container.Build.Context == "" {
+				errs = append(errs, ValidationError{
+					Field:   fmt.Sprintf("functions.%s.container.build.context", name),
+					Message: "context is required for build",
+				})
+			}
+		}
+
+		// Validate common fields
 		if fn.Timeout < 0 {
 			errs = append(errs, ValidationError{
 				Field:   fmt.Sprintf("functions.%s.timeout", name),

@@ -52,6 +52,50 @@ environment:
 | `variables.<name>` | Variable value |
 | `dependencies.<name>.<output>` | Dependency outputs |
 
+## Functions
+
+Functions use a discriminated union: either `src` (source-based) or `container` (container-based).
+
+### Source-Based Function (Recommended)
+
+```yaml
+functions:
+  web:
+    src:
+      path: ./web
+      framework: nextjs  # Optional - auto-detected
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+    memory: "1024Mi"
+```
+
+Most `src` fields are optional and auto-detected:
+- `language`: Detected from package.json, go.mod, pyproject.toml
+- `framework`: Detected from dependencies (next, fastapi, gin, etc.)
+- `install`, `dev`, `build`, `start`: Detected from scripts/Makefile
+
+### Container-Based Function
+
+```yaml
+functions:
+  api:
+    container:
+      build:
+        context: ./api
+        dockerfile: Dockerfile
+    port: 8080
+```
+
+Or with a pre-built image:
+
+```yaml
+functions:
+  api:
+    container:
+      image: ghcr.io/myorg/api:v1.0.0
+    port: 8080
+```
+
 ## Common Patterns
 
 ### Database with Migrations
@@ -102,6 +146,21 @@ routes:
         backendRefs:
           - service: api
             port: 8080
+```
+
+### Route Pointing to Function
+
+```yaml
+functions:
+  web:
+    src:
+      path: ./web
+      framework: nextjs
+
+routes:
+  main:
+    type: http
+    function: web  # Simplified form - routes can point directly to functions
 ```
 
 ## Supported Database Types

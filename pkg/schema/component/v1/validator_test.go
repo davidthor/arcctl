@@ -126,7 +126,7 @@ func TestValidator_Validate(t *testing.T) {
 			name: "route with valid function",
 			schema: &SchemaV1{
 				Functions: map[string]FunctionV1{
-					"web": {Build: &BuildV1{Context: "."}, Framework: "nextjs"},
+					"web": {Src: &FunctionSourceV1{Path: "./app", Framework: "nextjs"}},
 				},
 				Routes: map[string]RouteV1{
 					"main": {Type: "http", Function: "web"},
