@@ -60,7 +60,7 @@ To deploy manually using arcctl (name and datacenter are CLI flags):
 ```bash
 # From repository root
 arcctl update environment clerk-test \
-  -d ./examples/datacenters/local-docker \
+  -d ./official-templates/local-docker \
   ./testdata/integration/clerk-nextjs-postgres/environment.yml
 ```
 

@@ -113,7 +113,7 @@ deployments:
 **When modifying schemas or CLI commands, you MUST update all relevant documentation.** This is not optional.
 
 - **Component schema changes** (`pkg/schema/component/`): Update `docs/components/`, affected `docs/guides/components/`, and `examples/components/`
-- **Datacenter schema changes** (`pkg/schema/datacenter/`): Update `docs/datacenters/`, affected `docs/guides/datacenters/`, and `examples/datacenters/`
+- **Datacenter schema changes** (`pkg/schema/datacenter/`): Update `docs/datacenters/`, affected `docs/guides/datacenters/`, and `official-templates/`
 - **CLI command changes** (`internal/cli/`): Update `docs/cli/`, `docs/cli/overview.mdx`, and affected guides
 - **Environment schema changes** (`pkg/schema/environment/`): Update `docs/environments/`
 - **New pages**: Add to `docs/docs.json` navigation

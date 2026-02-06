@@ -1,0 +1,150 @@
+---
+title: "CircleCI"
+description: "Automate arcctl builds and deployments with CircleCI"
+---
+
+# CircleCI
+
+This guide provides a complete CircleCI configuration for building and deploying components with arcctl.
+
+## Build and Deploy Workflow
+
+A workflow with separate build and deploy jobs, gating staging deployment to the `main` branch:
+
+```yaml
+# .circleci/config.yml
+version: 2.1
+
+executors:
+  go:
+    docker:
+      - image: cimg/go:1.22
+
+jobs:
+  build:
+    executor: go
+    steps:
+      - checkout
+      - run:
+          name: Install arcctl
+          command: go install github.com/architect-io/arcctl@latest
+      - run:
+          name: Build component
+          command: |
+            arcctl build component . \
+              -t ghcr.io/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_SHA1
+      - run:
+          name: Push component
+          command: |
+            arcctl push component \
+              ghcr.io/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_SHA1
+
+  deploy-staging:
+    executor: go
+    steps:
+      - run:
+          name: Install arcctl
+          command: go install github.com/architect-io/arcctl@latest
+      - run:
+          name: Deploy to staging
+          command: |
+            arcctl deploy component \
+              ghcr.io/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_SHA1 \
+              -e staging \
+              --auto-approve
+
+workflows:
+  build-and-deploy:
+    jobs:
+      - build
+      - deploy-staging:
+          requires:
+            - build
+          filters:
+            branches:
+              only: main
+```
+
+## Key Concepts
+
+### Executors
+
+Use a Go executor since arcctl is installed via `go install`:
+
+```yaml
+executors:
+  go:
+    docker:
+      - image: cimg/go:1.22
+```
+
+### Job Dependencies
+
+Use `requires` to ensure the build completes before deployment:
+
+```yaml
+workflows:
+  build-and-deploy:
+    jobs:
+      - build
+      - deploy-staging:
+          requires:
+            - build
+```
+
+### Branch Filters
+
+Restrict deployments to specific branches:
+
+```yaml
+filters:
+  branches:
+    only: main
+```
+
+### Adding Production Deployment
+
+Extend the workflow with a manual approval gate for production:
+
+```yaml
+workflows:
+  build-and-deploy:
+    jobs:
+      - build
+      - deploy-staging:
+          requires:
+            - build
+          filters:
+            branches:
+              only: main
+      - hold-production:
+          type: approval
+          requires:
+            - deploy-staging
+      - deploy-production:
+          requires:
+            - hold-production
+```
+
+## Environment Variables
+
+Set the following environment variables in your CircleCI project settings:
+
+| Variable | Description |
+|----------|-------------|
+| `ARCCTL_BACKEND` | State backend type (e.g., `s3`) |
+| `ARCCTL_BACKEND_S3_BUCKET` | S3 bucket for state storage |
+| `ARCCTL_BACKEND_S3_REGION` | AWS region for state bucket |
+| `AWS_ACCESS_KEY_ID` | AWS credentials for deployment |
+| `AWS_SECRET_ACCESS_KEY` | AWS credentials for deployment |
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="CI/CD Best Practices" icon="shield-check" href="/guides/ci-cd/best-practices">
+    State backends, secrets, and deployment strategies
+  </Card>
+  <Card title="CI/CD Overview" icon="arrows-spin" href="/guides/ci-cd/overview">
+    Pipeline concepts and key commands
+  </Card>
+</CardGroup>

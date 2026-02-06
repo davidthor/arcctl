@@ -78,7 +78,8 @@ Aliases: `comp` for `component`, `dc` for `datacenter`, `env` for `environment`,
 | `pkg/logs/` | Log query plugin system (querier interface, Loki adapter) |
 | `pkg/errors/` | Structured error types |
 | `testdata/` | Test fixtures |
-| `examples/` | Example configurations |
+| `examples/` | Example component configurations |
+| `official-templates/` | Official datacenter templates |
 
 ## Component Authoring (architect.yml)
 
@@ -421,7 +422,7 @@ func TestParse(t *testing.T) {
 4. Create new reference page in `docs/datacenters/<hook>-hook.mdx`
 5. Add to navigation in `docs/docs.json`
 6. Update `docs/datacenters/overview.mdx` with the new hook type
-7. Add examples in `examples/datacenters/` if applicable
+7. Add or update official templates in `official-templates/` if applicable
 8. Update `AGENTS.md` (Hook Types & Required Outputs, Datacenter Authoring sections)
 9. Update `.cursor/rules/datacenters.mdc` with the new hook type
 
@@ -463,7 +464,8 @@ func TestParse(t *testing.T) {
 | `docs/guides/components/` | Step-by-step component authoring guides (Next.js, microservices, etc.) |
 | `docs/guides/datacenters/` | Step-by-step datacenter authoring guides (local Docker, AWS ECS, etc.) |
 | `docs/concepts/` | High-level conceptual documentation |
-| `examples/` | Example configurations (components and datacenters) |
+| `examples/` | Example component configurations |
+| `official-templates/` | Official datacenter templates (local Docker, AWS ECS, etc.) |
 
 ### Keeping Documentation In Sync (IMPORTANT)
 
@@ -481,7 +483,7 @@ When modifying anything in `pkg/schema/component/`:
 When modifying anything in `pkg/schema/datacenter/`:
 1. Update the relevant hook reference page(s) in `docs/datacenters/` (e.g., adding an output to the database hook → update `docs/datacenters/database-hook.mdx`)
 2. Update any affected guides in `docs/guides/datacenters/` that demonstrate the changed feature
-3. Update example configurations in `examples/datacenters/` if they use the changed feature
+3. Update official templates in `official-templates/` if they use the changed feature
 4. Update `AGENTS.md` sections (Datacenter Authoring, Hook Types & Required Outputs) if the change affects datacenter authoring guidance
 5. Update `.cursor/rules/datacenters.mdc` if the change affects datacenter authoring patterns
 

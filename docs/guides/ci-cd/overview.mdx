@@ -1,0 +1,78 @@
+---
+title: "CI/CD Overview"
+description: "Automate arcctl builds and deployments in your CI/CD pipeline"
+---
+
+# CI/CD Integration
+
+Integrate arcctl into your CI/CD pipeline to automate component builds, pushes, and deployments. arcctl is designed to run headlessly in any CI environment -- all you need is the CLI binary and access to your state backend.
+
+## Typical Pipeline
+
+A standard arcctl CI/CD pipeline follows this flow:
+
+```mermaid
+graph LR
+    A[Push] --> B[Build]
+    B --> C[Push]
+    C --> D[Deploy Staging]
+    D --> E[Test]
+    E --> F[Deploy Production]
+```
+
+1. **Build** -- `arcctl build component` creates OCI artifacts from your source code
+2. **Push** -- `arcctl push component` uploads artifacts to your container registry
+3. **Deploy Staging** -- `arcctl deploy component` rolls out to a staging environment
+4. **Test** -- Run integration/smoke tests against staging
+5. **Deploy Production** -- Promote the same artifact to production
+
+## Key Commands for CI
+
+```bash
+# Build a component artifact
+arcctl build component . -t ghcr.io/myorg/my-app:$CI_COMMIT_SHA
+
+# Push to registry
+arcctl push component ghcr.io/myorg/my-app:$CI_COMMIT_SHA
+
+# Deploy to an environment (non-interactive)
+arcctl deploy component ghcr.io/myorg/my-app:$CI_COMMIT_SHA \
+  -e staging --auto-approve
+
+# Create a preview environment
+arcctl create environment preview-123 -d my-datacenter
+
+# Destroy a preview environment
+arcctl destroy environment preview-123 --auto-approve
+```
+
+<Note>
+Always use `--auto-approve` in CI pipelines to skip interactive confirmation prompts. Provide all required variables via `--var` or `--var-file` since interactive prompts are not available.
+</Note>
+
+## Vendor Guides
+
+Choose your CI/CD platform for complete pipeline examples:
+
+<CardGroup cols={3}>
+  <Card title="GitHub Actions" icon="github" href="/guides/ci-cd/github-actions">
+    Workflows for build, deploy, and preview environments
+  </Card>
+  <Card title="GitLab CI" icon="gitlab" href="/guides/ci-cd/gitlab-ci">
+    Multi-stage pipeline with manual production gates
+  </Card>
+  <Card title="CircleCI" icon="circle" href="/guides/ci-cd/circleci">
+    Jobs and workflows for build and deploy
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Best Practices" icon="shield-check" href="/guides/ci-cd/best-practices">
+    State backends, secrets, and deployment strategies for CI
+  </Card>
+  <Card title="Developer Workflow" icon="code" href="/guides/developer-workflow">
+    Local development and deployment guide
+  </Card>
+</CardGroup>

@@ -1,20 +1,22 @@
 ---
 title: "Platform Engineer Workflow"
-description: "Building and managing datacenters with arcctl"
+description: "The complete DevOps guide to authoring datacenters and managing infrastructure with arcctl"
 ---
 
 # Platform Engineer Workflow
 
-This guide covers how platform engineers create datacenters to enable self-service deployments for developers.
+Welcome to the DevOps guide for arcctl. This is your starting point for learning how to author datacenters, deploy them, provision environments for your developers, and monitor the infrastructure running beneath their applications.
+
+As a platform engineer, you define *how* resources are provisioned so that developers can focus on *what* they need. Your datacenter configuration translates portable component declarations (like `databases.main: postgres:^16`) into real infrastructure (RDS instances, managed databases, Docker containers, etc.).
 
 ## Overview
 
 Platform engineers create datacenters that:
 
-1. **Abstract infrastructure complexity** - Developers don't need to learn IaC
-2. **Enforce organizational standards** - Consistent security, networking, tagging
-3. **Enable self-service** - Developers create environments without platform team involvement
-4. **Maintain control** - Platform team defines how resources are provisioned
+1. **Abstract infrastructure complexity** -- Developers don't need to learn IaC
+2. **Enforce organizational standards** -- Consistent security, networking, tagging
+3. **Enable self-service** -- Developers create environments without platform team involvement
+4. **Maintain control** -- Platform team defines how resources are provisioned
 
 ## Creating a Datacenter
 
@@ -444,6 +446,81 @@ arcctl dc deploy aws-production ghcr.io/myorg/aws-datacenter:v1.0.0 \
   --var-file ./vars/production.dcvars
 ```
 
+## Inspecting Running Infrastructure
+
+Once your datacenter is deployed and developers are using it, you need to monitor and inspect the running infrastructure.
+
+### List Deployed Datacenters
+
+See all datacenters you've deployed:
+
+```bash
+# List all datacenters
+arcctl list datacenter
+
+# Get detailed info about a specific datacenter
+arcctl get datacenter aws-production
+```
+
+### List Environments
+
+See which environments are running on your datacenters:
+
+```bash
+# List all environments
+arcctl list environment
+
+# Get details for a specific environment
+arcctl get environment staging
+```
+
+### Inspect Deployed Components
+
+Drill into what's running inside each environment:
+
+```bash
+# List all components in an environment
+arcctl list component -e staging
+
+# Get detailed info about a specific component
+arcctl get component my-app -e staging
+```
+
+The `get component` command shows the component's resource graph, including databases, deployments, services, and routes with their current state and outputs.
+
+### View Logs
+
+Query logs from any environment to diagnose issues:
+
+```bash
+# All logs from an environment
+arcctl logs -e staging
+
+# Logs from a specific component
+arcctl logs -e staging my-app
+
+# Logs from a specific resource type within a component
+arcctl logs -e staging my-app/deployment/api
+
+# Stream logs in real-time
+arcctl logs -e staging -f
+
+# Logs from the last 5 minutes
+arcctl logs -e staging --since 5m
+```
+
+### Observability Dashboards
+
+If your datacenter includes an observability hook, open the Grafana dashboard in your browser:
+
+```bash
+arcctl observability dashboard -e staging
+```
+
+<Tip>
+For a comprehensive guide on day-to-day environment management -- creating, updating, inspecting, and destroying environments -- see the [Managing Environments guide](/guides/managing-environments).
+</Tip>
+
 ## Best Practices
 
 ### Security
@@ -518,10 +595,16 @@ arcctl dc deploy aws-production ghcr.io/myorg/aws-datacenter:v1.0.0 \
 ## Next Steps
 
 <CardGroup cols={2}>
+  <Card title="Managing Environments" icon="layer-group" href="/guides/managing-environments">
+    Day-to-day environment operations
+  </Card>
+  <Card title="Local Docker Datacenter" icon="docker" href="/guides/datacenters/local-docker">
+    Lightweight datacenter for local dev
+  </Card>
+  <Card title="AWS ECS Datacenter" icon="aws" href="/guides/datacenters/aws-ecs">
+    Production datacenter on AWS
+  </Card>
   <Card title="Datacenter Reference" icon="server" href="/datacenters/overview">
     Full datacenter specification
-  </Card>
-  <Card title="IaC Plugins" icon="puzzle-piece" href="/architecture/iac-plugins">
-    Learn about Pulumi and OpenTofu integration
   </Card>
 </CardGroup>

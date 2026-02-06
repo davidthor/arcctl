@@ -1,0 +1,202 @@
+---
+title: "GitHub Actions"
+description: "Automate arcctl builds and deployments with GitHub Actions"
+---
+
+# GitHub Actions
+
+This guide provides complete GitHub Actions workflow examples for building, deploying, and managing preview environments with arcctl.
+
+## Build and Push on Tag
+
+Trigger a build whenever a version tag is pushed:
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install arcctl
+        run: go install github.com/architect-io/arcctl@latest
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build component
+        run: |
+          arcctl build component . \
+            -t ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+
+      - name: Push component
+        run: |
+          arcctl push component ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+```
+
+## Deploy on Push to Main
+
+Build, push, and deploy to staging on every merge to `main`:
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  ARCCTL_BACKEND: s3
+  ARCCTL_BACKEND_S3_BUCKET: my-arcctl-state
+  ARCCTL_BACKEND_S3_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789:role/arcctl-deploy
+          aws-region: us-east-1
+
+      - name: Install arcctl
+        run: go install github.com/architect-io/arcctl@latest
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and deploy to staging
+        run: |
+          # Build with commit SHA tag
+          arcctl build component . \
+            -t ${{ secrets.ECR_REGISTRY }}/my-app:${{ github.sha }}
+          
+          # Push to ECR
+          arcctl push component ${{ secrets.ECR_REGISTRY }}/my-app:${{ github.sha }}
+          
+          # Deploy to staging
+          arcctl deploy component ${{ secrets.ECR_REGISTRY }}/my-app:${{ github.sha }} \
+            -e staging \
+            --auto-approve
+```
+
+## Preview Environments for PRs
+
+Create ephemeral preview environments for each pull request, and clean them up when the PR closes:
+
+```yaml
+# .github/workflows/preview.yml
+name: Preview Environment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+env:
+  ARCCTL_BACKEND: s3
+  ARCCTL_BACKEND_S3_BUCKET: my-arcctl-state
+
+jobs:
+  deploy-preview:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install arcctl
+        run: go install github.com/architect-io/arcctl@latest
+
+      - name: Create preview environment
+        run: |
+          arcctl create environment preview-${{ github.event.number }} \
+            -d aws-staging
+
+      - name: Build and deploy
+        run: |
+          arcctl build component . \
+            -t ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+          
+          arcctl push component ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+          
+          arcctl deploy component ghcr.io/${{ github.repository }}:pr-${{ github.event.number }} \
+            -e preview-${{ github.event.number }} \
+            --auto-approve
+
+      - name: Get preview URL
+        id: preview
+        run: |
+          URL=$(arcctl get environment preview-${{ github.event.number }} --output json | jq -r '.urls[0]')
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Preview deployed: ${{ steps.preview.outputs.url }}'
+            })
+
+  cleanup-preview:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install arcctl
+        run: go install github.com/architect-io/arcctl@latest
+
+      - name: Destroy preview environment
+        run: |
+          arcctl destroy environment preview-${{ github.event.number }} --auto-approve
+```
+
+## AWS Authentication
+
+For AWS-based deployments, use IAM roles with OIDC for secure, credential-free authentication:
+
+```yaml
+- name: Configure AWS credentials
+  uses: aws-actions/configure-aws-credentials@v4
+  with:
+    role-to-assume: arn:aws:iam::123456789:role/arcctl-deploy
+    aws-region: us-east-1
+```
+
+See the [GitHub docs on OIDC with AWS](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) for setup instructions.
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="CI/CD Best Practices" icon="shield-check" href="/guides/ci-cd/best-practices">
+    State backends, secrets, and deployment strategies
+  </Card>
+  <Card title="CI/CD Overview" icon="arrows-spin" href="/guides/ci-cd/overview">
+    Pipeline concepts and key commands
+  </Card>
+</CardGroup>

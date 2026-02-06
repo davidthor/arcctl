@@ -1,0 +1,119 @@
+---
+title: "GitLab CI"
+description: "Automate arcctl builds and deployments with GitLab CI/CD"
+---
+
+# GitLab CI
+
+This guide provides a complete GitLab CI/CD pipeline for building, deploying, and promoting components with arcctl.
+
+## Build and Deploy Pipeline
+
+A multi-stage pipeline that builds on every push to `main`, deploys to staging, runs tests, and gates production behind a manual approval:
+
+```yaml
+# .gitlab-ci.yml
+stages:
+  - build
+  - deploy-staging
+  - test
+  - deploy-production
+
+variables:
+  ARCCTL_BACKEND: s3
+  ARCCTL_BACKEND_S3_BUCKET: my-arcctl-state
+  ARCCTL_BACKEND_S3_REGION: us-east-1
+
+build:
+  stage: build
+  image: golang:1.22
+  script:
+    - go install github.com/architect-io/arcctl@latest
+    - arcctl build component . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - arcctl push component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  only:
+    - main
+    - tags
+
+deploy-staging:
+  stage: deploy-staging
+  image: golang:1.22
+  script:
+    - go install github.com/architect-io/arcctl@latest
+    - arcctl deploy component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA -e staging --auto-approve
+  only:
+    - main
+  environment:
+    name: staging
+    url: https://staging.example.com
+
+integration-tests:
+  stage: test
+  script:
+    - ./scripts/run-integration-tests.sh staging
+  only:
+    - main
+
+deploy-production:
+  stage: deploy-production
+  image: golang:1.22
+  script:
+    - go install github.com/architect-io/arcctl@latest
+    - arcctl deploy component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA -e production --auto-approve
+  only:
+    - tags
+  environment:
+    name: production
+    url: https://app.example.com
+  when: manual
+```
+
+## Key Concepts
+
+### GitLab Container Registry
+
+GitLab provides a built-in container registry. The `$CI_REGISTRY_IMAGE` variable automatically resolves to the correct registry URL for your project:
+
+```yaml
+script:
+  - arcctl build component . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  - arcctl push component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+```
+
+### Manual Production Gates
+
+Use `when: manual` to require an explicit click in the GitLab UI before deploying to production:
+
+```yaml
+deploy-production:
+  when: manual
+```
+
+### Environment Tracking
+
+GitLab's `environment` keyword links deployments to GitLab Environments for tracking and rollback:
+
+```yaml
+environment:
+  name: production
+  url: https://app.example.com
+```
+
+### Tag-Based Releases
+
+The pipeline builds on both `main` and tags, but only deploys to production from tags. This supports a promotion workflow:
+
+1. Merge to `main` -- builds and deploys to staging
+2. Run tests against staging
+3. Tag a release (e.g., `v1.5.0`) -- triggers production deployment
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="CI/CD Best Practices" icon="shield-check" href="/guides/ci-cd/best-practices">
+    State backends, secrets, and deployment strategies
+  </Card>
+  <Card title="CI/CD Overview" icon="arrows-spin" href="/guides/ci-cd/overview">
+    Pipeline concepts and key commands
+  </Card>
+</CardGroup>

@@ -192,7 +192,7 @@ When making changes to the datacenter schema (hooks, expressions, module system,
 
 1. Update the relevant hook reference page(s) in `docs/datacenters/` (e.g., `database-hook.mdx`, `deployment-hook.mdx`)
 2. Update any affected guides in `docs/guides/datacenters/`
-3. Update example configs in `examples/datacenters/` if applicable
+3. Update official templates in `official-templates/` if applicable
 4. Update `AGENTS.md` datacenter authoring sections and hook types table
 5. Update this file (`.cursor/rules/datacenters.mdc`) with new hook patterns or expressions
 

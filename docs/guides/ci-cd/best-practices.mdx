@@ -1,0 +1,169 @@
+---
+title: "CI/CD Best Practices"
+description: "Best practices for state backends, secrets, and deployment strategies in CI/CD"
+---
+
+# CI/CD Best Practices
+
+This guide covers the operational details of running arcctl in CI/CD pipelines: configuring state backends, managing secrets, and implementing reliable deployment strategies.
+
+## State Backend Configuration
+
+arcctl needs a shared state backend in CI so that multiple pipeline runs and team members share the same infrastructure state. Configure the backend via environment variables:
+
+### S3 Backend
+
+```bash
+export ARCCTL_BACKEND=s3
+export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
+export ARCCTL_BACKEND_S3_REGION=us-east-1
+export ARCCTL_BACKEND_S3_KEY=arcctl
+```
+
+### GCS Backend
+
+```bash
+export ARCCTL_BACKEND=gcs
+export ARCCTL_BACKEND_GCS_BUCKET=my-arcctl-state
+export ARCCTL_BACKEND_GCS_PREFIX=arcctl
+```
+
+### Azure Blob Storage Backend
+
+```bash
+export ARCCTL_BACKEND=azurerm
+export ARCCTL_BACKEND_AZURERM_STORAGE_ACCOUNT_NAME=myaccount
+export ARCCTL_BACKEND_AZURERM_CONTAINER_NAME=arcctl-state
+```
+
+<Tip>
+Set these as environment variables in your CI/CD platform's project settings rather than hardcoding them in pipeline files.
+</Tip>
+
+## Secrets Management
+
+Never commit secrets to your repository. Use your CI/CD platform's secret variables to inject sensitive values at runtime:
+
+```yaml
+# GitHub Actions
+- name: Deploy
+  env:
+    API_KEY: ${{ secrets.API_KEY }}
+  run: |
+    arcctl deploy component ghcr.io/myorg/my-app:v1.0.0 -e staging \
+      --var api_key=$API_KEY \
+      --auto-approve
+```
+
+### AWS Authentication
+
+For AWS-based deployments, use IAM roles with OIDC instead of long-lived access keys:
+
+```yaml
+# GitHub Actions
+- name: Configure AWS credentials
+  uses: aws-actions/configure-aws-credentials@v4
+  with:
+    role-to-assume: arn:aws:iam::123456789:role/arcctl-deploy
+    aws-region: us-east-1
+```
+
+## Idempotent Deployments
+
+Always deploy a specific, immutable version -- never `latest`:
+
+```bash
+# Good: Deploy specific version (deterministic)
+arcctl deploy component ghcr.io/myorg/my-app:$CI_COMMIT_SHA -e staging \
+  --auto-approve
+
+# Avoid: Deploy latest (non-deterministic)
+arcctl deploy component ghcr.io/myorg/my-app:latest -e staging \
+  --auto-approve
+```
+
+Using commit SHAs or semantic version tags ensures every pipeline run deploys exactly the artifact it built.
+
+## State Locking
+
+arcctl uses state locking to prevent concurrent modifications to the same environment. If a pipeline job fails mid-deploy, the lock may remain held. To recover:
+
+```bash
+# Force unlock (use with caution)
+arcctl env unlock staging --force
+```
+
+<Warning>
+Only force-unlock when you are certain no other deployment is in progress. Concurrent modifications can corrupt state.
+</Warning>
+
+## Preview Environment Cleanup
+
+Implement cleanup for preview environments to avoid resource sprawl:
+
+```yaml
+# GitHub Actions - on PR close
+cleanup-preview:
+  if: github.event.action == 'closed'
+  steps:
+    - run: arcctl destroy environment preview-${{ github.event.number }} --auto-approve
+```
+
+For an extra safety net, run a scheduled cleanup job that destroys stale previews:
+
+```bash
+#!/bin/bash
+# cleanup-stale-previews.sh - Run on a nightly schedule
+for env in $(arcctl list environment --output json | jq -r '.[] | select(.name | startswith("preview-")) | .name'); do
+  echo "Destroying stale preview: $env"
+  arcctl destroy environment "$env" --auto-approve
+done
+```
+
+## Pipeline Design Tips
+
+### Separate Build and Deploy
+
+Keep build and deploy as separate pipeline steps so you can re-deploy the same artifact without rebuilding:
+
+```bash
+# Step 1: Build and push (runs once)
+arcctl build component . -t ghcr.io/myorg/my-app:v1.5.0
+arcctl push component ghcr.io/myorg/my-app:v1.5.0
+
+# Step 2: Deploy to staging
+arcctl deploy component ghcr.io/myorg/my-app:v1.5.0 -e staging --auto-approve
+
+# Step 3: Deploy to production (same artifact, no rebuild)
+arcctl deploy component ghcr.io/myorg/my-app:v1.5.0 -e production --auto-approve
+```
+
+### Use Variable Files for Environment-Specific Config
+
+Store environment-specific variables in files rather than inline flags:
+
+```bash
+# vars/staging.dcvars
+log_level=debug
+replicas=1
+
+# vars/production.dcvars
+log_level=warn
+replicas=3
+```
+
+```bash
+arcctl deploy component ghcr.io/myorg/my-app:v1.5.0 -e staging \
+  --var-file ./vars/staging.dcvars --auto-approve
+```
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="CI/CD Overview" icon="arrows-spin" href="/guides/ci-cd/overview">
+    Pipeline concepts and key commands
+  </Card>
+  <Card title="State Backends" icon="database" href="/advanced/state-backends">
+    Full state backend configuration reference
+  </Card>
+</CardGroup>

@@ -293,6 +293,10 @@ arcctl deploy ghcr.io/myorg/my-app:pr-$PR_NUMBER -e preview-$PR_NUMBER
 arcctl env get preview-$PR_NUMBER
 ```
 
+<Tip>
+Automate preview environment creation in your CI pipeline. See the [CI/CD guides](/guides/ci-cd/overview) for GitHub Actions, GitLab CI, and CircleCI examples.
+</Tip>
+
 ### Promotion Testing
 
 Test in staging before production:
@@ -408,8 +412,14 @@ arcctl deploy ./my-app -e staging --verbose
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="CI/CD Integration" icon="arrows-spin" href="/guides/ci-cd-integration">
-    Automate builds and deployments
+  <Card title="CI/CD Integration" icon="arrows-spin" href="/guides/ci-cd/overview">
+    Automate builds and deployments in your pipeline
+  </Card>
+  <Card title="Next.js with Database & Storage" icon="browsers" href="/guides/components/nextjs-app">
+    Full-stack Next.js component example
+  </Card>
+  <Card title="Microservices Architecture" icon="diagram-project" href="/guides/components/microservices">
+    Multi-service system with shared auth
   </Card>
   <Card title="Component Reference" icon="cube" href="/components/overview">
     Full component specification

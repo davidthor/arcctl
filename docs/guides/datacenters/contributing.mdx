@@ -1,0 +1,160 @@
+---
+title: "Contributing Templates"
+description: "How to contribute to arcctl's official datacenter templates"
+---
+
+# Contributing to Official Templates
+
+arcctl's official datacenter templates live in the [`official-templates/`](https://github.com/architect-io/arcctl/tree/main/official-templates) directory at the root of the repository. They are maintained by the arcctl team and community contributors, and are intended for direct re-use by any organization adopting arcctl.
+
+This guide explains how to propose new templates, contribute improvements to existing ones, and what we look for during review.
+
+## Template Structure
+
+Every official template must follow this directory layout:
+
+```
+official-templates/<name>/
+├── datacenter.dc          # Main datacenter configuration (required)
+├── README.md              # Usage instructions and variable reference (required)
+└── modules/               # IaC modules referenced by the datacenter (if any)
+    ├── <module-name>/
+    │   ├── module.yml     # Native plugin module
+    │   └── ...
+    └── <module-name>/
+        ├── Pulumi.yaml    # Pulumi module
+        └── index.ts
+```
+
+### Required Files
+
+| File | Purpose |
+|------|---------|
+| `datacenter.dc` | The datacenter configuration with variables, shared infrastructure, and resource hooks |
+| `README.md` | Documents what the template provides, required variables, and how to deploy it |
+
+### README.md Contents
+
+Every template README should include:
+
+1. **Overview** -- What cloud provider/platform the template targets and what resources it provisions
+2. **Prerequisites** -- Any accounts, CLI tools, or credentials needed
+3. **Variables** -- A table of all datacenter variables with descriptions and defaults
+4. **Quick Start** -- Step-by-step commands to deploy the datacenter and create an environment
+5. **What's Included** -- A summary of which resource hooks are implemented (database, deployment, function, service, ingress, bucket, etc.)
+6. **Limitations** -- Any known limitations or unsupported features
+
+## Proposing a New Template
+
+### 1. Open an Issue
+
+Before writing code, [open an issue](https://github.com/architect-io/arcctl/issues/new) describing:
+
+- **Target platform** -- Which cloud provider or infrastructure stack (e.g., "Google Cloud Run with Cloud SQL")
+- **Resource hooks** -- Which hooks the template will implement (database, deployment, function, etc.)
+- **IaC plugin** -- Whether you plan to use native, Pulumi, or OpenTofu modules
+- **Use case** -- Who this template is for and why it's distinct from existing templates
+
+The maintainers will provide feedback and confirm the template is a good fit before you invest time building it.
+
+### 2. Create a Pull Request
+
+Once the issue is approved:
+
+```bash
+# Fork and clone the repo
+git clone https://github.com/<your-username>/arcctl.git
+cd arcctl
+
+# Create a branch
+git checkout -b add-template-<name>
+
+# Create the template directory
+mkdir -p official-templates/<name>/modules
+
+# Add your datacenter.dc and modules
+# ...
+
+# Add a README.md
+# ...
+```
+
+### 3. Add Documentation
+
+Every new template should include a corresponding documentation page:
+
+1. Create `docs/guides/datacenters/<name>.mdx` following the format of existing template docs
+2. Add the page to `docs/docs.json` in the "Official Templates" group
+3. Include the `<Info>` callout linking to the template source
+
+## Contributing to Existing Templates
+
+Improvements to existing templates are welcome. Common contributions include:
+
+- **Bug fixes** -- Incorrect outputs, missing variables, broken modules
+- **New resource hooks** -- Adding support for additional component resource types
+- **Cost optimizations** -- More efficient resource configurations
+- **Documentation** -- Clearer variable descriptions, better examples, additional context
+
+### Process
+
+1. Fork the repository and create a feature branch
+2. Make your changes in the relevant `official-templates/<name>/` directory
+3. Update the corresponding documentation page in `docs/guides/datacenters/` if your change affects usage or behavior
+4. Open a pull request with a clear description of what changed and why
+
+## Testing Your Template
+
+Before submitting a PR, verify your template works end-to-end:
+
+```bash
+# Build the datacenter
+arcctl build datacenter ./official-templates/<name> \
+  -t ghcr.io/<your-org>/test-dc:dev
+
+# Deploy it
+arcctl deploy datacenter test-dc ./official-templates/<name> \
+  --var <required_var>=<value>
+
+# Create an environment
+arcctl create environment test-env -d test-dc
+
+# Deploy a component to verify hooks work
+arcctl deploy component ./examples/components/nextjs-app -e test-env
+
+# Verify resources are healthy
+arcctl list component -e test-env
+arcctl logs -e test-env
+
+# Clean up
+arcctl destroy environment test-env --auto-approve
+arcctl destroy datacenter test-dc --auto-approve
+```
+
+### What We Test During Review
+
+- All declared hooks produce correct outputs
+- Variables have sensible defaults where applicable
+- Sensitive variables are marked as `sensitive = true`
+- The template deploys successfully from a clean state
+- Components can be deployed and reach a healthy state
+- Clean destruction leaves no orphaned resources
+
+## Review Process
+
+1. A maintainer will review your PR for correctness, style, and completeness
+2. CI checks must pass (linting, tests)
+3. The maintainer may request changes or test the template against their own infrastructure
+4. Once approved, the PR will be merged and the template becomes officially supported
+
+## Style Guidelines
+
+- Use descriptive variable names with `description` fields
+- Follow existing naming conventions (e.g., `${environment.name}-${node.component}-${node.name}` for resource names)
+- Use `when` conditions to route resources by type (e.g., separate hooks for postgres vs. redis)
+- Keep modules focused -- one module per resource type
+- Prefer the `native` plugin for local/lightweight templates and `pulumi`/`opentofu` for cloud templates
+
+## Questions?
+
+If you have questions about contributing, open a [GitHub Discussion](https://github.com/architect-io/arcctl/discussions) or reach out on the issue tracker.

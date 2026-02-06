@@ -81,13 +81,12 @@
         ]
       },
       {
-        "tab": "Developer Guides",
+        "tab": "Component Guides",
         "groups": [
           {
             "group": "Getting Started",
             "pages": [
-              "guides/developer-workflow",
-              "guides/ci-cd-integration"
+              "guides/developer-workflow"
             ]
           },
           {
@@ -101,11 +100,21 @@
               "guides/components/microservices",
               "guides/components/shared-database"
             ]
+          },
+          {
+            "group": "CI/CD",
+            "pages": [
+              "guides/ci-cd/overview",
+              "guides/ci-cd/github-actions",
+              "guides/ci-cd/gitlab-ci",
+              "guides/ci-cd/circleci",
+              "guides/ci-cd/best-practices"
+            ]
           }
         ]
       },
       {
-        "tab": "DevOps Guides",
+        "tab": "Datacenter Guides",
         "groups": [
           {
             "group": "Getting Started",
@@ -115,14 +124,15 @@
             ]
           },
           {
-            "group": "Datacenter Examples",
+            "group": "Official Templates",
             "pages": [
               "guides/datacenters/local-docker",
               "guides/datacenters/aws-ecs",
               "guides/datacenters/digitalocean-k8s",
               "guides/datacenters/serverless-neon",
               "guides/datacenters/vercel-functions",
-              "guides/datacenters/shared-database"
+              "guides/datacenters/shared-database",
+              "guides/datacenters/contributing"
             ]
           }
         ]

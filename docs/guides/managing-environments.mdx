@@ -1,0 +1,338 @@
+---
+title: "Managing Environments"
+description: "Day-to-day operations for creating, inspecting, and managing environments"
+---
+
+# Managing Environments
+
+This guide covers the day-to-day operations platform engineers perform to create, inspect, update, and destroy environments running on their datacenters.
+
+## Environment Lifecycle
+
+Environments go through a predictable lifecycle:
+
+```mermaid
+graph LR
+    A[Create] --> B[Deploy Components]
+    B --> C[Inspect and Monitor]
+    C --> D[Update]
+    D --> C
+    C --> E[Destroy]
+```
+
+## Creating Environments
+
+Create an environment tied to a deployed datacenter:
+
+```bash
+# Create a new environment
+arcctl create environment staging -d aws-production
+
+# Create with a variable file
+arcctl create environment staging -d aws-production --var-file ./vars/staging.dcvars
+```
+
+Each environment gets its own isolated set of resources (namespaces, databases, networking) as defined by the datacenter configuration.
+
+### Environment Configuration Files
+
+For repeatable setups, define environments in YAML:
+
+```yaml
+# environment.yml
+name: staging
+datacenter: aws-production
+
+components:
+  web-app:
+    component: ghcr.io/myorg/web-app:v1.5.0
+    variables:
+      log_level: debug
+    routes:
+      main:
+        hostnames:
+          - host: staging.example.com
+
+  api:
+    component: ghcr.io/myorg/api:v2.0.0
+    variables:
+      jwt_secret: ${JWT_SECRET}
+```
+
+Apply the configuration:
+
+```bash
+arcctl update environment staging environment.yml
+```
+
+## Deploying Components
+
+Deploy components into an environment:
+
+```bash
+# Deploy from OCI artifact
+arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging
+
+# Deploy from local source (useful for testing datacenter changes)
+arcctl deploy component ./services/web-app -e staging
+
+# Deploy with variables
+arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging \
+  --var log_level=debug \
+  --var api_key=$API_KEY
+
+# Auto-approve for scripted workflows
+arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging --auto-approve
+```
+
+### Updating Components
+
+Deploy a new version to update a running component:
+
+```bash
+arcctl deploy component ghcr.io/myorg/web-app:v1.6.0 -e staging
+```
+
+arcctl shows an execution plan of what will change:
+
+```
+Execution Plan:
+
+  deployment "api"
+    ~ update: image ghcr.io/myorg/web-app-build-api:v1.5.0
+           -> ghcr.io/myorg/web-app-build-api:v1.6.0
+
+Plan: 0 to create, 1 to update, 0 to destroy
+
+Proceed with deployment? [Y/n]:
+```
+
+## Inspecting Infrastructure
+
+### List Datacenters
+
+See all deployed datacenters and their status:
+
+```bash
+arcctl list datacenter
+```
+
+```
+NAME             SOURCE                                    ENVIRONMENTS
+aws-production   ghcr.io/myorg/aws-dc:v2.1.0              3
+do-staging       ghcr.io/myorg/do-k8s-dc:v1.0.0           1
+local-dev        ./local-docker                            2
+```
+
+### Get Datacenter Details
+
+Inspect a specific datacenter's configuration and variables:
+
+```bash
+arcctl get datacenter aws-production
+```
+
+### List Environments
+
+See all active environments:
+
+```bash
+arcctl list environment
+```
+
+```
+NAME          DATACENTER        COMPONENTS   STATUS
+production    aws-production    5            healthy
+staging       aws-production    3            healthy
+preview-42    aws-production    1            deploying
+dev           local-dev         2            healthy
+```
+
+### Get Environment Details
+
+Drill into a specific environment:
+
+```bash
+arcctl get environment staging
+```
+
+This shows the environment's datacenter, deployed components, resource counts, and route URLs.
+
+### List Components in an Environment
+
+See what's deployed:
+
+```bash
+arcctl list component -e staging
+```
+
+```
+NAME         VERSION                                    RESOURCES   STATUS
+web-app      ghcr.io/myorg/web-app:v1.5.0              6           running
+api          ghcr.io/myorg/api:v2.0.0                   4           running
+auth         ghcr.io/myorg/auth:v1.0.0                  3           running
+```
+
+### Get Component Details
+
+Inspect a component's full resource graph:
+
+```bash
+arcctl get component web-app -e staging
+```
+
+This shows every resource the component owns (databases, deployments, services, routes) with their current state and outputs.
+
+## Viewing Logs
+
+Query logs across your infrastructure:
+
+```bash
+# All logs from an environment
+arcctl logs -e staging
+
+# Logs from a specific component
+arcctl logs -e staging web-app
+
+# Logs from a specific resource type
+arcctl logs -e staging web-app/deployment
+
+# Logs from a specific deployment
+arcctl logs -e staging web-app/deployment/api
+
+# Stream logs in real-time
+arcctl logs -e staging -f
+
+# Logs from the last 5 minutes
+arcctl logs -e staging --since 5m
+
+# Logs from the last hour
+arcctl logs -e staging --since 1h
+```
+
+<Note>
+Log querying requires the datacenter to provide a log query backend (e.g., Loki). The local Docker datacenter includes this out of the box. For cloud datacenters, configure the `observability` hook to enable log querying.
+</Note>
+
+## Observability Dashboards
+
+If your datacenter includes an observability hook with a dashboard URL, open it directly from the CLI:
+
+```bash
+# Open the Grafana dashboard for an environment
+arcctl observability dashboard -e staging
+```
+
+This opens the datacenter-configured dashboard in your default browser, pre-filtered to the specified environment.
+
+## Destroying Resources
+
+### Destroy a Component
+
+Remove a single component from an environment:
+
+```bash
+# Destroy a component
+arcctl destroy component web-app -e staging
+
+# Force destroy (skip dependency checks)
+arcctl destroy component shared-db -e staging --force
+
+# Auto-approve for scripted workflows
+arcctl destroy component web-app -e staging --auto-approve
+```
+
+<Warning>
+Using `--force` bypasses dependency checks. Other components that depend on the destroyed component may break.
+</Warning>
+
+### Destroy an Environment
+
+Tear down an entire environment and all its resources:
+
+```bash
+# Destroy environment (prompts for confirmation)
+arcctl destroy environment staging
+
+# Auto-approve
+arcctl destroy environment staging --auto-approve
+```
+
+This destroys all components, databases, and infrastructure provisioned for the environment.
+
+### Destroy a Datacenter
+
+Remove a datacenter and all its shared infrastructure:
+
+```bash
+arcctl destroy datacenter aws-staging
+```
+
+<Warning>
+You must destroy all environments on a datacenter before destroying the datacenter itself.
+</Warning>
+
+## Common Operational Patterns
+
+### Preview Environment Cleanup
+
+Clean up stale preview environments in a scheduled job:
+
+```bash
+#!/bin/bash
+# cleanup-previews.sh - Run on a schedule (e.g., nightly cron)
+
+# List environments and find previews older than 7 days
+for env in $(arcctl list environment --output json | jq -r '.[] | select(.name | startswith("preview-")) | .name'); do
+  echo "Destroying stale preview: $env"
+  arcctl destroy environment "$env" --auto-approve
+done
+```
+
+### Blue/Green Deployments
+
+Use two environments for zero-downtime deployments:
+
+```bash
+# Deploy new version to green
+arcctl deploy component ghcr.io/myorg/app:v2.0.0 -e green --auto-approve
+
+# Verify green is healthy
+arcctl get component app -e green
+
+# Switch traffic (update DNS or load balancer)
+# Then destroy old blue
+arcctl destroy environment blue --auto-approve
+```
+
+### Environment Promotion
+
+Promote a configuration across environments:
+
+```bash
+# Deploy to staging
+arcctl deploy component ghcr.io/myorg/app:v1.5.0 -e staging --auto-approve
+
+# Run tests against staging
+./scripts/smoke-test.sh staging
+
+# Promote to production
+arcctl deploy component ghcr.io/myorg/app:v1.5.0 -e production --auto-approve
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Platform Engineer Workflow" icon="gear" href="/guides/platform-engineer-workflow">
+    Authoring datacenters and IaC modules
+  </Card>
+  <Card title="Local Docker Datacenter" icon="docker" href="/guides/datacenters/local-docker">
+    Lightweight datacenter for local development
+  </Card>
+  <Card title="Shared Database Datacenter" icon="database" href="/guides/datacenters/shared-database">
+    Cost-effective shared databases for previews
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Complete command reference
+  </Card>
+</CardGroup>
