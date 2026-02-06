@@ -61,7 +61,7 @@ Optional outputs:
 
 ## Multiple Database Types
 
-Handle different database types with conditional hooks:
+You can define multiple `database` hooks with different `when` conditions to handle different database engines. Hooks are evaluated **top-to-bottom in source order**, and **only the first matching hook is executed** for each resource (waterfall-style). This means order matters -- put more specific hooks before broader ones:
 
 ```hcl
 # PostgreSQL databases
@@ -122,7 +122,14 @@ database {
     url  = "redis://${module.redis.endpoint}:${module.redis.port}"
   }
 }
+
+# Reject anything else with a helpful message
+database {
+  error = "Unsupported database type '${node.inputs.type}'. This datacenter supports: postgres, mysql, redis."
+}
 ```
+
+The final `database` hook has no `when` condition, so it acts as a catch-all. If a component requests a database type that isn't handled above (e.g., MongoDB), the deployment is blocked with the error message. See [Error Handling](/datacenters/error-handling) for more details.
 
 ## Example Pulumi Module
 

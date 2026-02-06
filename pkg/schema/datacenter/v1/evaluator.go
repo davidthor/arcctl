@@ -127,6 +127,8 @@ func (e *Evaluator) EvaluateModule(module *ModuleBlockV1) (*EvaluatedModule, err
 }
 
 // EvaluateHook evaluates a hook block and returns all modules that should run.
+// If the hook is an error hook (has ErrorExpr), the returned EvaluatedHook will
+// have IsError=true and ErrorMessage set to the evaluated error string.
 func (e *Evaluator) EvaluateHook(hook *HookBlockV1) (*EvaluatedHook, error) {
 	// Check when condition
 	shouldRun, err := e.EvaluateWhen(hook.WhenExpr)
@@ -136,6 +138,19 @@ func (e *Evaluator) EvaluateHook(hook *HookBlockV1) (*EvaluatedHook, error) {
 
 	if !shouldRun {
 		return nil, nil // Hook should be skipped
+	}
+
+	// Check if this is an error hook
+	if hook.ErrorExpr != nil {
+		errorMsg, err := e.EvaluateErrorMessage(hook.ErrorExpr)
+		if err != nil {
+			// Fall back to the raw error string if evaluation fails
+			errorMsg = hook.Error
+		}
+		return &EvaluatedHook{
+			IsError:      true,
+			ErrorMessage: errorMsg,
+		}, nil
 	}
 
 	result := &EvaluatedHook{
@@ -219,6 +234,28 @@ type EvaluatedHook struct {
 	Modules      []*EvaluatedModule
 	OutputsExpr  hcl.Expression
 	OutputsAttrs hcl.Attributes
+	IsError      bool   // True if this is an error hook that rejects the resource
+	ErrorMessage string // Human-readable error message (only set when IsError is true)
+}
+
+// EvaluateErrorMessage evaluates an error expression with the current context,
+// returning the interpolated error message string.
+func (e *Evaluator) EvaluateErrorMessage(expr hcl.Expression) (string, error) {
+	if expr == nil {
+		return "", fmt.Errorf("no error expression to evaluate")
+	}
+
+	hclCtx := e.ctx.ToHCLContext()
+	val, diags := expr.Value(hclCtx)
+	if diags.HasErrors() {
+		return "", fmt.Errorf("failed to evaluate error message: %s", diags.Error())
+	}
+
+	if val.Type() == cty.String {
+		return val.AsString(), nil
+	}
+
+	return fmt.Sprintf("%v", fromCtyValue(val)), nil
 }
 
 // SetNodeContext sets the current node context for evaluation.

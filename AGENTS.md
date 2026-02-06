@@ -352,6 +352,33 @@ environment {
 | `route` | `url`, `host`, `port` |
 | `observability` | `endpoint`, `protocol`, `attributes`; optional: `query_type`, `query_endpoint`, `dashboard_url` |
 
+### Error Hooks
+
+Hooks can reject unsupported configurations with the `error` attribute instead of provisioning resources. When a hook's `when` condition matches and it has `error`, deployment is blocked with the error message.
+
+```hcl
+# Reject specific types
+database {
+  when = element(split(":", node.inputs.type), 0) == "mongodb"
+  error = "MongoDB is not supported. Use postgres or redis instead."
+}
+
+# Catch-all (no when = always matches, must be last)
+database {
+  error = "Unsupported database type '${node.inputs.type}'. Supported: postgres, redis."
+}
+```
+
+Rules:
+- `error` is mutually exclusive with `module` blocks and `outputs`
+- Error messages support HCL interpolation (`${node.inputs.type}`, `${node.component}`, etc.)
+- Hooks are evaluated in source order; first match wins
+- A hook without `when` must be the last of its type (subsequent hooks are unreachable)
+
+### Hook Evaluation Order
+
+**Only one hook per resource type is executed for a given resource.** Hooks use waterfall-style evaluation: they are checked top-to-bottom in source order, and the **first** hook whose `when` condition matches wins. All remaining hooks of that type are skipped entirely for that resource. This is like a switch/case or if/else-if chain -- order matters. A hook without a `when` condition always matches and acts as a catch-all (must be last).
+
 ### Hook Expression Context
 - `variable.<name>` - Datacenter variables
 - `environment.name` - Current environment name

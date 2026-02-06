@@ -239,3 +239,5 @@ func (h *hookWrapper) Modules() []Module {
 }
 
 func (h *hookWrapper) Outputs() map[string]string { return h.h.Outputs }
+
+func (h *hookWrapper) Error() string { return h.h.Error }

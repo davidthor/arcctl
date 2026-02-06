@@ -179,6 +179,164 @@ func TestEvalContext_Clone(t *testing.T) {
 	}
 }
 
+func TestEvaluator_EvaluateErrorMessage(t *testing.T) {
+	tests := []struct {
+		name     string
+		expr     string
+		node     *NodeContext
+		expected string
+	}{
+		{
+			name:     "simple string literal",
+			expr:     `"MongoDB is not supported."`,
+			expected: "MongoDB is not supported.",
+		},
+		{
+			name: "interpolation with node input",
+			expr: `"Unsupported type: ${node.inputs.type}"`,
+			node: &NodeContext{
+				Type:      "database",
+				Name:      "main",
+				Component: "app",
+				Inputs: map[string]cty.Value{
+					"type": cty.StringVal("mongodb"),
+				},
+			},
+			expected: "Unsupported type: mongodb",
+		},
+		{
+			name: "interpolation with multiple inputs",
+			expr: `"Component ${node.component} requested unsupported database ${node.inputs.type}"`,
+			node: &NodeContext{
+				Type:      "database",
+				Name:      "main",
+				Component: "my-app",
+				Inputs: map[string]cty.Value{
+					"type": cty.StringVal("mongodb"),
+				},
+			},
+			expected: "Component my-app requested unsupported database mongodb",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			eval := NewEvaluator()
+			if tt.node != nil {
+				eval.ctx.Node = tt.node
+			}
+
+			expr, diags := hclsyntax.ParseExpression([]byte(tt.expr), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+			if diags.HasErrors() {
+				// Try parsing as template (for interpolated strings)
+				expr, diags = hclsyntax.ParseTemplate([]byte(tt.expr), "test.hcl", hcl.Pos{Line: 1, Column: 1})
+				if diags.HasErrors() {
+					t.Fatalf("failed to parse expression: %s", diags.Error())
+				}
+			}
+
+			result, err := eval.EvaluateErrorMessage(expr)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestEvaluator_EvaluateHook_ErrorHook(t *testing.T) {
+	eval := NewEvaluator()
+	eval.ctx.Node = &NodeContext{
+		Type:      "database",
+		Name:      "main",
+		Component: "app",
+		Inputs: map[string]cty.Value{
+			"type": cty.StringVal("mongodb"),
+		},
+	}
+
+	// Parse the error expression
+	errorExpr, diags := hclsyntax.ParseExpression(
+		[]byte(`"MongoDB is not supported."`),
+		"test.hcl",
+		hcl.Pos{Line: 1, Column: 1},
+	)
+	if diags.HasErrors() {
+		t.Fatalf("failed to parse error expression: %s", diags.Error())
+	}
+
+	hook := &HookBlockV1{
+		ErrorExpr: errorExpr,
+		Error:     "MongoDB is not supported.",
+	}
+
+	result, err := eval.EvaluateHook(hook)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if !result.IsError {
+		t.Error("expected IsError to be true")
+	}
+
+	if result.ErrorMessage != "MongoDB is not supported." {
+		t.Errorf("expected error message 'MongoDB is not supported.', got %q", result.ErrorMessage)
+	}
+}
+
+func TestEvaluator_EvaluateHook_ErrorHookSkippedWhenNoMatch(t *testing.T) {
+	eval := NewEvaluator()
+	eval.ctx.Node = &NodeContext{
+		Type:      "database",
+		Name:      "main",
+		Component: "app",
+		Inputs: map[string]cty.Value{
+			"type": cty.StringVal("postgres"),
+		},
+	}
+
+	// when condition that won't match
+	whenExpr, diags := hclsyntax.ParseExpression(
+		[]byte(`node.inputs.type == "mongodb"`),
+		"test.hcl",
+		hcl.Pos{Line: 1, Column: 1},
+	)
+	if diags.HasErrors() {
+		t.Fatalf("failed to parse when expression: %s", diags.Error())
+	}
+
+	errorExpr, diags := hclsyntax.ParseExpression(
+		[]byte(`"MongoDB not supported."`),
+		"test.hcl",
+		hcl.Pos{Line: 1, Column: 1},
+	)
+	if diags.HasErrors() {
+		t.Fatalf("failed to parse error expression: %s", diags.Error())
+	}
+
+	hook := &HookBlockV1{
+		WhenExpr:  whenExpr,
+		ErrorExpr: errorExpr,
+		Error:     "MongoDB not supported.",
+	}
+
+	result, err := eval.EvaluateHook(hook)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result != nil {
+		t.Error("expected nil result when when condition doesn't match")
+	}
+}
+
 func TestToCtyValue(t *testing.T) {
 	tests := []struct {
 		name  string

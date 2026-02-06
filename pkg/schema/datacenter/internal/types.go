@@ -81,4 +81,5 @@ type InternalHook struct {
 	When    string                  // Conditional expression
 	Modules []InternalModule        // Modules to execute
 	Outputs map[string]string       // Output mappings (HCL expressions)
+	Error   string                  // Human-readable error message (mutually exclusive with Modules/Outputs)
 }

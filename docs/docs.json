@@ -57,6 +57,7 @@
                   "datacenters/observability-hook"
                 ]
               },
+              "datacenters/error-handling",
               "datacenters/expressions"
             ]
           },

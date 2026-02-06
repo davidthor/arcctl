@@ -21,8 +21,9 @@ const (
 	ErrCodeParse        ErrorCode = "PARSE_ERROR"
 	ErrCodeExpression   ErrorCode = "EXPRESSION_ERROR"
 	ErrCodeOCI          ErrorCode = "OCI_ERROR"
-	ErrCodeDocker       ErrorCode = "DOCKER_ERROR"
-	ErrCodePlugin       ErrorCode = "PLUGIN_ERROR"
+	ErrCodeDocker          ErrorCode = "DOCKER_ERROR"
+	ErrCodePlugin          ErrorCode = "PLUGIN_ERROR"
+	ErrCodeDatacenterHook  ErrorCode = "DATACENTER_HOOK_ERROR"
 )
 
 // Error is the base error type for arcctl
@@ -167,6 +168,20 @@ func BackendError(backend string, operation string, err error) *Error {
 		Details: map[string]interface{}{
 			"backend":   backend,
 			"operation": operation,
+		},
+	}
+}
+
+// DatacenterHookError creates an error for a datacenter hook that explicitly
+// rejects a resource configuration (e.g., unsupported database type).
+func DatacenterHookError(hookType, component, resource, message string) *Error {
+	return &Error{
+		Code:    ErrCodeDatacenterHook,
+		Message: message,
+		Details: map[string]interface{}{
+			"hook_type": hookType,
+			"component": component,
+			"resource":  resource,
 		},
 	}
 }

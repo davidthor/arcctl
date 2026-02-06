@@ -62,7 +62,7 @@ The following inputs are available via `node.inputs`:
 
 ## Complete Example
 
-Handle all key types with conditional hooks:
+Handle different key types with conditional hooks. Hooks are evaluated top-to-bottom and **only the first match is executed** (waterfall-style):
 
 ```hcl
 environment {

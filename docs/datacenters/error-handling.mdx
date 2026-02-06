@@ -1,0 +1,190 @@
+---
+title: "Error Handling"
+description: "Reject unsupported configurations with human-readable error messages"
+---
+
+# Error Handling in Hooks
+
+Datacenter hooks support an `error` attribute that lets you explicitly reject unsupported configurations with a human-readable message. When a component requests a resource that matches an error hook, the deployment is blocked and the error message is shown to the developer.
+
+This is useful when your datacenter doesn't support certain database types, deployment runtimes, or other resource configurations.
+
+## Basic Usage
+
+```hcl
+database {
+  when = element(split(":", node.inputs.type), 0) == "mongodb"
+  error = "MongoDB is not supported by this datacenter. Use postgres or redis instead."
+}
+```
+
+When a component declares a `mongodb` database, deployment fails with the message:
+
+```
+MongoDB is not supported by this datacenter. Use postgres or redis instead.
+```
+
+## Dynamic Error Messages
+
+Error messages support HCL string interpolation, so you can include context from `node.inputs`, `node.component`, `environment.name`, and `variable.*`:
+
+```hcl
+database {
+  when = element(split(":", node.inputs.type), 0) == "mongodb"
+  error = "MongoDB is not supported. Component '${node.component}' resource '${node.name}' requested type '${node.inputs.type}'."
+}
+```
+
+## Catch-All Error Hooks
+
+A hook without a `when` condition matches any resource of that type. Place it last to catch anything not handled by earlier hooks:
+
+```hcl
+# Supported: postgres
+database {
+  when = element(split(":", node.inputs.type), 0) == "postgres"
+
+  module "pg" {
+    build = "./modules/rds-postgres"
+    inputs = {
+      name = "${environment.name}-${node.component}-${node.name}"
+    }
+  }
+
+  outputs = {
+    url = module.pg.connection_url
+  }
+}
+
+# Supported: redis
+database {
+  when = element(split(":", node.inputs.type), 0) == "redis"
+
+  module "redis" {
+    build = "./modules/elasticache-redis"
+    inputs = {
+      name = "${environment.name}-${node.component}-${node.name}"
+    }
+  }
+
+  outputs = {
+    url = module.redis.connection_url
+  }
+}
+
+# Everything else: reject with a helpful message
+database {
+  error = "Unsupported database type '${node.inputs.type}'. This datacenter supports: postgres, redis."
+}
+```
+
+## Hook Evaluation Order
+
+<Info>
+**Only one hook per resource type is ever executed for a given resource.** Hooks use waterfall-style evaluation -- they are checked top-to-bottom in source order, and the **first** hook whose `when` condition matches wins. All remaining hooks of that type are skipped entirely for that resource.
+</Info>
+
+This works like a switch/case statement or a chain of `if/else if` blocks. Order matters:
+
+1. Put the most **specific** `when`-guarded hooks first (e.g., reject a particular database version)
+2. Put **broader** hooks next (e.g., handle all postgres databases)
+3. Put **catch-all** hooks last (no `when` = always matches)
+
+For example, given three `database` hooks in this order:
+
+```hcl
+database { when = node.inputs.type == "postgres:^11" ... }  # 1st: checked first
+database { when = ... == "postgres"                  ... }  # 2nd: checked only if 1st didn't match
+database { error = "Unsupported type."               ... }  # 3rd: checked only if 1st and 2nd didn't match
+```
+
+A `postgres:^11` resource matches hook 1 and hooks 2 and 3 are never evaluated.
+A `postgres:^16` resource skips hook 1, matches hook 2, and hook 3 is never evaluated.
+A `mongodb` resource skips hooks 1 and 2, matches hook 3, and deployment is blocked.
+
+<Warning>
+A hook without a `when` condition that is not the last hook of its type will produce a parse error, since any hooks after it would be unreachable.
+</Warning>
+
+## Validation Rules
+
+The `error` attribute is **mutually exclusive** with `module` blocks and `outputs`. A hook either provisions a resource (with modules and outputs) or rejects it (with an error message), but not both.
+
+```hcl
+# Valid: error hook
+database {
+  when = element(split(":", node.inputs.type), 0) == "mongodb"
+  error = "MongoDB is not supported."
+}
+
+# Valid: provisioning hook
+database {
+  when = element(split(":", node.inputs.type), 0) == "postgres"
+  module "pg" { ... }
+  outputs { ... }
+}
+
+# Invalid: error + module
+database {
+  error = "Not supported."
+  module "pg" { ... }  # Parse error!
+}
+```
+
+## Examples
+
+### Rejecting Unsupported Deployment Runtimes
+
+```hcl
+# Container-based deployments
+deployment {
+  when = node.inputs.image != null
+
+  module "container" {
+    build = "./modules/ecs-service"
+    inputs = merge(node.inputs, {
+      cluster = module.ecs.cluster_arn
+    })
+  }
+
+  outputs = {
+    id = module.container.service_id
+  }
+}
+
+# VM-based deployments not supported
+deployment {
+  when = node.inputs.runtime != null
+  error = "VM-based deployments (runtime) are not supported by this datacenter. Use container-based deployments with a Dockerfile instead."
+}
+
+# Process-based deployments not supported
+deployment {
+  error = "Process-based deployments are not supported in production. Add a Dockerfile and use 'image' instead."
+}
+```
+
+### Rejecting Specific Database Versions
+
+```hcl
+database {
+  when = node.inputs.type == "postgres:^11"
+  error = "PostgreSQL 11 has reached end of life. Please upgrade to postgres:^16."
+}
+
+database {
+  when = element(split(":", node.inputs.type), 0) == "postgres"
+
+  module "pg" {
+    build = "./modules/rds-postgres"
+    inputs = {
+      name    = "${environment.name}-${node.component}-${node.name}"
+      version = try(element(split(":", node.inputs.type), 1), "16")
+    }
+  }
+
+  outputs = {
+    url = module.pg.connection_url
+  }
+}
+```

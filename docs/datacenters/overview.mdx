@@ -57,7 +57,7 @@ environment {
 
 ## Resource Hooks
 
-Hooks define how each resource type from components gets fulfilled:
+Hooks define how each resource type from components gets fulfilled. You can define multiple hooks of the same type (e.g., multiple `database` blocks) with different `when` conditions. Hooks are evaluated **top-to-bottom in the order they appear** in the file, and **only the first matching hook is executed** -- like a waterfall or switch statement. Once a hook's `when` condition matches a resource, no further hooks of that type are considered for that resource.
 
 <CardGroup cols={2}>
   <Card title="Database Hook" icon="database" href="/datacenters/database-hook">
@@ -91,6 +91,19 @@ Hooks define how each resource type from components gets fulfilled:
     Configure scheduled tasks
   </Card>
 </CardGroup>
+
+## Error Handling
+
+Hooks can reject unsupported configurations with the `error` attribute. When matched, the deployment is blocked with a human-readable message:
+
+```hcl
+database {
+  when = element(split(":", node.inputs.type), 0) == "mongodb"
+  error = "MongoDB is not supported. Use postgres or redis instead."
+}
+```
+
+See [Error Handling](/datacenters/error-handling) for details.
 
 ## Expression Context
 

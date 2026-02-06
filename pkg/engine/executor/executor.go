@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	arcerrors "github.com/architect-io/arcctl/pkg/errors"
 	"github.com/architect-io/arcctl/pkg/engine/planner"
 	"github.com/architect-io/arcctl/pkg/graph"
 	"github.com/architect-io/arcctl/pkg/iac"
@@ -464,6 +465,17 @@ func (e *Executor) findMatchingHook(node *graph.Node, envName string) (modulePat
 		return "", nil, "", fmt.Errorf("no matching hook found for %s (inputs: %v)", node.Type, node.Inputs)
 	}
 
+	// Check if the matched hook is an error hook (rejects the resource)
+	if errMsg := matchedHook.Error(); errMsg != "" {
+		evaluatedMsg := e.evaluateErrorMessage(errMsg, node.Inputs)
+		return "", nil, "", arcerrors.DatacenterHookError(
+			string(node.Type),
+			node.Component,
+			node.Name,
+			evaluatedMsg,
+		)
+	}
+
 	// Get the first module from the hook
 	modules := matchedHook.Modules()
 	if len(modules) == 0 {
@@ -605,6 +617,31 @@ func (e *Executor) evaluateWhenStringFallback(when string, inputs map[string]int
 
 	// Default to true if we can't parse the condition
 	return true
+}
+
+// evaluateErrorMessage evaluates a hook error message, resolving any HCL interpolations
+// like ${node.inputs.type} using the node's inputs. Falls back to the raw string
+// if HCL evaluation fails.
+func (e *Executor) evaluateErrorMessage(errorMsg string, inputs map[string]interface{}) string {
+	// Try full HCL template evaluation first
+	expr, diags := hclsyntax.ParseTemplate([]byte(errorMsg), "error.hcl", hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return errorMsg // Return raw string if it can't be parsed as a template
+	}
+
+	eval := v1.NewEvaluator()
+	eval.SetNodeContext("", "", "", inputs)
+
+	if e.options.DatacenterVariables != nil {
+		eval.SetVariables(e.options.DatacenterVariables)
+	}
+
+	evaluated, err := eval.EvaluateErrorMessage(expr)
+	if err != nil {
+		return errorMsg // Return raw string if evaluation fails
+	}
+
+	return evaluated
 }
 
 // resolveWhenExpr resolves the left-hand side of a when condition comparison.

@@ -52,7 +52,7 @@ The following inputs are available via `node.inputs`:
 
 ## Three-Way Routing Model
 
-Datacenters can use `when` conditions to route deployments to different backends:
+Datacenters typically define multiple `deployment` hooks with different `when` conditions to handle each mode. These hooks are evaluated **top-to-bottom in source order**, and **only the first matching hook is executed** for each deployment (waterfall-style):
 
 - **`image` present** -- container-based (Docker, Kubernetes, ECS)
 - **`runtime` present, no `image`** -- VM-based (EC2, Droplets, GCE)

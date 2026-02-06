@@ -84,6 +84,7 @@ type Hook interface {
 	When() string
 	Modules() []Module
 	Outputs() map[string]string
+	Error() string
 }
 
 // Loader loads and parses datacenter configurations.

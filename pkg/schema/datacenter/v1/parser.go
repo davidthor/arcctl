@@ -395,6 +395,20 @@ func (p *Parser) parseEnvironment(block *hcl.Block) (*EnvironmentBlockV1, hcl.Di
 				*hooks = append(*hooks, *hook)
 			}
 		}
+
+		// Validate reachability: a hook without a 'when' condition (catch-all)
+		// must be the last hook of its type. Any hooks after it are unreachable.
+		for i, hook := range *hooks {
+			if hook.When == "" && hook.WhenExpr == nil && i < len(*hooks)-1 {
+				remaining := len(*hooks) - i - 1
+				diags = append(diags, &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  fmt.Sprintf("Unreachable %s hook(s)", hookType),
+					Detail:   fmt.Sprintf("A %s hook without a 'when' condition matches all resources and must be the last hook of its type, but %d more %s hook(s) follow. Move the catch-all hook to the end or add a 'when' condition.", hookType, remaining, hookType),
+				})
+				break
+			}
+		}
 	}
 
 	return env, diags
@@ -408,6 +422,7 @@ func (p *Parser) parseHook(block *hcl.Block) (*HookBlockV1, hcl.Diagnostics) {
 		Attributes: []hcl.AttributeSchema{
 			{Name: "when"},
 			{Name: "outputs"},
+			{Name: "error"},
 		},
 		Blocks: []hcl.BlockHeaderSchema{
 			{Type: "module", LabelNames: []string{"name"}},
@@ -442,6 +457,25 @@ func (p *Parser) parseHook(block *hcl.Block) (*HookBlockV1, hcl.Diagnostics) {
 		}
 	}
 
+	// Parse error attribute
+	if attr, ok := content.Attributes["error"]; ok {
+		hook.ErrorExpr = attr.Expr
+		// Try to evaluate if possible (may fail if contains interpolations like ${node.inputs.type})
+		val, valDiags := attr.Expr.Value(hclCtx)
+		if !valDiags.HasErrors() && val.Type() == cty.String {
+			hook.Error = val.AsString()
+		} else {
+			// Store the raw expression source text for runtime evaluation
+			rng := attr.Expr.Range()
+			if rng.Filename != "" {
+				data, err := os.ReadFile(rng.Filename)
+				if err == nil && rng.Start.Byte < len(data) && rng.End.Byte <= len(data) {
+					hook.Error = string(data[rng.Start.Byte:rng.End.Byte])
+				}
+			}
+		}
+	}
+
 	// Parse modules
 	for _, modBlock := range content.Blocks.OfType("module") {
 		module, modDiags := p.parseModule(modBlock)
@@ -463,6 +497,29 @@ func (p *Parser) parseHook(block *hcl.Block) (*HookBlockV1, hcl.Diagnostics) {
 		if len(attrs) > 0 {
 			hook.OutputsAttrs = attrs
 		}
+	}
+
+	// Validate mutual exclusivity: error hooks must not have modules or outputs
+	hasError := hook.ErrorExpr != nil
+	hasModules := len(hook.Modules) > 0
+	hasOutputs := hook.OutputsExpr != nil || hook.OutputsAttrs != nil
+
+	if hasError && hasModules {
+		diags = append(diags, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Invalid hook: 'error' and 'module' are mutually exclusive",
+			Detail:   "A hook with an 'error' attribute rejects the resource with a message and cannot also define modules to execute.",
+			Subject:  block.DefRange.Ptr(),
+		})
+	}
+
+	if hasError && hasOutputs {
+		diags = append(diags, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Invalid hook: 'error' and 'outputs' are mutually exclusive",
+			Detail:   "A hook with an 'error' attribute rejects the resource with a message and cannot also define outputs.",
+			Subject:  block.DefRange.Ptr(),
+		})
 	}
 
 	return hook, diags

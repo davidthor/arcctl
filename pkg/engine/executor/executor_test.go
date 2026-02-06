@@ -603,3 +603,45 @@ func TestEvaluateWhenCondition_FallbackOnInvalidHCL(t *testing.T) {
 		t.Error("should evaluate successfully")
 	}
 }
+
+func TestEvaluateErrorMessage_SimpleLiteral(t *testing.T) {
+	sm := newMockStateManager()
+	exec := NewExecutor(sm, newTestRegistry(), DefaultOptions())
+
+	msg := "MongoDB is not supported by this datacenter."
+	result := exec.evaluateErrorMessage(msg, nil)
+
+	if result != msg {
+		t.Errorf("expected %q, got %q", msg, result)
+	}
+}
+
+func TestEvaluateErrorMessage_WithInterpolation(t *testing.T) {
+	sm := newMockStateManager()
+	exec := NewExecutor(sm, newTestRegistry(), DefaultOptions())
+
+	inputs := map[string]interface{}{
+		"type": "mongodb",
+	}
+	msg := `Unsupported database type: ${node.inputs.type}`
+
+	result := exec.evaluateErrorMessage(msg, inputs)
+
+	expected := "Unsupported database type: mongodb"
+	if result != expected {
+		t.Errorf("expected %q, got %q", expected, result)
+	}
+}
+
+func TestEvaluateErrorMessage_FallbackOnInvalidTemplate(t *testing.T) {
+	sm := newMockStateManager()
+	exec := NewExecutor(sm, newTestRegistry(), DefaultOptions())
+
+	// A string that isn't valid HCL template syntax
+	msg := "plain error message with no interpolation"
+	result := exec.evaluateErrorMessage(msg, nil)
+
+	if result != msg {
+		t.Errorf("expected %q, got %q", msg, result)
+	}
+}

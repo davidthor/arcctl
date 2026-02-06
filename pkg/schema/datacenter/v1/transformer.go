@@ -139,6 +139,7 @@ func (t *Transformer) transformHooks(hooks []HookBlockV1) []internal.InternalHoo
 	for _, h := range hooks {
 		ih := internal.InternalHook{
 			When:    h.When,
+			Error:   h.Error,
 			Outputs: make(map[string]string),
 		}
 

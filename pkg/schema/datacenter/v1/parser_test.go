@@ -200,3 +200,212 @@ this is not valid HCL {
 		t.Error("expected error for invalid HCL")
 	}
 }
+
+func TestParser_HookWithError(t *testing.T) {
+	parser := NewParser()
+
+	hcl := `
+environment {
+  database {
+    when = true
+    error = "This database type is not supported."
+  }
+}
+`
+
+	schema, diags, err := parser.ParseBytes([]byte(hcl), "test.hcl")
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+
+	// Should not have fatal diagnostics
+	for _, d := range diags {
+		if d.Severity == 0 {
+			t.Fatalf("unexpected error diagnostic: %s", d.Summary)
+		}
+	}
+
+	if schema.Environment == nil {
+		t.Fatal("expected environment block")
+	}
+
+	if len(schema.Environment.DatabaseHooks) != 1 {
+		t.Fatalf("expected 1 database hook, got %d", len(schema.Environment.DatabaseHooks))
+	}
+
+	hook := schema.Environment.DatabaseHooks[0]
+	if hook.Error != "This database type is not supported." {
+		t.Errorf("expected error message, got %q", hook.Error)
+	}
+	if hook.ErrorExpr == nil {
+		t.Error("expected ErrorExpr to be set")
+	}
+}
+
+func TestParser_HookErrorMutualExclusivity_ErrorAndModule(t *testing.T) {
+	parser := NewParser()
+
+	hcl := `
+environment {
+  database {
+    error = "Not supported"
+
+    module "pg" {
+      plugin = "native"
+      build  = "./modules/pg"
+    }
+  }
+}
+`
+
+	_, diags, _ := parser.ParseBytes([]byte(hcl), "test.hcl")
+
+	foundError := false
+	for _, d := range diags {
+		if d.Summary == "Invalid hook: 'error' and 'module' are mutually exclusive" {
+			foundError = true
+			break
+		}
+	}
+
+	if !foundError {
+		t.Error("expected diagnostic error for error + module mutual exclusivity")
+	}
+}
+
+func TestParser_HookErrorMutualExclusivity_ErrorAndOutputs(t *testing.T) {
+	parser := NewParser()
+
+	hcl := `
+environment {
+  database {
+    error = "Not supported"
+
+    outputs {
+      url = "something"
+    }
+  }
+}
+`
+
+	_, diags, _ := parser.ParseBytes([]byte(hcl), "test.hcl")
+
+	foundError := false
+	for _, d := range diags {
+		if d.Summary == "Invalid hook: 'error' and 'outputs' are mutually exclusive" {
+			foundError = true
+			break
+		}
+	}
+
+	if !foundError {
+		t.Error("expected diagnostic error for error + outputs mutual exclusivity")
+	}
+}
+
+func TestParser_HookReachability_CatchAllNotLast(t *testing.T) {
+	parser := NewParser()
+
+	hcl := `
+environment {
+  database {
+    module "default" {
+      plugin = "native"
+      build  = "./modules/default-db"
+    }
+  }
+
+  database {
+    when = true
+
+    module "pg" {
+      plugin = "native"
+      build  = "./modules/pg"
+    }
+  }
+}
+`
+
+	_, diags, _ := parser.ParseBytes([]byte(hcl), "test.hcl")
+
+	foundError := false
+	for _, d := range diags {
+		if d.Summary == "Unreachable database hook(s)" {
+			foundError = true
+			break
+		}
+	}
+
+	if !foundError {
+		t.Error("expected diagnostic error for unreachable hooks after catch-all")
+	}
+}
+
+func TestParser_HookReachability_CatchAllLast(t *testing.T) {
+	parser := NewParser()
+
+	hcl := `
+environment {
+  database {
+    when = true
+
+    module "pg" {
+      plugin = "native"
+      build  = "./modules/pg"
+    }
+  }
+
+  database {
+    error = "Unsupported database type."
+  }
+}
+`
+
+	_, diags, err := parser.ParseBytes([]byte(hcl), "test.hcl")
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+
+	for _, d := range diags {
+		if d.Summary == "Unreachable database hook(s)" {
+			t.Error("catch-all as last hook should not produce reachability error")
+		}
+	}
+}
+
+func TestParser_HookReachability_AllHooksHaveWhen(t *testing.T) {
+	parser := NewParser()
+
+	hcl := `
+environment {
+  database {
+    when = true
+
+    module "pg" {
+      plugin = "native"
+      build  = "./modules/pg"
+    }
+  }
+
+  database {
+    when = true
+
+    module "mysql" {
+      plugin = "native"
+      build  = "./modules/mysql"
+    }
+  }
+}
+`
+
+	_, diags, err := parser.ParseBytes([]byte(hcl), "test.hcl")
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+
+	for _, d := range diags {
+		if d.Summary == "Unreachable database hook(s)" {
+			t.Error("all hooks have when conditions, should not produce reachability error")
+		}
+	}
+}
