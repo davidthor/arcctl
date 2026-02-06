@@ -245,36 +245,40 @@ RUN dotnet restore
 `)
 	}
 
-	// Add the entrypoint script
+	// Set entrypoint to the Pulumi CLI
 	dockerfile.WriteString(`
-# Add arcctl entrypoint
-COPY --from=arcctl-entrypoint /arcctl-entrypoint /arcctl-entrypoint
-
-ENTRYPOINT ["/arcctl-entrypoint"]
+ENTRYPOINT ["pulumi"]
 `)
 
 	return dockerfile.String(), nil
 }
 
 // generateOpenTofuDockerfile generates a Dockerfile for an OpenTofu module.
+// Uses a multi-stage build: the minimal OpenTofu image provides the tofu binary,
+// and Alpine provides the runtime environment (see https://opentofu.org/docs/intro/install/docker/).
 func generateOpenTofuDockerfile(moduleDir string) (string, error) {
 	return `# Auto-generated Dockerfile for OpenTofu module
-# This image bundles the OpenTofu CLI with the module code
+# Uses multi-stage build per OpenTofu 1.10+ requirements
 
-FROM ghcr.io/opentofu/opentofu:latest
+FROM ghcr.io/opentofu/opentofu:minimal AS tofu
+
+FROM alpine:3.20
+
+# Install the tofu binary from the minimal image
+COPY --from=tofu /usr/local/bin/tofu /usr/local/bin/tofu
+
+# Install common utilities needed by providers
+RUN apk add --no-cache git curl ca-certificates
 
 WORKDIR /app
 
 # Copy module files
 COPY . .
 
-# Initialize the module (download providers)
+# Initialize the module (download providers and lock versions)
 RUN tofu init -backend=false
 
-# Add arcctl entrypoint
-COPY --from=arcctl-entrypoint /arcctl-entrypoint /arcctl-entrypoint
-
-ENTRYPOINT ["/arcctl-entrypoint"]
+ENTRYPOINT ["tofu"]
 `, nil
 }
 
