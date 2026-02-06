@@ -13,7 +13,7 @@ variable "region" {
   type        = string
 }
 
-variable "version" {
+variable "engine_version" {
   description = "Redis version (e.g., 7)"
   type        = string
   default     = "7"

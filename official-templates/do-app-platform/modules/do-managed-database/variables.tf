@@ -8,7 +8,7 @@ variable "type" {
   type        = string
 }
 
-variable "version" {
+variable "engine_version" {
   description = "Database version"
   type        = string
   default     = null

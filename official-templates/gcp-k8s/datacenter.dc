@@ -142,9 +142,9 @@ environment {
         name          = "${environment.name}-${node.component}-${node.name}"
         project       = variable.gcp_project
         region        = variable.gcp_region
-        engine        = "POSTGRES"
-        version       = coalesce(try(element(split(":", node.inputs.type), 1), null), "16")
-        tier          = "db-f1-micro"
+        engine         = "POSTGRES"
+        engine_version = coalesce(try(element(split(":", node.inputs.type), 1), null), "16")
+        tier           = "db-f1-micro"
         network       = module.vpc.network_id
         database_name = node.name
       }
@@ -171,9 +171,9 @@ environment {
         name          = "${environment.name}-${node.component}-${node.name}"
         project       = variable.gcp_project
         region        = variable.gcp_region
-        engine        = "MYSQL"
-        version       = coalesce(try(element(split(":", node.inputs.type), 1), null), "8.0")
-        tier          = "db-f1-micro"
+        engine         = "MYSQL"
+        engine_version = coalesce(try(element(split(":", node.inputs.type), 1), null), "8.0")
+        tier           = "db-f1-micro"
         network       = module.vpc.network_id
         database_name = node.name
       }
@@ -200,8 +200,8 @@ environment {
         name    = "${environment.name}-${node.component}-${node.name}"
         project = variable.gcp_project
         region  = variable.gcp_region
-        version = coalesce(try(element(split(":", node.inputs.type), 1), null), "7")
-        tier    = "BASIC"
+        engine_version = coalesce(try(element(split(":", node.inputs.type), 1), null), "7")
+        tier           = "BASIC"
         network = module.vpc.network_id
       }
     }

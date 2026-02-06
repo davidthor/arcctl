@@ -30,7 +30,7 @@ locals {
     mongodb = "7"
   }
 
-  version = coalesce(var.version, lookup(local.default_versions, local.engine, null))
+  version = coalesce(var.engine_version, lookup(local.default_versions, local.engine, null))
 
   # Build connection URL based on engine type
   connection_url = local.engine == "redis" ? (

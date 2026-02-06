@@ -26,7 +26,7 @@ locals {
 
   engine         = local.is_postgres ? "postgres" : local.is_mysql ? "mysql" : "redis"
   default_port   = local.is_postgres ? 5432 : local.is_mysql ? 3306 : 6379
-  engine_version = var.version != null ? var.version : local.is_postgres ? "16" : local.is_mysql ? "8.0" : "7.0"
+  engine_version = var.engine_version != null ? var.engine_version : local.is_postgres ? "16" : local.is_mysql ? "8.0" : "7.0"
 }
 
 resource "random_password" "this" {

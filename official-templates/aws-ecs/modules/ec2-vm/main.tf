@@ -42,19 +42,12 @@ locals {
   lang_ver   = length(local.lang_parts) > 1 ? local.lang_parts[1] : "latest"
 
   # Generate install script based on language
-  install_script = local.lang_name == "node" ? <<-SCRIPT
-    curl -fsSL https://rpm.nodesource.com/setup_${local.lang_ver}.x | bash -
-    yum install -y nodejs
-  SCRIPT
-  : local.lang_name == "python" ? <<-SCRIPT
-    yum install -y python${local.lang_ver} python${local.lang_ver}-pip
-  SCRIPT
-  : local.lang_name == "go" ? <<-SCRIPT
-    wget https://go.dev/dl/go${local.lang_ver}.linux-amd64.tar.gz
-    tar -C /usr/local -xzf go${local.lang_ver}.linux-amd64.tar.gz
-    echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile.d/go.sh
-  SCRIPT
-  : ""
+  install_scripts = {
+    node   = "curl -fsSL https://rpm.nodesource.com/setup_${local.lang_ver}.x | bash -\nyum install -y nodejs"
+    python = "yum install -y python${local.lang_ver} python${local.lang_ver}-pip"
+    go     = "wget https://go.dev/dl/go${local.lang_ver}.linux-amd64.tar.gz\ntar -C /usr/local -xzf go${local.lang_ver}.linux-amd64.tar.gz\necho 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile.d/go.sh"
+  }
+  install_script = lookup(local.install_scripts, local.lang_name, "")
 
   env_exports = join("\n", [for k, v in local.environment_vars : "export ${k}='${v}'"])
   pkg_install = length(local.packages) > 0 ? "yum install -y ${join(" ", local.packages)}" : ""

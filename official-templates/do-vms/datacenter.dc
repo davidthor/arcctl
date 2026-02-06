@@ -106,8 +106,8 @@ environment {
       inputs = {
         name       = "${environment.name}-${node.name}"
         type       = element(split(":", node.inputs.type), 0)
-        version    = try(element(split(":", node.inputs.type), 1), null)
-        region     = variable.region
+        engine_version = try(element(split(":", node.inputs.type), 1), null)
+        region         = variable.region
         size       = "db-s-1vcpu-1gb"
         token      = variable.do_token
         vpc_uuid   = module.vpc.vpc_id

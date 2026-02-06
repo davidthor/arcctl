@@ -8,7 +8,7 @@ terraform {
 }
 
 locals {
-  redis_version = "REDIS_${replace(var.version, ".", "_")}"
+  redis_version = "REDIS_${replace(var.engine_version, ".", "_")}"
 }
 
 resource "google_redis_instance" "main" {

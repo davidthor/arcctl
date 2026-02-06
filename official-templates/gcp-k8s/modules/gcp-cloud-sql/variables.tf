@@ -22,7 +22,7 @@ variable "engine" {
   }
 }
 
-variable "version" {
+variable "engine_version" {
   description = "Database engine version (e.g., 16 for Postgres, 8.0 for MySQL)"
   type        = string
 }

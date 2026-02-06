@@ -126,7 +126,7 @@ environment {
       inputs = {
         name              = "${environment.name}-${node.name}"
         type              = element(split(":", node.inputs.type), 0)
-        version           = try(element(split(":", node.inputs.type), 1), null)
+        engine_version    = try(element(split(":", node.inputs.type), 1), null)
         region            = variable.aws_region
         vpc_id            = variable.vpc_id
         instance_class    = "db.t3.micro"

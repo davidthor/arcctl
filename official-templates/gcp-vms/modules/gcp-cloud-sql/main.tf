@@ -13,7 +13,7 @@ terraform {
 
 locals {
   # Map engine + version to Cloud SQL database_version format
-  database_version = var.engine == "POSTGRES" ? "POSTGRES_${var.version}" : "MYSQL_${replace(var.version, ".", "_")}"
+  database_version = var.engine == "POSTGRES" ? "POSTGRES_${var.engine_version}" : "MYSQL_${replace(var.engine_version, ".", "_")}"
   port             = var.engine == "POSTGRES" ? 5432 : 3306
   scheme           = var.engine == "POSTGRES" ? "postgresql" : "mysql"
 }

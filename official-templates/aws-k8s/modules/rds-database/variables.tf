@@ -13,7 +13,7 @@ variable "type" {
   }
 }
 
-variable "version" {
+variable "engine_version" {
   description = "Database engine version"
   type        = string
   default     = null
