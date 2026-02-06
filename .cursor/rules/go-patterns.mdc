@@ -54,6 +54,7 @@ type InternalComponent struct {
 4. Update transformer in `pkg/schema/component/v1/transformer.go`
 5. Add validation in `pkg/schema/component/v1/validator.go`
 6. Update expression evaluator in `pkg/engine/expression/evaluator.go`
+7. **Update docs**: Create reference page in `docs/components/`, update `docs/docs.json`, update `AGENTS.md` and `.cursor/rules/components.mdc`
 
 ## Table-Driven Tests
 
@@ -113,3 +114,15 @@ func NewDeployCmd() *cobra.Command {
     return cmd
 }
 ```
+
+**When adding or modifying CLI commands**, update the corresponding reference page in `docs/cli/`, the overview at `docs/cli/overview.mdx`, and any guides that reference the command. For new commands, also add the page to `docs/docs.json` and update the CLI Command Structure in `AGENTS.md`.
+
+## Documentation Sync
+
+Any change to Go source files that affects user-facing behavior (schema fields, CLI flags, expressions, hook outputs, etc.) **must** include corresponding updates to:
+- Reference docs in `docs/` (components, datacenters, CLI, environments)
+- Guides in `docs/guides/` that demonstrate the changed behavior
+- Example configs in `examples/` if applicable
+- AI instructions in `AGENTS.md` and `.cursor/rules/` if patterns or conventions change
+
+See `AGENTS.md` > "Keeping Documentation In Sync" for the full checklist.

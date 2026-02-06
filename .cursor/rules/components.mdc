@@ -297,3 +297,15 @@ arcctl observability dashboard -e staging         # Open Grafana (or other UI) i
 - `redis` - Redis (no version)
 - `cockroachdb:^23` - CockroachDB distributed SQL
 - `clickhouse:^24` - ClickHouse OLAP database
+
+## Documentation Sync
+
+When making changes to the component schema (fields, expressions, resource types, validation):
+
+1. Update the relevant reference page(s) in `docs/components/` (e.g., `deployments.mdx`, `functions.mdx`, `databases.mdx`)
+2. Update any affected guides in `docs/guides/components/`
+3. Update example configs in `examples/components/` if applicable
+4. Update `AGENTS.md` component authoring sections and expression references
+5. Update this file (`.cursor/rules/components.mdc`) with new patterns or fields
+
+See `AGENTS.md` > "Keeping Documentation In Sync" for the full checklist.

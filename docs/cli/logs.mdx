@@ -1,0 +1,103 @@
+---
+title: "logs"
+description: "View and stream logs from workloads in a deployed environment"
+---
+
+# arcctl logs
+
+View and stream logs from workloads in a deployed environment.
+
+Logs are retrieved from the OTel backend provisioned by the datacenter's observability hook. Components must have observability enabled and the datacenter must provide an observability hook with `query_type` and `query_endpoint` outputs.
+
+## Synopsis
+
+```bash
+arcctl logs [component[/type[/name]]] -e <environment> [options]
+```
+
+## Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `component` | (Optional) Filter to a specific component |
+| `type` | (Optional) Filter by resource type: `deployment`, `function`, `database`, etc. |
+| `name` | (Optional) Filter to a specific resource by name |
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `-e, --environment <name>` | Target environment (required) |
+| `-f, --follow` | Stream logs in real-time |
+| `-n, --tail <count>` | Number of recent lines to show (default: 100) |
+| `--since <duration>` | Show logs since a duration (e.g., `5m`, `1h`, `24h`) |
+| `--timestamps` | Show timestamps on each line |
+| `--no-color` | Disable color output |
+| `--backend <type>` | State backend type |
+| `--backend-config <key=value>` | Backend configuration |
+
+## Scoping
+
+Logs can be scoped at different levels using the hierarchical `component/type/name` format:
+
+```bash
+# All logs in the environment
+arcctl logs -e staging
+
+# All logs from one component
+arcctl logs -e staging my-app
+
+# All deployment logs in a component
+arcctl logs -e staging my-app/deployment
+
+# Logs from a specific deployment
+arcctl logs -e staging my-app/deployment/api
+
+# Logs from a specific database
+arcctl logs -e staging my-app/database/main
+```
+
+## Streaming
+
+Use `-f` to follow logs in real-time:
+
+```bash
+# Stream all logs
+arcctl logs -e staging -f
+
+# Stream one component
+arcctl logs -e staging my-app -f
+
+# Stream a specific workload
+arcctl logs -e staging my-app/deployment/api -f
+```
+
+## Filtering
+
+```bash
+# Logs from the last 5 minutes
+arcctl logs -e staging --since 5m
+
+# Last 50 lines
+arcctl logs -e staging -n 50
+
+# Last hour, with timestamps
+arcctl logs -e staging --since 1h --timestamps
+```
+
+## Prerequisites
+
+1. The component must declare `observability: true` (or an `observability` block) in `architect.yml`
+2. The datacenter must provide an `observability` hook with `query_type` and `query_endpoint` outputs
+3. The environment must be deployed and the observability resource must be ready
+
+If observability is not configured, the command will instruct you to enable it.
+
+<Note>
+Container stdout is automatically forwarded to the OTel collector via the Docker fluentd logging driver in the local Docker datacenter, so even applications without OTel SDK instrumentation have queryable logs.
+</Note>
+
+## See Also
+
+- [`arcctl observability dashboard`](/cli/observability/dashboard) - Open the observability UI
+- [`arcctl get environment`](/cli/get/environment) - View environment details

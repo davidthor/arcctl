@@ -73,6 +73,31 @@ Components support a variety of resource types to define your application:
   </Card>
 </CardGroup>
 
+## Observability
+
+Components can opt into OpenTelemetry observability with the `observability` block:
+
+```yaml
+# Enable with auto-injection of OTEL_* environment variables
+observability:
+  inject: true
+  attributes:
+    team: backend
+
+# Or use expressions for manual wiring
+observability:
+  attributes:
+    team: backend
+
+deployments:
+  api:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${{ observability.endpoint }}
+      OTEL_RESOURCE_ATTRIBUTES: ${{ observability.attributes }}
+```
+
+When observability is enabled and the datacenter provides an observability hook, you can use `arcctl logs` to view and stream workload logs and `arcctl observability dashboard` to open the monitoring UI. See the [Observability Hook](/datacenters/observability-hook) for datacenter-side configuration.
+
 ## Expression System
 
 Components use the `${{ ... }}` expression syntax to reference values:

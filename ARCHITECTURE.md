@@ -60,6 +60,9 @@ arcctl/
 │   │   │   ├── create.go
 │   │   │   ├── update.go
 │   │   │   └── destroy.go
+│   │   ├── logs.go                    # arcctl logs command
+│   │   ├── observability.go           # arcctl observability dashboard command
+│   │   ├── browser.go                 # Shared browser-opening utility
 │   │   └── up/
 │   │       └── up.go
 │   ├── config/                        # Configuration loading
@@ -150,6 +153,12 @@ arcctl/
 │   │       ├── opentofu.go
 │   │       ├── runner.go
 │   │       └── state.go
+│   ├── logs/                          # Log query plugin system
+│   │   ├── querier.go                 # LogQuerier interface & types
+│   │   ├── registry.go                # Backend registry
+│   │   ├── multiplexer.go             # Output formatting & label construction
+│   │   └── loki/                      # Loki query adapter
+│   │       └── loki.go
 │   ├── oci/                           # OCI artifact management
 │   │   ├── client.go                  # OCI client interface
 │   │   ├── artifact.go                # Artifact types

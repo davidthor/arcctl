@@ -42,6 +42,7 @@ arcctl destroy environment staging
 arcctl list component -e staging
 arcctl get component my-app -e production
 arcctl destroy component my-app -e staging
+arcctl destroy component shared-db -e staging --force  # Override dependency check
 
 # Artifact management
 arcctl tag component ghcr.io/myorg/app:v1 ghcr.io/myorg/app:latest
@@ -406,21 +407,43 @@ func TestParse(t *testing.T) {
 4. `pkg/schema/component/v1/transformer.go` - Add transformation
 5. `pkg/schema/component/v1/validator.go` - Add validation
 6. `pkg/engine/expression/evaluator.go` - Add expression support
+7. Create new reference page in `docs/components/<resource>.mdx`
+8. Add to navigation in `docs/docs.json`
+9. Update `docs/components/overview.mdx` with the new resource type
+10. Add examples in `examples/components/` if applicable
+11. Update `AGENTS.md` (Available Expression References, Component Authoring sections)
+12. Update `.cursor/rules/components.mdc` with the new resource type patterns
 
 ### New Datacenter Hook
 1. `pkg/schema/datacenter/internal/types.go` - Define inputs/outputs
 2. `pkg/schema/datacenter/v1/types.go` - Add to environment block
 3. `pkg/engine/executor/hooks.go` - Implement execution
+4. Create new reference page in `docs/datacenters/<hook>-hook.mdx`
+5. Add to navigation in `docs/docs.json`
+6. Update `docs/datacenters/overview.mdx` with the new hook type
+7. Add examples in `examples/datacenters/` if applicable
+8. Update `AGENTS.md` (Hook Types & Required Outputs, Datacenter Authoring sections)
+9. Update `.cursor/rules/datacenters.mdc` with the new hook type
+
+### New CLI Command
+1. Create command in `internal/cli/`
+2. Register in parent command
+3. Create new reference page in `docs/cli/<action>/<resource>.mdx`
+4. Add to navigation in `docs/docs.json`
+5. Update `docs/cli/overview.mdx` with the new command
+6. Update `AGENTS.md` CLI Command Structure section
 
 ### New State Backend
 1. Create `pkg/state/backend/<name>/<name>.go`
 2. Implement `Backend` interface (Read, Write, Delete, List, Exists, Lock)
 3. Register in `pkg/state/backend/registry.go`
+4. Update `docs/advanced/state-backends.mdx`
 
 ### New IaC Plugin
 1. Create `pkg/iac/<name>/<name>.go`
 2. Implement `Plugin` interface (Preview, Apply, Destroy, Refresh)
 3. Register in `pkg/iac/registry.go`
+4. Update `docs/advanced/iac-plugins.mdx`
 
 ## Documentation
 
@@ -428,3 +451,55 @@ func TestParse(t *testing.T) {
 - `CONTRIBUTING.md` - Contribution guidelines with examples
 - `SPEC_VERSIONING.md` - Schema versioning strategy
 - `docs/` - User documentation (Mintlify format)
+
+### Documentation Structure
+
+| Directory | Content |
+|-----------|---------|
+| `docs/components/` | Component schema reference (one page per resource type: databases, deployments, functions, etc.) |
+| `docs/datacenters/` | Datacenter schema reference (one page per hook type, plus expressions, variables, modules) |
+| `docs/cli/` | CLI command reference (one page per command, organized by action) |
+| `docs/environments/` | Environment configuration reference |
+| `docs/guides/components/` | Step-by-step component authoring guides (Next.js, microservices, etc.) |
+| `docs/guides/datacenters/` | Step-by-step datacenter authoring guides (local Docker, AWS ECS, etc.) |
+| `docs/concepts/` | High-level conceptual documentation |
+| `examples/` | Example configurations (components and datacenters) |
+
+### Keeping Documentation In Sync (IMPORTANT)
+
+**Whenever you make changes to the component schema, datacenter schema, or CLI commands, you MUST also update all relevant documentation.** Documentation changes are not optional — they are part of completing the feature or fix.
+
+#### Component Schema Changes
+When modifying anything in `pkg/schema/component/`:
+1. Update the relevant reference page(s) in `docs/components/` (e.g., adding a field to deployments → update `docs/components/deployments.mdx`)
+2. Update any affected guides in `docs/guides/components/` that demonstrate the changed feature
+3. Update example configurations in `examples/components/` if they use the changed feature
+4. Update `AGENTS.md` sections (Component Authoring, Available Expression References) if the change affects component authoring guidance or expressions
+5. Update `.cursor/rules/components.mdc` if the change affects component authoring patterns
+
+#### Datacenter Schema Changes
+When modifying anything in `pkg/schema/datacenter/`:
+1. Update the relevant hook reference page(s) in `docs/datacenters/` (e.g., adding an output to the database hook → update `docs/datacenters/database-hook.mdx`)
+2. Update any affected guides in `docs/guides/datacenters/` that demonstrate the changed feature
+3. Update example configurations in `examples/datacenters/` if they use the changed feature
+4. Update `AGENTS.md` sections (Datacenter Authoring, Hook Types & Required Outputs) if the change affects datacenter authoring guidance
+5. Update `.cursor/rules/datacenters.mdc` if the change affects datacenter authoring patterns
+
+#### CLI Command Changes
+When modifying CLI commands in `internal/cli/`:
+1. Update the relevant command reference page in `docs/cli/` (e.g., adding a flag to `deploy component` → update `docs/cli/deploy/component.mdx`)
+2. Update `docs/cli/overview.mdx` if the change affects the command listing or general CLI usage
+3. Update any guides in `docs/guides/` that reference the changed command
+4. Update `AGENTS.md` CLI Command Structure section if the change affects the command listing
+
+#### Environment Schema Changes
+When modifying anything in `pkg/schema/environment/`:
+1. Update the relevant reference page(s) in `docs/environments/`
+2. Update any affected guides that demonstrate environment configuration
+
+#### General Rules
+- If you add a new resource type or hook, create a new reference page in the appropriate `docs/` subdirectory
+- If you add a new CLI command, create a new reference page in `docs/cli/` and add it to `docs/docs.json`
+- Always check `docs/docs.json` to ensure navigation is updated when adding or removing pages
+- Update `examples/` when adding features that benefit from example configurations
+- When in doubt, search `docs/` for mentions of the feature you're changing to find all pages that may need updates

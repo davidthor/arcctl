@@ -1,0 +1,44 @@
+---
+title: "observability dashboard"
+description: "Open the observability dashboard UI in a web browser"
+---
+
+# arcctl observability dashboard
+
+Open the observability dashboard (e.g., Grafana) in your default web browser.
+
+<Note>
+Use `arcctl obs dashboard` as shorthand.
+</Note>
+
+## Synopsis
+
+```bash
+arcctl observability dashboard -e <environment> [options]
+```
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `-e, --environment <name>` | Target environment (required) |
+| `--backend <type>` | State backend type |
+| `--backend-config <key=value>` | Backend configuration |
+
+## Prerequisites
+
+The datacenter's `observability` hook must include a `dashboard_url` output. For the local Docker datacenter, this points to the Grafana UI provided by the `grafana/otel-lgtm` container.
+
+## Examples
+
+```bash
+# Open the dashboard for staging
+arcctl observability dashboard -e staging
+
+# Using alias
+arcctl obs dashboard -e staging
+```
+
+## See Also
+
+- [`arcctl logs`](/cli/logs) - View and stream logs from the CLI

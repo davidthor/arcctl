@@ -52,7 +52,8 @@
                   "datacenters/ingress-hook",
                   "datacenters/bucket-hook",
                   "datacenters/docker-build-hook",
-                  "datacenters/cronjob-hook"
+                  "datacenters/cronjob-hook",
+                  "datacenters/observability-hook"
                 ]
               },
               "datacenters/expressions"
@@ -144,6 +145,13 @@
               "cli/destroy/component",
               "cli/destroy/datacenter",
               "cli/destroy/environment"
+            ]
+          },
+          {
+            "group": "logs & observability",
+            "pages": [
+              "cli/logs",
+              "cli/observability/dashboard"
             ]
           },
           {

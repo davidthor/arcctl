@@ -1,0 +1,128 @@
+---
+title: "Observability Hook"
+description: "Configure OpenTelemetry observability for component workloads"
+---
+
+# Observability Hook
+
+The `observability` hook provisions OpenTelemetry infrastructure and provides configuration to component workloads. When a component declares `observability: true` (or an `observability` block), the datacenter's observability hook is invoked to provide the collector endpoint, protocol, and optional attributes.
+
+## Required Outputs
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `endpoint` | `string` | OTLP collector endpoint (e.g., `http://otel-collector:4318`) |
+| `protocol` | `string` | OTLP protocol (e.g., `http/protobuf`, `grpc`) |
+| `attributes` | `map` or `string` | Datacenter-level OTel resource attributes |
+
+## Optional Outputs
+
+| Output | Type | Description |
+|--------|------|-------------|
+| `query_type` | `string` | Log query backend type (e.g., `loki`). Required for `arcctl logs`. |
+| `query_endpoint` | `string` | Log query endpoint URL. Required for `arcctl logs`. |
+| `dashboard_url` | `string` | Observability dashboard URL (e.g., Grafana). Used by `arcctl observability dashboard`. |
+
+## Hook Inputs
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `node.inputs.inject` | `bool` | Whether the component opted into auto-injection |
+| `node.inputs.attributes` | `map` | Component-declared custom resource attributes |
+
+## Expression Context
+
+In addition to standard hook expressions, `node.type` is available and returns the resource type (`deployment`, `function`, `database`, etc.). This is useful for setting type-specific OTel resource attributes.
+
+## Examples
+
+### Simple Static Endpoint
+
+```hcl
+observability {
+  outputs = {
+    endpoint   = "http://localhost:4318"
+    protocol   = "http/protobuf"
+    attributes = {
+      "cloud.provider" = "local"
+    }
+  }
+}
+```
+
+### Provisioned Collector (Local Docker)
+
+```hcl
+environment {
+  module "otel" {
+    plugin = "native"
+    build  = "./modules/docker-otel-backend"
+    inputs = {
+      name    = "${environment.name}-otel"
+      network = variable.network_name
+    }
+  }
+
+  observability {
+    outputs = {
+      endpoint       = module.otel.otlp_http_endpoint
+      protocol       = "http/protobuf"
+      attributes     = {
+        "cloud.provider" = "local"
+      }
+      query_type     = "loki"
+      query_endpoint = module.otel.loki_endpoint
+      dashboard_url  = module.otel.grafana_url
+    }
+  }
+}
+```
+
+### Production Collector
+
+```hcl
+environment {
+  module "otel_collector" {
+    plugin = "pulumi"
+    build  = "./modules/otel-collector"
+    inputs = {
+      name   = "${environment.name}-otel"
+      region = variable.region
+    }
+  }
+
+  observability {
+    outputs = {
+      endpoint   = module.otel_collector.endpoint
+      protocol   = module.otel_collector.protocol
+      attributes = {
+        "cloud.provider" = "aws"
+        "cloud.region"   = variable.region
+      }
+      query_type     = "loki"
+      query_endpoint = module.otel_collector.loki_endpoint
+      dashboard_url  = module.otel_collector.grafana_url
+    }
+  }
+}
+```
+
+## Attribute Merging
+
+The engine merges attributes from three sources (later values override earlier ones):
+
+1. **Auto-generated**: `service.namespace` (component name), `deployment.environment` (environment name), `service.type` (resource type)
+2. **Datacenter hook** `attributes` output
+3. **Component** `attributes` (from the `observability` block in `architect.yml`)
+
+The merged result is available to component authors via `${{ observability.attributes }}`.
+
+## Container Stdout Forwarding
+
+For the local Docker datacenter, container stdout is automatically forwarded to the OTel collector via Docker's fluentd logging driver. This means even applications without OTel SDK instrumentation have queryable logs. The fluentd tag includes the environment, component, resource type, and name for precise filtering.
+
+## See Also
+
+- [Component Observability](/components/overview#observability) - How components declare observability preferences
+- [`arcctl logs`](/cli/logs) - View and stream logs
+- [`arcctl observability dashboard`](/cli/observability/dashboard) - Open the dashboard UI

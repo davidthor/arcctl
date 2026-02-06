@@ -5,7 +5,7 @@ description: "Destroy a deployed component and its resources"
 
 # arcctl destroy component
 
-Destroy a deployed component and its resources.
+Destroy a deployed component and all of its resources.
 
 <Note>
 Use `arcctl destroy comp` as shorthand for `arcctl destroy component`.
@@ -29,9 +29,21 @@ arcctl destroy component <name> -e <environment> [options]
 |--------|-------------|
 | `-e, --environment <name>` | Target environment (required) |
 | `--auto-approve` | Skip confirmation prompt |
-| `--target <resource>` | Target specific resource (repeatable) |
+| `--force` | Force destroy even if other components depend on this one |
 | `--backend <type>` | State backend type |
 | `--backend-config <key=value>` | Backend configuration |
+
+## Dependency Protection
+
+If other components in the environment depend on the component being destroyed, the command will fail with an error listing the dependents:
+
+```
+Error: cannot destroy component "shared-db" because the following components
+depend on it: api, frontend
+Destroy those components first, or use --force to override
+```
+
+Use `--force` to override this check when you know what you're doing (e.g., the dependents are already broken or will be redeployed).
 
 ## Examples
 
@@ -45,8 +57,8 @@ arcctl destroy comp my-app -e production
 # Auto-approve (CI/CD)
 arcctl destroy component my-app -e staging --auto-approve
 
-# Target specific resource
-arcctl destroy component my-app -e staging --target database.main
+# Force destroy a component that has dependents
+arcctl destroy component shared-db -e staging --force
 ```
 
 ## Output
@@ -73,3 +85,4 @@ Are you sure you want to destroy this component? [y/N]:
 
 - [`arcctl deploy component`](/cli/deploy/component) - Deploy a component
 - [`arcctl list component`](/cli/list/component) - List components
+- [`arcctl destroy environment`](/cli/destroy/environment) - Destroy an entire environment
