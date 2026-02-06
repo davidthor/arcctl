@@ -104,10 +104,10 @@ environment {
     }
   }
 
-  ingress {
-    module "ingress" {
+  route {
+    module "route" {
       plugin = "native"
-      build  = "./modules/docker-ingress"
+      build  = "./modules/docker-route"
       inputs = {
         name    = "${environment.name}-${node.component}--${node.name}"
         rules   = node.inputs.rules
@@ -116,8 +116,9 @@ environment {
     }
 
     outputs = {
-      url   = module.ingress.url
-      hosts = module.ingress.hosts
+      url  = module.route.url
+      host = module.route.host
+      port = module.route.port
     }
   }
 

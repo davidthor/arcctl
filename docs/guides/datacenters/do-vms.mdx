@@ -450,12 +450,12 @@ service {
 }
 ```
 
-### Ingress Hook (Load Balancer + DNS)
+### Route Hook (Load Balancer + DNS)
 
 Uses the shared DigitalOcean Load Balancer for HTTPS routing:
 
 ```hcl
-ingress {
+route {
   module "lb_rule" {
     plugin = "opentofu"
     build  = "./modules/do-lb-rule"

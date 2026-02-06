@@ -219,7 +219,7 @@ func (b *Builder) AddComponent(componentName string, comp component.Component) e
 
 	// Add routes
 	// Note: Routes do NOT depend on services/functions - they can be created in parallel.
-	// Routes are ingress configuration that can exist before backends are ready.
+	// Routes are external routing configuration that can exist before backends are ready.
 	// This also avoids cycles when workloads reference their own route URLs in env vars.
 	for _, route := range comp.Routes() {
 		node := NewNode(NodeTypeRoute, componentName, route.Name())

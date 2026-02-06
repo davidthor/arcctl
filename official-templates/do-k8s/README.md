@@ -10,7 +10,7 @@ Deploy portable cloud-native applications to DigitalOcean Kubernetes (DOKS) with
 - **DigitalOcean Droplets** - VM-based deployments (runtime workloads)
 - **DigitalOcean DNS** - DNS record management
 - **Knative Serving** - Serverless functions on Kubernetes
-- **NGINX Ingress + cert-manager** - TLS-terminated HTTP routing
+- **NGINX Gateway + cert-manager** - TLS-terminated HTTP routing
 - **OpenTelemetry Collector** - Observability (logs, traces, metrics)
 - **External SMTP Relay** - Email delivery (e.g., SendGrid, Mailgun)
 
@@ -44,7 +44,7 @@ Deploy portable cloud-native applications to DigitalOcean Kubernetes (DOKS) with
 | Deployment (VM/runtime) | DigitalOcean Droplets via OpenTofu |
 | Function | Knative Serving (serverless on K8s) |
 | Service | Kubernetes Services (ClusterIP) |
-| Ingress | Kubernetes HTTPRoute + NGINX Gateway |
+| Route | Kubernetes HTTPRoute + NGINX Gateway |
 | CronJob | Kubernetes CronJobs |
 | Docker Build | Build and push to DigitalOcean Container Registry |
 | Observability | Self-hosted OTel Collector + DigitalOcean Monitoring |

@@ -80,7 +80,7 @@ components:
 
 ### Dynamic URL Injection
 
-The application URLs (`WEBAPP_URL`, `NEXTAUTH_URL`, `PUBLIC_URL`) are automatically injected from the declared route using `${{ routes.public.url }}`. This means the correct URL is determined at deployment time based on your datacenter's ingress configuration.
+The application URLs (`WEBAPP_URL`, `NEXTAUTH_URL`, `PUBLIC_URL`) are automatically injected from the declared route using `${{ routes.public.url }}`. This means the correct URL is determined at deployment time based on your datacenter's route configuration.
 
 ### Variables
 

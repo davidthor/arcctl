@@ -39,7 +39,7 @@ A lightweight datacenter for local development using arcctl's native plugin. Opt
 | function | Local processes |
 | service | Port mapping lookup |
 | route | nginx reverse proxy |
-| ingress | nginx reverse proxy (alias for route) |
+| route | nginx reverse proxy |
 | cronjob | Suspended by default (manual trigger) |
 | dockerBuild | Local image builds |
 | observability | Grafana LGTM (Loki + Tempo + Prometheus) |
@@ -77,7 +77,7 @@ local/
 │   ├── docker-service/      # Service discovery
 │   ├── encryption-key/      # RSA, ECDSA, and symmetric key generation
 │   ├── local-cronjob/       # Suspended cronjob tracking
-│   ├── local-route/         # nginx reverse proxy for routing/ingress
+│   ├── local-route/         # nginx reverse proxy for routing
 │   ├── local-secret/        # Local secret storage
 │   ├── local-smtp/          # MailHog email testing
 │   ├── process-deployment/  # Process-based deployments (no Docker)

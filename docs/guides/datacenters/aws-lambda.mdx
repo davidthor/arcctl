@@ -330,10 +330,10 @@ function {
 }
 ```
 
-### Ingress Hook (API Gateway + CloudFront)
+### Route Hook (API Gateway + CloudFront)
 
 ```hcl
-ingress {
+route {
   module "api_route" {
     build = "./modules/api-gateway-route"
     inputs = merge(node.inputs, {

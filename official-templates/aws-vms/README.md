@@ -45,7 +45,7 @@ VM-based AWS template. All deployments run on EC2 instances. Container-based dep
 | deployment (VM/runtime) | EC2 + language runtime (install runtime directly) |
 | function | EC2 long-running process behind ALB |
 | service | ALB target group routing |
-| ingress | ALB listener rules |
+| route | ALB listener rules |
 | cronjob | Cron on dedicated EC2 instances |
 | databaseUser | RDS user management |
 | secret | AWS Secrets Manager |

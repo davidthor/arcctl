@@ -21,7 +21,7 @@ This datacenter provides:
 - **Storage**: S3 buckets
 - **Encryption**: KMS (symmetric), Secrets Manager (asymmetric key pairs)
 - **Email**: AWS SES (SMTP)
-- **Routing**: AWS ALB Ingress Controller
+- **Routing**: AWS ALB via Load Balancer Controller
 - **Scheduling**: Kubernetes CronJobs
 - **Observability**: OTel Collector DaemonSet exporting to CloudWatch + X-Ray
 
@@ -109,7 +109,7 @@ module "eks" {
   }
 }
 
-# AWS ALB Ingress Controller
+# AWS ALB Load Balancer Controller
 module "alb_controller" {
   build = "./modules/eks-alb-controller"
   inputs = {
@@ -384,12 +384,12 @@ service {
 }
 ```
 
-### Ingress Hook (ALB Ingress)
+### Route Hook (ALB)
 
-Uses the AWS Load Balancer Controller for Kubernetes-native ALB ingress:
+Uses the AWS Load Balancer Controller for Kubernetes-native ALB routing:
 
 ```hcl
-ingress {
+route {
   module "alb_ingress" {
     build = "./modules/k8s-alb-ingress"
     inputs = merge(node.inputs, {

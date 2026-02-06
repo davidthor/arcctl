@@ -130,9 +130,9 @@ environment {
     }
   }
 
-  # Gateway for HTTP routes (only when ingress resources exist)
+  # Gateway for HTTP routes (only when route resources exist)
   module "gateway" {
-    when  = contains(environment.nodes.*.type, "ingress")
+    when  = contains(environment.nodes.*.type, "route")
     build = "./modules/k8s-gateway"
     inputs = {
       name          = "${environment.name}-gateway"
@@ -153,7 +153,7 @@ environment {
       project   = variable.gcp_project
       zone_name = variable.domain
       subdomain = environment.name
-      target    = module.gke.ingress_ip
+      target    = module.gke.gateway_ip
     }
   }
 }
@@ -313,10 +313,10 @@ service {
 }
 ```
 
-### Ingress Hook (GKE Gateway API)
+### Route Hook (GKE Gateway API)
 
 ```hcl
-ingress {
+route {
   module "httproute" {
     build = "./modules/k8s-httproute"
     inputs = merge(node.inputs, {

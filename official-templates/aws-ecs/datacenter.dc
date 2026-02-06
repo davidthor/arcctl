@@ -332,7 +332,7 @@ environment {
     }
   }
 
-  ingress {
+  route {
     module "alb_listener_rule" {
       plugin = "opentofu"
       build  = "./modules/alb-listener-rule"

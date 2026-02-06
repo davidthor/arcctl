@@ -243,10 +243,10 @@ bucket {
 }
 ```
 
-### Ingress Hook (Cloud Load Balancing)
+### Route Hook (Cloud Load Balancing)
 
 ```hcl
-ingress {
+route {
   module "lb_backend" {
     build = "./modules/gcp-lb-backend"
     inputs = merge(node.inputs, {

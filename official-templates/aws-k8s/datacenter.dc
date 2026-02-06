@@ -78,7 +78,7 @@ module "eks" {
   }
 }
 
-# AWS ALB Ingress Controller (shared)
+# AWS ALB Load Balancer Controller (shared)
 module "alb_controller" {
   plugin = "opentofu"
   build  = "./modules/eks-alb-controller"
@@ -339,8 +339,8 @@ environment {
     }
   }
 
-  # Ingress hook - ALB Ingress via AWS Load Balancer Controller
-  ingress {
+  # Route hook - ALB via AWS Load Balancer Controller
+  route {
     module "alb_ingress" {
       plugin = "opentofu"
       build  = "./modules/k8s-alb-ingress"

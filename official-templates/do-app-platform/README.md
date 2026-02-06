@@ -37,7 +37,7 @@ Deploy portable cloud-native applications to DigitalOcean App Platform — a ful
 | Deployment (container) | App Platform Services |
 | Function | App Platform Functions |
 | Service | App Platform internal routing |
-| Ingress | App Platform domain routing (automatic TLS) |
+| Route | App Platform domain routing (automatic TLS) |
 | CronJob | App Platform scheduled jobs |
 | Docker Build | Build and push to DigitalOcean Container Registry |
 | Observability | App Platform built-in monitoring + OTel collector |

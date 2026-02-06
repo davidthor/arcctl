@@ -13,7 +13,7 @@ Deploy portable applications to Amazon EKS with managed AWS services for databas
 - **AWS Secrets Manager** - Asymmetric key pair storage and secrets
 - **Amazon CloudWatch** - Logs, metrics, and Container Insights
 - **AWS X-Ray** - Distributed tracing
-- **AWS ALB Ingress Controller** - Kubernetes-native load balancing
+- **AWS ALB Load Balancer Controller** - Kubernetes-native load balancing
 - **Amazon Route53** - DNS management
 - **Amazon ECR** - Container image registry
 - **Knative Serving** - Serverless functions on Kubernetes
@@ -48,7 +48,7 @@ Deploy portable applications to Amazon EKS with managed AWS services for databas
 | deployment (VM/runtime) | EC2 instances via OpenTofu |
 | function | Knative Serving on EKS |
 | service | Kubernetes Services |
-| ingress | AWS ALB Ingress Controller |
+| route | AWS ALB Load Balancer Controller |
 | cronjob | Kubernetes CronJobs |
 | databaseUser | RDS user management |
 | secret | AWS Secrets Manager |

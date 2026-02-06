@@ -403,28 +403,6 @@ environment {
     }
   }
 
-  # Ingress hook - for local dev, same as route (expose the port directly)
-  ingress {
-    module "ingress" {
-      plugin = "native"
-      build  = "./modules/local-route"
-      inputs = {
-        name        = "${environment.name}-${node.component}-${node.name}"
-        type        = node.inputs.type
-        rules       = node.inputs.rules
-        internal    = node.inputs.internal
-        host        = variable.host
-      }
-    }
-    
-    outputs = {
-      url      = module.ingress.url
-      hosts    = [variable.host]
-      protocol = "http"
-      host     = module.ingress.host
-      port     = module.ingress.port
-    }
-  }
   
   # Database user hook - grant additional database user access
   databaseUser {

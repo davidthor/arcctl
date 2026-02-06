@@ -70,8 +70,7 @@ All environments deploy to a **single Vercel project**. Each environment uses:
 | deployment | Vercel Serverless Functions with environment targets |
 | function | Vercel Serverless Functions with environment targets |
 | service | Vercel internal service routing |
-| ingress | Vercel routing with per-environment aliases |
-| route | Vercel routing (alias for ingress) |
+| route | Vercel routing with per-environment aliases |
 | cronjob | Vercel Cron Jobs |
 | dockerBuild | Build and push to Vercel registry |
 

@@ -360,8 +360,8 @@ environment {
     }
   }
 
-  # Ingress hook - DigitalOcean Load Balancer + DNS
-  ingress {
+  # Route hook - DigitalOcean Load Balancer + DNS
+  route {
     module "lb_rule" {
       plugin = "opentofu"
       build  = "./modules/do-lb-rule"

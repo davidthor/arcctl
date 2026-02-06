@@ -207,7 +207,7 @@ if g.HasFailed() {
 - `NodeTypeDeployment`
 - `NodeTypeFunction`
 - `NodeTypeService`
-- `NodeTypeIngress`
+- `NodeTypeRoute`
 - `NodeTypeCronjob`
 - `NodeTypeSecret`
 - `NodeTypeDockerBuild`

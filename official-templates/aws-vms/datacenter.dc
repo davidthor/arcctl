@@ -344,8 +344,8 @@ environment {
     }
   }
 
-  # Ingress hook - ALB listener rules
-  ingress {
+  # Route hook - ALB listener rules
+  route {
     module "alb_listener_rule" {
       plugin = "opentofu"
       build  = "./modules/alb-listener-rule"

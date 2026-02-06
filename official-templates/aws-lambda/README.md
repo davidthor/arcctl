@@ -45,7 +45,7 @@ Serverless-first AWS template. All compute runs on AWS Lambda with API Gateway f
 | deployment (VM/runtime) | **Not supported** (serverless only) |
 | function | AWS Lambda |
 | service | API Gateway internal integrations |
-| ingress | API Gateway routes + CloudFront |
+| route | API Gateway routes + CloudFront |
 | cronjob | EventBridge scheduled Lambda |
 | databaseUser | RDS user management |
 | secret | AWS Secrets Manager |

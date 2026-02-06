@@ -411,37 +411,7 @@ environment {
   }
 
   # ---------------------------------------------------------------------------
-  # Ingress hook - Vercel routing with per-environment aliases
-  # ---------------------------------------------------------------------------
-  ingress {
-    module "vercel_ingress" {
-      plugin = "opentofu"
-      build  = "./modules/vercel-ingress"
-      inputs = {
-        name       = "${environment.name}-${node.component}-${node.name}"
-        token      = variable.vercel_token
-        team_id    = variable.vercel_team_id
-        project_id = module.vercel_project.id
-        rules      = node.inputs.rules
-        alias = (
-          environment.name == "production"
-          ? variable.domain
-          : "${environment.name}.${variable.domain}"
-        )
-      }
-    }
-
-    outputs = {
-      url      = module.vercel_ingress.url
-      hosts    = module.vercel_ingress.hosts
-      protocol = "https"
-      host     = module.vercel_ingress.host
-      port     = 443
-    }
-  }
-
-  # ---------------------------------------------------------------------------
-  # Route hook - alias for ingress (same Vercel routing)
+  # Route hook - Vercel routing with per-environment aliases
   # ---------------------------------------------------------------------------
   route {
     module "vercel_route" {

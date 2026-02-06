@@ -43,7 +43,7 @@ Deploy portable cloud-native applications to DigitalOcean Droplets (VMs) with ma
 | Deployment (VM/runtime) | Language runtime on Droplets |
 | Function | Long-running process on Droplet behind Caddy |
 | Service | Internal DNS/VPC routing |
-| Ingress | DigitalOcean Load Balancer + DNS |
+| Route | DigitalOcean Load Balancer + DNS |
 | CronJob | Cron on dedicated Droplets |
 | Docker Build | Build and push to DigitalOcean Container Registry |
 | Observability | OTel Collector on dedicated Droplet (Grafana + Loki) |

@@ -48,7 +48,7 @@ A VM-centric datacenter for Google Cloud Platform where all workloads run on Com
 | deployment (VM/runtime) | Compute Engine + language runtime (via OpenTofu) |
 | function | Compute Engine as long-running process behind LB (via OpenTofu) |
 | service | Cloud DNS private zone (internal DNS) |
-| ingress | Cloud Load Balancing |
+| route | Cloud Load Balancing |
 | cronjob | Compute Engine + system cron (via OpenTofu) |
 | dockerBuild | Artifact Registry + Cloud Build |
 | observability | Cloud Monitoring Ops Agent on VMs |

@@ -369,12 +369,12 @@ secret {
 }
 ```
 
-### Ingress Hook (Vercel Routing)
+### Route Hook (Vercel Routing)
 
 Vercel handles TLS termination and routing automatically. Each environment gets a unique alias based on its name.
 
 ```hcl
-ingress {
+route {
   module "vercel_ingress" {
     build = "./modules/vercel-ingress"
     inputs = {

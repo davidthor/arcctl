@@ -78,7 +78,7 @@ aws-datacenter/
 │   ├── k8s-service/
 │   ├── rds-postgres/
 │   ├── s3-bucket/
-│   └── ingress-rule/
+│   └── route-rule/
 └── vars/
     ├── staging.dcvars
     └── production.dcvars
@@ -225,7 +225,7 @@ environment {
 }
 ```
 
-### Ingress Hook
+### Route Hook
 
 Handle external traffic routing:
 
@@ -242,9 +242,9 @@ environment {
     }
   }
 
-  ingress {
-    module "ingress_rule" {
-      build = "./modules/ingress-rule"
+  route {
+    module "route_rule" {
+      build = "./modules/route-rule"
       inputs = merge(node.inputs, {
         name          = "${node.component}--${node.name}"
         namespace     = module.namespace.id
@@ -265,9 +265,9 @@ environment {
     }
 
     outputs = {
-      url   = "https://${environment.name}.${variable.domain}"
-      host  = "${environment.name}.${variable.domain}"
-      hosts = [module.ingress_rule.host]
+      url  = "https://${environment.name}.${variable.domain}"
+      host = "${environment.name}.${variable.domain}"
+      port = 443
     }
   }
 }

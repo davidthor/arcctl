@@ -401,8 +401,8 @@ environment {
     }
   }
 
-  # Ingress hook - Cloud Load Balancing with custom domain
-  ingress {
+  # Route hook - Cloud Load Balancing with custom domain
+  route {
     module "lb_backend" {
       plugin = "opentofu"
       build  = "./modules/gcp-lb-backend"

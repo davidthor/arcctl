@@ -46,7 +46,7 @@ A serverless datacenter for Google Cloud Platform using Cloud Run for compute, C
 | deployment (container) | Cloud Run services |
 | function | Cloud Run services (scale-to-zero) |
 | service | Cloud Run internal service discovery |
-| ingress | Cloud Load Balancing |
+| route | Cloud Load Balancing |
 | cronjob | Cloud Scheduler |
 | dockerBuild | Artifact Registry + Cloud Build |
 | observability | Cloud Monitoring + OTel collector |

@@ -311,7 +311,7 @@ Examples:
 			}
 
 			// Routes have no dependencies - they can be created in parallel with everything
-			// (Routes are ingress configuration that can exist before backends are ready)
+			// (Routes are external routing configuration that can exist before backends are ready)
 			for _, route := range comp.Routes() {
 				id := resourceID(componentName, "route", route.Name())
 				progress.AddResource(id, route.Name(), "route", componentName, nil)

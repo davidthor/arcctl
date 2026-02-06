@@ -316,8 +316,8 @@ environment {
     }
   }
 
-  # Ingress hook - API Gateway route + CloudFront
-  ingress {
+  # Route hook - API Gateway route + CloudFront
+  route {
     module "api_route" {
       plugin = "opentofu"
       build  = "./modules/api-gateway-route"

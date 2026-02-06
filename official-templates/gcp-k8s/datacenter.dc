@@ -102,10 +102,10 @@ environment {
     }
   }
 
-  # Gateway for HTTP routes (only when ingress resources exist)
+  # Gateway for HTTP routes (only when route resources exist)
   module "gateway" {
     plugin = "opentofu"
-    when   = contains(environment.nodes.*.type, "ingress")
+    when   = contains(environment.nodes.*.type, "route")
     build  = "./modules/k8s-gateway"
     inputs = {
       name          = "${environment.name}-gateway"
@@ -127,7 +127,7 @@ environment {
       project   = variable.gcp_project
       zone_name = variable.domain
       subdomain = environment.name
-      target    = module.gke.ingress_ip
+      target    = module.gke.gateway_ip
     }
   }
 
@@ -402,8 +402,8 @@ environment {
     }
   }
 
-  # Ingress hook - GKE Gateway API
-  ingress {
+  # Route hook - GKE Gateway API
+  route {
     module "httproute" {
       plugin = "opentofu"
       build  = "./modules/k8s-httproute"

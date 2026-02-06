@@ -284,8 +284,8 @@ environment {
     }
   }
 
-  # Ingress hook - App Platform handles routing and TLS automatically
-  ingress {
+  # Route hook - App Platform handles routing and TLS automatically
+  route {
     module "app_domain" {
       plugin = "opentofu"
       build  = "./modules/do-app-domain"

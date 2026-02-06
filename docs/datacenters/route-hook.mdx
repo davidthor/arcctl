@@ -1,0 +1,236 @@
+---
+title: "Route Hook"
+description: "Set up external traffic routing for components"
+---
+
+# Route Hook
+
+The route hook sets up external traffic routing when components declare routes. It handles DNS, TLS certificates, and load balancer configuration.
+
+## Basic Usage
+
+```hcl
+route {
+  module "route" {
+    build = "./modules/route-rule"
+    inputs = merge(node.inputs, {
+      name      = "${node.component}--${node.name}"
+      namespace = module.namespace.id
+      dns_zone  = variable.domain
+    })
+  }
+
+  module "dns" {
+    build = "./modules/dns-record"
+    inputs = {
+      domain    = variable.domain
+      subdomain = "${environment.name}-${node.component}"
+      value     = module.route.load_balancer_ip
+    }
+  }
+
+  outputs = {
+    url  = module.route.url
+    host = module.route.host
+    port = module.route.port
+  }
+}
+```
+
+## Inputs
+
+The following inputs are available via `node.inputs`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Route name |
+| `type` | string | Route type (http, grpc) |
+| `internal` | boolean | VPC-only access |
+| `rules` | array | Routing rules |
+| `service` | string | Target service (shorthand) |
+| `port` | number | Target port (shorthand) |
+
+## Required Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | Primary public URL |
+| `host` | string | Assigned hostname |
+| `port` | number | Assigned port |
+
+## Kubernetes Gateway API Example
+
+```hcl
+route {
+  module "httproute" {
+    build = "./modules/k8s-httproute"
+    inputs = {
+      name         = "${node.component}--${node.name}"
+      namespace    = module.namespace.id
+      gateway_name = "${environment.name}-gateway"
+      host         = "${environment.name}.${variable.domain}"
+      service      = node.inputs.service
+      port         = node.inputs.port
+      rules        = node.inputs.rules
+    }
+  }
+
+  module "certificate" {
+    build = "./modules/cert-manager-cert"
+    inputs = {
+      name      = "${node.component}--${node.name}"
+      namespace = module.namespace.id
+      host      = "${environment.name}.${variable.domain}"
+    }
+  }
+
+  outputs = {
+    url  = "https://${environment.name}.${variable.domain}"
+    host = "${environment.name}.${variable.domain}"
+    port = 443
+  }
+}
+```
+
+### Pulumi Module
+
+```typescript
+// modules/k8s-httproute/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import * as k8s from "@pulumi/kubernetes";
+
+const config = new pulumi.Config();
+const name = config.require("name");
+const namespace = config.require("namespace");
+const gatewayName = config.require("gateway_name");
+const host = config.require("host");
+const service = config.require("service");
+const port = config.requireNumber("port");
+
+const httproute = new k8s.apiextensions.CustomResource("httproute", {
+  apiVersion: "gateway.networking.k8s.io/v1",
+  kind: "HTTPRoute",
+  metadata: {
+    name: name,
+    namespace: namespace,
+  },
+  spec: {
+    parentRefs: [{
+      name: gatewayName,
+      namespace: namespace,
+    }],
+    hostnames: [host],
+    rules: [{
+      backendRefs: [{
+        name: service,
+        port: port,
+      }],
+    }],
+  },
+});
+
+export const url = `https://${host}`;
+export const host_out = host;
+```
+
+## AWS ALB Example
+
+```hcl
+route {
+  module "alb" {
+    build = "./modules/alb-listener-rule"
+    inputs = {
+      name        = "${environment.name}-${node.component}-${node.name}"
+      vpc_id      = module.vpc.vpc_id
+      subnets     = module.vpc.public_subnets
+      target_port = node.inputs.port
+      rules       = node.inputs.rules
+    }
+  }
+
+  module "route53" {
+    build = "./modules/route53-record"
+    inputs = {
+      zone_id = variable.route53_zone_id
+      name    = "${environment.name}.${variable.domain}"
+      type    = "A"
+      alias = {
+        name    = module.alb.dns_name
+        zone_id = module.alb.zone_id
+      }
+    }
+  }
+
+  outputs = {
+    url  = "https://${environment.name}.${variable.domain}"
+    host = "${environment.name}.${variable.domain}"
+    port = 443
+  }
+}
+```
+
+## Internal Routes
+
+Handle internal (VPC-only) routes:
+
+```hcl
+route {
+  when = node.inputs.internal == false
+
+  module "public_route" {
+    build = "./modules/public-route"
+    inputs = {
+      name = "${node.component}--${node.name}"
+      host = "${environment.name}.${variable.domain}"
+    }
+  }
+
+  outputs = {
+    url  = "https://${environment.name}.${variable.domain}"
+    host = "${environment.name}.${variable.domain}"
+    port = 443
+  }
+}
+
+route {
+  when = node.inputs.internal == true
+
+  module "internal_route" {
+    build = "./modules/internal-route"
+    inputs = {
+      name = "${node.component}--${node.name}"
+      host = "${environment.name}.internal.${variable.domain}"
+    }
+  }
+
+  outputs = {
+    url  = "https://${environment.name}.internal.${variable.domain}"
+    host = "${environment.name}.internal.${variable.domain}"
+    port = 443
+  }
+}
+```
+
+## Traffic Splitting
+
+Handle weighted routing rules:
+
+```hcl
+route {
+  module "route" {
+    build = "./modules/k8s-httproute-canary"
+    inputs = {
+      name      = "${node.component}--${node.name}"
+      namespace = module.namespace.id
+      host      = "${environment.name}.${variable.domain}"
+      rules     = node.inputs.rules  # Contains backendRefs with weights
+    }
+  }
+
+  outputs = {
+    url  = "https://${environment.name}.${variable.domain}"
+    host = "${environment.name}.${variable.domain}"
+    port = 443
+  }
+}
+```

@@ -264,7 +264,7 @@ environment {
 - `deployment` - Container workloads
 - `function` - Serverless functions
 - `service` - Internal networking
-- `ingress` - External routing
+- `route` - External routing
 - `dockerBuild` - Image building
 - `cronjob` - Scheduled tasks
 

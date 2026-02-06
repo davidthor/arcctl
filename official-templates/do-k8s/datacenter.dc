@@ -93,7 +93,7 @@ environment {
   # Gateway for HTTP routes
   module "gateway" {
     plugin = "opentofu"
-    when   = contains(environment.nodes.*.type, "ingress")
+    when   = contains(environment.nodes.*.type, "route")
     build  = "./modules/k8s-gateway"
     inputs = {
       name          = "${environment.name}-gateway"
@@ -373,7 +373,7 @@ environment {
     }
   }
 
-  ingress {
+  route {
     module "httproute" {
       plugin = "opentofu"
       build  = "./modules/k8s-httproute"

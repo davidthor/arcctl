@@ -18,7 +18,7 @@ This datacenter provides:
 - **Databases**: Managed PostgreSQL, MySQL, Redis
 - **Storage**: DigitalOcean Spaces (S3-compatible)
 - **Functions**: Knative Serving (serverless on K8s)
-- **Networking**: NGINX Ingress, cert-manager, DigitalOcean DNS
+- **Networking**: NGINX Gateway, cert-manager, DigitalOcean DNS
 - **Secrets**: Kubernetes Secrets for encryption keys and sensitive data
 - **Email**: External SMTP relay (SendGrid, Mailgun, etc.)
 - **Observability**: Self-hosted OTel Collector + DigitalOcean Monitoring
@@ -122,7 +122,7 @@ environment {
 
   # Gateway for HTTP routes (only when routes exist)
   module "gateway" {
-    when  = contains(environment.nodes.*.type, "ingress")
+    when  = contains(environment.nodes.*.type, "route")
     build = "./modules/k8s-gateway"
     inputs = {
       name          = "${environment.name}-gateway"
@@ -451,10 +451,10 @@ service {
 }
 ```
 
-### Ingress Hook (HTTPRoute)
+### Route Hook (HTTPRoute)
 
 ```hcl
-ingress {
+route {
   module "httproute" {
     build = "./modules/k8s-httproute"
     inputs = merge(node.inputs, {

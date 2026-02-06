@@ -47,7 +47,7 @@ Deploy portable applications to AWS ECS Fargate with managed AWS services for da
 | deployment (VM/runtime) | EC2 instances via OpenTofu |
 | function | AWS Lambda |
 | service | AWS Cloud Map (service discovery) |
-| ingress | ALB listener rules |
+| route | ALB listener rules |
 | cronjob | Amazon EventBridge scheduled ECS tasks |
 | databaseUser | RDS user management |
 | secret | AWS Secrets Manager |

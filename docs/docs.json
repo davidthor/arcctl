@@ -50,7 +50,7 @@
                   "datacenters/deployment-hook",
                   "datacenters/function-hook",
                   "datacenters/service-hook",
-                  "datacenters/ingress-hook",
+                  "datacenters/route-hook",
                   "datacenters/bucket-hook",
                   "datacenters/docker-build-hook",
                   "datacenters/cronjob-hook",

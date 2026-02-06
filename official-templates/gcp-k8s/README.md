@@ -13,7 +13,7 @@ A Kubernetes datacenter for Google Cloud Platform using GKE for container worklo
 - **Cloud KMS** - Encryption key management
 - **Secret Manager** - Secure secret storage
 - **Cloud DNS** - DNS management
-- **GKE Gateway API** - HTTP routing and ingress
+- **GKE Gateway API** - HTTP routing
 - **Artifact Registry** - Docker image storage
 - **Cloud Monitoring** - Observability via OTel collector on GKE
 
@@ -50,7 +50,7 @@ A Kubernetes datacenter for Google Cloud Platform using GKE for container worklo
 | deployment (VM/runtime) | Compute Engine via OpenTofu |
 | function | Knative Serving on GKE |
 | service | Kubernetes ClusterIP Services |
-| ingress | GKE Gateway API + HTTPRoute |
+| route | GKE Gateway API + HTTPRoute |
 | cronjob | Kubernetes CronJobs |
 | dockerBuild | Artifact Registry + Cloud Build |
 | observability | Cloud Monitoring + OTel collector on GKE |

@@ -317,7 +317,7 @@ Examples:
 				}
 				for compName, comp := range env.Components {
 					for resName, res := range comp.Resources {
-						if res.Type == "route" || res.Type == "ingress" {
+						if res.Type == "route" {
 							if url, ok := res.Outputs["url"].(string); ok {
 								urls = append(urls, struct {
 									component string

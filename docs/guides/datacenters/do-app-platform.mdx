@@ -358,12 +358,12 @@ service {
 }
 ```
 
-### Ingress Hook (App Platform Domains)
+### Route Hook (App Platform Domains)
 
 App Platform handles routing and TLS automatically:
 
 ```hcl
-ingress {
+route {
   module "app_domain" {
     build = "./modules/do-app-domain"
     inputs = merge(node.inputs, {

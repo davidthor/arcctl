@@ -224,7 +224,7 @@ environment {
   }
   
   # Conditional module based on environment needs
-  module "ingress" {
+  module "gateway" {
     build = "./modules/nginx-controller"
     when  = length(environment.resources.routes) > 0
     inputs = {
@@ -279,7 +279,7 @@ environment {
     }
   }
 
-  # Conditional: ingress controller when routes exist
+  # Conditional: gateway controller when routes exist
   module "nginx" {
     build = "./modules/nginx-controller"
     when  = length(environment.resources.routes) > 0
