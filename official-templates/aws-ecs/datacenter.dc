@@ -54,7 +54,8 @@ variable "ses_smtp_password" {
 
 # ECS Cluster (shared across environments)
 module "ecs_cluster" {
-  build = "./modules/ecs-cluster"
+  plugin = "opentofu"
+  build  = "./modules/ecs-cluster"
   inputs = {
     name   = variable.cluster_name
     region = variable.aws_region
@@ -64,7 +65,8 @@ module "ecs_cluster" {
 
 # Application Load Balancer (shared)
 module "alb" {
-  build = "./modules/alb"
+  plugin = "opentofu"
+  build  = "./modules/alb"
   inputs = {
     name            = "${variable.cluster_name}-alb"
     vpc_id          = variable.vpc_id
@@ -75,7 +77,8 @@ module "alb" {
 environment {
   # Target group per environment
   module "target_group" {
-    build = "./modules/alb-target-group"
+    plugin = "opentofu"
+    build  = "./modules/alb-target-group"
     inputs = {
       name    = environment.name
       vpc_id  = variable.vpc_id
@@ -85,7 +88,8 @@ environment {
 
   # CloudWatch log group
   module "log_group" {
-    build = "./modules/cloudwatch-logs"
+    plugin = "opentofu"
+    build  = "./modules/cloudwatch-logs"
     inputs = {
       name           = "/ecs/${variable.cluster_name}/${environment.name}"
       retention_days = 30
@@ -94,7 +98,8 @@ environment {
 
   # DNS records
   module "dns_records" {
-    build = "./modules/route53-records"
+    plugin = "opentofu"
+    build  = "./modules/route53-records"
     inputs = {
       hosted_zone_id = variable.hosted_zone_id
       domain         = "${environment.name}.${variable.domain}"
@@ -105,7 +110,8 @@ environment {
 
   # Security group for environment
   module "security_group" {
-    build = "./modules/security-group"
+    plugin = "opentofu"
+    build  = "./modules/security-group"
     inputs = {
       name   = "${environment.name}-sg"
       vpc_id = variable.vpc_id
@@ -115,7 +121,8 @@ environment {
   # Resource hooks
   database {
     module "rds_database" {
-      build = "./modules/rds-database"
+      plugin = "opentofu"
+      build  = "./modules/rds-database"
       inputs = {
         name              = "${environment.name}-${node.name}"
         type              = element(split(":", node.inputs.type), 0)
@@ -140,7 +147,8 @@ environment {
   # Uses ECS Tasks (Fargate) for one-time execution
   task {
     module "run_task" {
-      build = "./modules/ecs-task"
+      plugin = "opentofu"
+      build  = "./modules/ecs-task"
       inputs = {
         name              = "${node.component}--${node.name}"
         cluster           = variable.cluster_name
@@ -165,7 +173,8 @@ environment {
 
   bucket {
     module "s3_bucket" {
-      build = "./modules/s3-bucket"
+      plugin = "opentofu"
+      build  = "./modules/s3-bucket"
       inputs = {
         name       = "${environment.name}-${node.name}"
         region     = variable.aws_region
@@ -189,7 +198,8 @@ environment {
     when = node.inputs.keyType == "rsa" || node.inputs.keyType == "ecdsa"
 
     module "asymmetric_key" {
-      build = "./modules/secrets-manager-keypair"
+      plugin = "opentofu"
+      build  = "./modules/secrets-manager-keypair"
       inputs = {
         name     = "${environment.name}/${node.component}/${node.name}"
         key_type = node.inputs.keyType
@@ -212,7 +222,8 @@ environment {
     when = node.inputs.keyType == "symmetric"
 
     module "symmetric_key" {
-      build = "./modules/kms-key"
+      plugin = "opentofu"
+      build  = "./modules/kms-key"
       inputs = {
         name   = "${environment.name}-${node.component}-${node.name}"
         region = variable.aws_region
@@ -228,7 +239,8 @@ environment {
   # SMTP hook - AWS SES
   smtp {
     module "ses_smtp" {
-      build = "./modules/ses-smtp"
+      plugin = "opentofu"
+      build  = "./modules/ses-smtp"
       inputs = {
         region       = variable.aws_region
         identity_arn = variable.ses_identity_arn
@@ -248,7 +260,8 @@ environment {
     when = node.inputs.image != null
 
     module "ecs_service" {
-      build = "./modules/ecs-service"
+      plugin = "opentofu"
+      build  = "./modules/ecs-service"
       inputs = merge(node.inputs, {
         cluster           = variable.cluster_name
         vpc_id            = variable.vpc_id
@@ -284,7 +297,8 @@ environment {
 
   function {
     module "lambda" {
-      build = "./modules/lambda-function"
+      plugin = "opentofu"
+      build  = "./modules/lambda-function"
       inputs = merge(node.inputs, {
         name              = "${environment.name}-${node.name}"
         vpc_id            = variable.vpc_id
@@ -300,7 +314,8 @@ environment {
 
   service {
     module "service_discovery" {
-      build = "./modules/service-discovery"
+      plugin = "opentofu"
+      build  = "./modules/service-discovery"
       inputs = {
         name        = node.name
         namespace   = environment.name
@@ -319,7 +334,8 @@ environment {
 
   ingress {
     module "alb_listener_rule" {
-      build = "./modules/alb-listener-rule"
+      plugin = "opentofu"
+      build  = "./modules/alb-listener-rule"
       inputs = merge(node.inputs, {
         alb_arn          = module.alb.arn
         target_group_arn = module.target_group.arn
@@ -338,7 +354,8 @@ environment {
 
   cronjob {
     module "eventbridge_task" {
-      build = "./modules/eventbridge-scheduled-task"
+      plugin = "opentofu"
+      build  = "./modules/eventbridge-scheduled-task"
       inputs = merge(node.inputs, {
         name    = "${environment.name}-${node.name}"
         cluster = variable.cluster_name
@@ -352,7 +369,8 @@ environment {
 
   databaseUser {
     module "rds_user" {
-      build = "./modules/rds-user"
+      plugin = "opentofu"
+      build  = "./modules/rds-user"
       inputs = {
         database = node.inputs.database
         username = node.inputs.username
@@ -368,7 +386,8 @@ environment {
 
   secret {
     module "secrets_manager" {
-      build = "./modules/secrets-manager"
+      plugin = "opentofu"
+      build  = "./modules/secrets-manager"
       inputs = {
         name = "${environment.name}/${node.name}"
         data = node.inputs.data
@@ -382,7 +401,8 @@ environment {
 
   dockerBuild {
     module "ecr_build" {
-      build = "./modules/ecr-build"
+      plugin = "opentofu"
+      build  = "./modules/ecr-build"
       inputs = {
         context    = node.inputs.context
         dockerfile = node.inputs.dockerfile
@@ -402,7 +422,8 @@ environment {
   # telemetry and exports to CloudWatch Logs, CloudWatch Metrics, and X-Ray.
   observability {
     module "otel_collector" {
-      build = "./modules/ecs-otel-collector"
+      plugin = "opentofu"
+      build  = "./modules/ecs-otel-collector"
       inputs = {
         name              = "${environment.name}-otel-collector"
         cluster           = variable.cluster_name

@@ -64,7 +64,8 @@ variable "smtp_password" {
 
 # Create the DOKS cluster (shared across all environments)
 module "k8s" {
-  build = "./modules/doks-cluster"
+  plugin = "opentofu"
+  build  = "./modules/doks-cluster"
   inputs = {
     name   = variable.cluster_name
     region = variable.region
@@ -81,7 +82,8 @@ module "k8s" {
 environment {
   # Create namespace per environment
   module "namespace" {
-    build = "./modules/k8s-namespace"
+    plugin = "opentofu"
+    build  = "./modules/k8s-namespace"
     inputs = {
       name       = environment.name
       kubeconfig = module.k8s.kubeconfig
@@ -90,8 +92,9 @@ environment {
 
   # Gateway for HTTP routes
   module "gateway" {
-    when  = contains(environment.nodes.*.type, "ingress")
-    build = "./modules/k8s-gateway"
+    plugin = "opentofu"
+    when   = contains(environment.nodes.*.type, "ingress")
+    build  = "./modules/k8s-gateway"
     inputs = {
       name          = "${environment.name}-gateway"
       namespace     = environment.name
@@ -106,7 +109,8 @@ environment {
 
   # DNS zone per environment
   module "dns_records" {
-    build = "./modules/do-dns"
+    plugin = "opentofu"
+    build  = "./modules/do-dns"
     inputs = {
       domain    = variable.domain
       subdomain = environment.name
@@ -118,7 +122,8 @@ environment {
   # Resource hooks
   database {
     module "managed_database" {
-      build = "./modules/do-managed-database"
+      plugin = "opentofu"
+      build  = "./modules/do-managed-database"
       inputs = {
         name    = "${environment.name}-${node.name}"
         type    = element(split(":", node.inputs.type), 0)
@@ -141,7 +146,8 @@ environment {
   # Uses Kubernetes Jobs for one-time execution
   task {
     module "task_job" {
-      build = "./modules/k8s-job"
+      plugin = "opentofu"
+      build  = "./modules/k8s-job"
       inputs = {
         name       = "${node.component}--${node.name}"
         namespace  = environment.name
@@ -163,7 +169,8 @@ environment {
 
   bucket {
     module "spaces_bucket" {
-      build = "./modules/do-spaces"
+      plugin = "opentofu"
+      build  = "./modules/do-spaces"
       inputs = {
         name       = "${environment.name}-${node.name}"
         region     = variable.region
@@ -187,7 +194,8 @@ environment {
     when = node.inputs.keyType == "rsa" || node.inputs.keyType == "ecdsa"
 
     module "asymmetric_key" {
-      build = "./modules/k8s-encryption-key"
+      plugin = "opentofu"
+      build  = "./modules/k8s-encryption-key"
       inputs = {
         name       = "${environment.name}-${node.component}-${node.name}"
         namespace  = environment.name
@@ -210,7 +218,8 @@ environment {
     when = node.inputs.keyType == "symmetric"
 
     module "symmetric_key" {
-      build = "./modules/k8s-encryption-key"
+      plugin = "opentofu"
+      build  = "./modules/k8s-encryption-key"
       inputs = {
         name       = "${environment.name}-${node.component}-${node.name}"
         namespace  = environment.name
@@ -229,7 +238,8 @@ environment {
   # SMTP hook - external relay (DigitalOcean has no native SMTP service)
   smtp {
     module "smtp_relay" {
-      build = "./modules/k8s-secret"
+      plugin = "opentofu"
+      build  = "./modules/k8s-secret"
       inputs = {
         name       = "${environment.name}-${node.component}-${node.name}-smtp"
         namespace  = environment.name
@@ -254,7 +264,8 @@ environment {
   # Database user hook - create additional users on managed databases
   databaseUser {
     module "db_user" {
-      build = "./modules/do-database-user"
+      plugin = "opentofu"
+      build  = "./modules/do-database-user"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         database = node.inputs.database
@@ -272,7 +283,8 @@ environment {
   # Secret hook - store secrets as Kubernetes secrets
   secret {
     module "k8s_secret" {
-      build = "./modules/k8s-secret"
+      plugin = "opentofu"
+      build  = "./modules/k8s-secret"
       inputs = {
         name       = "${environment.name}-${node.component}-${node.name}"
         namespace  = environment.name
@@ -293,7 +305,8 @@ environment {
     when = node.inputs.image != null
 
     module "deployment" {
-      build = "./modules/k8s-deployment"
+      plugin = "opentofu"
+      build  = "./modules/k8s-deployment"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.k8s.kubeconfig
@@ -329,7 +342,8 @@ environment {
   # DigitalOcean doesn't have native functions - deploy as Knative serving
   function {
     module "knative_service" {
-      build = "./modules/knative-service"
+      plugin = "opentofu"
+      build  = "./modules/knative-service"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.k8s.kubeconfig
@@ -344,7 +358,8 @@ environment {
 
   service {
     module "service" {
-      build = "./modules/k8s-service"
+      plugin = "opentofu"
+      build  = "./modules/k8s-service"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.k8s.kubeconfig
@@ -360,7 +375,8 @@ environment {
 
   ingress {
     module "httproute" {
-      build = "./modules/k8s-httproute"
+      plugin = "opentofu"
+      build  = "./modules/k8s-httproute"
       inputs = merge(node.inputs, {
         namespace    = environment.name
         gateway_name = "${environment.name}-gateway"
@@ -379,7 +395,8 @@ environment {
 
   cronjob {
     module "cronjob" {
-      build = "./modules/k8s-cronjob"
+      plugin = "opentofu"
+      build  = "./modules/k8s-cronjob"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.k8s.kubeconfig
@@ -393,7 +410,8 @@ environment {
 
   dockerBuild {
     module "docker_build" {
-      build = "./modules/docker-build-push"
+      plugin = "opentofu"
+      build  = "./modules/docker-build-push"
       inputs = {
         context    = node.inputs.context
         dockerfile = node.inputs.dockerfile
@@ -412,7 +430,8 @@ environment {
   # Observability hook - DigitalOcean Monitoring + self-hosted OTel collector
   observability {
     module "otel_collector" {
-      build = "./modules/k8s-otel-collector"
+      plugin = "opentofu"
+      build  = "./modules/k8s-otel-collector"
       inputs = {
         name       = "${environment.name}-otel"
         namespace  = environment.name

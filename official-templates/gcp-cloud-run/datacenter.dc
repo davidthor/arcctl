@@ -51,7 +51,8 @@ variable "smtp_password" {
 
 # VPC network for Cloud SQL / Memorystore private connectivity
 module "vpc" {
-  build = "./modules/gcp-vpc"
+  plugin = "opentofu"
+  build  = "./modules/gcp-vpc"
   inputs = {
     name    = "${variable.gcp_project}-vpc"
     project = variable.gcp_project
@@ -61,7 +62,8 @@ module "vpc" {
 
 # Serverless VPC connector (Cloud Run → Cloud SQL / Memorystore)
 module "vpc_connector" {
-  build = "./modules/gcp-vpc-connector"
+  plugin = "opentofu"
+  build  = "./modules/gcp-vpc-connector"
   inputs = {
     name    = "${variable.gcp_project}-connector"
     project = variable.gcp_project
@@ -72,7 +74,8 @@ module "vpc_connector" {
 
 # Cloud Load Balancing (shared across environments)
 module "load_balancer" {
-  build = "./modules/gcp-cloud-lb"
+  plugin = "opentofu"
+  build  = "./modules/gcp-cloud-lb"
   inputs = {
     name    = "${variable.gcp_project}-lb"
     project = variable.gcp_project
@@ -83,7 +86,8 @@ module "load_balancer" {
 environment {
   # Cloud DNS records per environment
   module "dns_records" {
-    build = "./modules/gcp-cloud-dns"
+    plugin = "opentofu"
+    build  = "./modules/gcp-cloud-dns"
     inputs = {
       project   = variable.gcp_project
       zone_name = variable.domain
@@ -97,7 +101,8 @@ environment {
     when = element(split(":", node.inputs.type), 0) == "postgres"
 
     module "cloud_sql_pg" {
-      build = "./modules/gcp-cloud-sql"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-sql"
       inputs = {
         name          = "${environment.name}-${node.component}-${node.name}"
         project       = variable.gcp_project
@@ -125,7 +130,8 @@ environment {
     when = element(split(":", node.inputs.type), 0) == "mysql"
 
     module "cloud_sql_mysql" {
-      build = "./modules/gcp-cloud-sql"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-sql"
       inputs = {
         name          = "${environment.name}-${node.component}-${node.name}"
         project       = variable.gcp_project
@@ -153,7 +159,8 @@ environment {
     when = element(split(":", node.inputs.type), 0) == "redis"
 
     module "memorystore_redis" {
-      build = "./modules/gcp-memorystore"
+      plugin = "opentofu"
+      build  = "./modules/gcp-memorystore"
       inputs = {
         name    = "${environment.name}-${node.component}-${node.name}"
         project = variable.gcp_project
@@ -175,7 +182,8 @@ environment {
   # Task hook - one-time Cloud Run jobs (e.g., database migrations)
   task {
     module "cloud_run_job" {
-      build = "./modules/gcp-cloud-run-job"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-run-job"
       inputs = {
         name          = "${node.component}--${node.name}"
         project       = variable.gcp_project
@@ -196,7 +204,8 @@ environment {
   # Bucket hook - Google Cloud Storage with HMAC keys for S3-compatible access
   bucket {
     module "gcs_bucket" {
-      build = "./modules/gcp-gcs"
+      plugin = "opentofu"
+      build  = "./modules/gcp-gcs"
       inputs = {
         name       = "${variable.gcp_project}-${environment.name}-${node.name}"
         project    = variable.gcp_project
@@ -220,7 +229,8 @@ environment {
     when = node.inputs.keyType == "rsa" || node.inputs.keyType == "ecdsa"
 
     module "asymmetric_key" {
-      build = "./modules/gcp-kms-key"
+      plugin = "opentofu"
+      build  = "./modules/gcp-kms-key"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         project  = variable.gcp_project
@@ -243,7 +253,8 @@ environment {
     when = node.inputs.keyType == "symmetric"
 
     module "symmetric_key" {
-      build = "./modules/gcp-kms-key"
+      plugin = "opentofu"
+      build  = "./modules/gcp-kms-key"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         project  = variable.gcp_project
@@ -262,7 +273,8 @@ environment {
   # SMTP hook - configurable external relay (GCP has no native SMTP service)
   smtp {
     module "smtp_relay" {
-      build = "./modules/gcp-smtp-relay"
+      plugin = "opentofu"
+      build  = "./modules/gcp-smtp-relay"
       inputs = {
         host     = variable.smtp_host
         port     = variable.smtp_port
@@ -285,7 +297,8 @@ environment {
     when = node.inputs.image != null
 
     module "cloud_run_service" {
-      build = "./modules/gcp-cloud-run-service"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-run-service"
       inputs = merge(node.inputs, {
         name          = "${environment.name}-${node.component}-${node.name}"
         project       = variable.gcp_project
@@ -302,7 +315,8 @@ environment {
   # Function hook - Cloud Run service with scale-to-zero
   function {
     module "cloud_run_function" {
-      build = "./modules/gcp-cloud-run-function"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-run-function"
       inputs = merge(node.inputs, {
         name          = "${environment.name}-${node.component}-${node.name}"
         project       = variable.gcp_project
@@ -320,7 +334,8 @@ environment {
   # Service hook - Cloud Run internal service discovery
   service {
     module "cloud_run_svc" {
-      build = "./modules/gcp-cloud-run-svc"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-run-svc"
       inputs = {
         name        = node.name
         project     = variable.gcp_project
@@ -341,7 +356,8 @@ environment {
   # Ingress hook - Cloud Load Balancing with custom domain
   ingress {
     module "lb_backend" {
-      build = "./modules/gcp-lb-backend"
+      plugin = "opentofu"
+      build  = "./modules/gcp-lb-backend"
       inputs = merge(node.inputs, {
         name           = "${environment.name}-${node.name}"
         project        = variable.gcp_project
@@ -363,7 +379,8 @@ environment {
   # Cronjob hook - Cloud Scheduler triggering Cloud Run jobs
   cronjob {
     module "cloud_scheduler" {
-      build = "./modules/gcp-cloud-scheduler"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-scheduler"
       inputs = merge(node.inputs, {
         name    = "${environment.name}-${node.component}-${node.name}"
         project = variable.gcp_project
@@ -379,7 +396,8 @@ environment {
   # Database user hook
   databaseUser {
     module "cloud_sql_user" {
-      build = "./modules/gcp-cloud-sql-user"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-sql-user"
       inputs = {
         database = node.inputs.database
         username = node.inputs.username
@@ -398,7 +416,8 @@ environment {
   # Secret hook - Secret Manager
   secret {
     module "secret_manager" {
-      build = "./modules/gcp-secret-manager"
+      plugin = "opentofu"
+      build  = "./modules/gcp-secret-manager"
       inputs = {
         name    = "${environment.name}-${node.name}"
         project = variable.gcp_project
@@ -414,7 +433,8 @@ environment {
   # Docker build hook - Artifact Registry
   dockerBuild {
     module "artifact_build" {
-      build = "./modules/gcp-artifact-build"
+      plugin = "opentofu"
+      build  = "./modules/gcp-artifact-build"
       inputs = {
         context    = node.inputs.context
         dockerfile = node.inputs.dockerfile
@@ -433,7 +453,8 @@ environment {
   # Observability - Cloud Monitoring + Cloud Logging + Cloud Trace via OTel
   observability {
     module "gcp_otel" {
-      build = "./modules/gcp-otel-collector"
+      plugin = "opentofu"
+      build  = "./modules/gcp-otel-collector"
       inputs = {
         name    = "${environment.name}-otel"
         project = variable.gcp_project

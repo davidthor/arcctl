@@ -1,0 +1,167 @@
+name: Publish Datacenters
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "official-templates/**"
+  release:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.24"
+  DOCKERHUB_USERNAME: davidthor
+  REGISTRY: docker.io
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Detect which datacenter templates exist
+  # ---------------------------------------------------------------------------
+  detect:
+    name: Detect Templates
+    runs-on: ubuntu-latest
+    outputs:
+      templates: ${{ steps.list.outputs.templates }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: List datacenter templates
+        id: list
+        run: |
+          templates=$(ls -d official-templates/*/datacenter.dc 2>/dev/null \
+            | xargs -I{} dirname {} \
+            | xargs -I{} basename {} \
+            | jq -R -s -c 'split("\n") | map(select(. != ""))')
+          echo "templates=${templates}" >> "$GITHUB_OUTPUT"
+          echo "Found templates: ${templates}"
+
+  # ---------------------------------------------------------------------------
+  # Build arcctl binary (shared across all datacenter builds)
+  # ---------------------------------------------------------------------------
+  build-cli:
+    name: Build CLI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build arcctl
+        run: make build
+
+      - name: Upload arcctl binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcctl-binary
+          path: bin/arcctl
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Build & push each datacenter template (on push to main → :latest)
+  # ---------------------------------------------------------------------------
+  publish-latest:
+    name: "Publish ${{ matrix.template }}:latest"
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [detect, build-cli]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        template: ${{ fromJson(needs.detect.outputs.templates) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download arcctl binary
+        uses: actions/download-artifact@v4
+        with:
+          name: arcctl-binary
+          path: bin
+
+      - name: Make arcctl executable
+        run: chmod +x bin/arcctl
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build datacenter artifact
+        run: |
+          IMAGE="${REGISTRY}/${DOCKERHUB_USERNAME}/${{ matrix.template }}-datacenter:latest"
+          echo "Building ${IMAGE}..."
+          bin/arcctl build datacenter \
+            "./official-templates/${{ matrix.template }}" \
+            -t "${IMAGE}"
+
+      - name: Push datacenter artifact
+        run: |
+          IMAGE="${REGISTRY}/${DOCKERHUB_USERNAME}/${{ matrix.template }}-datacenter:latest"
+          echo "Pushing ${IMAGE}..."
+          bin/arcctl push datacenter "${IMAGE}" -y
+
+  # ---------------------------------------------------------------------------
+  # Tag & push release version (on GitHub release → :vX.Y.Z)
+  # ---------------------------------------------------------------------------
+  publish-release:
+    name: "Publish ${{ matrix.template }}:${{ github.ref_name }}"
+    if: github.event_name == 'release'
+    needs: [detect, build-cli]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        template: ${{ fromJson(needs.detect.outputs.templates) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download arcctl binary
+        uses: actions/download-artifact@v4
+        with:
+          name: arcctl-binary
+          path: bin
+
+      - name: Make arcctl executable
+        run: chmod +x bin/arcctl
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build datacenter artifact
+        run: |
+          VERSION="${{ github.ref_name }}"
+          IMAGE="${REGISTRY}/${DOCKERHUB_USERNAME}/${{ matrix.template }}-datacenter"
+          echo "Building ${IMAGE}:${VERSION}..."
+          bin/arcctl build datacenter \
+            "./official-templates/${{ matrix.template }}" \
+            -t "${IMAGE}:${VERSION}"
+
+      - name: Push versioned tag
+        run: |
+          VERSION="${{ github.ref_name }}"
+          IMAGE="${REGISTRY}/${DOCKERHUB_USERNAME}/${{ matrix.template }}-datacenter"
+          echo "Pushing ${IMAGE}:${VERSION}..."
+          bin/arcctl push datacenter "${IMAGE}:${VERSION}" -y
+
+      - name: Tag and push as latest
+        run: |
+          VERSION="${{ github.ref_name }}"
+          IMAGE="${REGISTRY}/${DOCKERHUB_USERNAME}/${{ matrix.template }}-datacenter"
+          echo "Tagging ${IMAGE}:${VERSION} → ${IMAGE}:latest..."
+          bin/arcctl tag datacenter "${IMAGE}:${VERSION}" "${IMAGE}:latest" -y
+          bin/arcctl push datacenter "${IMAGE}:latest" -y

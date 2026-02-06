@@ -56,7 +56,8 @@ environment {
   # Database hook - managed databases (postgres, mysql, redis)
   database {
     module "managed_database" {
-      build = "./modules/do-managed-database"
+      plugin = "opentofu"
+      build  = "./modules/do-managed-database"
       inputs = {
         name    = "${environment.name}-${node.name}"
         type    = element(split(":", node.inputs.type), 0)
@@ -80,7 +81,8 @@ environment {
   # Task hook - run one-time tasks via App Platform Jobs
   task {
     module "app_job" {
-      build = "./modules/do-app-job"
+      plugin = "opentofu"
+      build  = "./modules/do-app-job"
       inputs = {
         name        = "${environment.name}-${node.component}-${node.name}"
         image       = node.inputs.image
@@ -100,7 +102,8 @@ environment {
   # Bucket hook - DigitalOcean Spaces
   bucket {
     module "spaces_bucket" {
-      build = "./modules/do-spaces"
+      plugin = "opentofu"
+      build  = "./modules/do-spaces"
       inputs = {
         name       = "${environment.name}-${node.name}"
         region     = variable.region
@@ -124,7 +127,8 @@ environment {
     when = node.inputs.keyType == "rsa" || node.inputs.keyType == "ecdsa"
 
     module "asymmetric_key" {
-      build = "./modules/do-app-secret"
+      plugin = "opentofu"
+      build  = "./modules/do-app-secret"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         key_type = node.inputs.keyType
@@ -146,7 +150,8 @@ environment {
     when = node.inputs.keyType == "symmetric"
 
     module "symmetric_key" {
-      build = "./modules/do-app-secret"
+      plugin = "opentofu"
+      build  = "./modules/do-app-secret"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         key_type = "symmetric"
@@ -164,7 +169,8 @@ environment {
   # SMTP hook - external relay (no native DO SMTP service)
   smtp {
     module "smtp_config" {
-      build = "./modules/do-app-secret"
+      plugin = "opentofu"
+      build  = "./modules/do-app-secret"
       inputs = {
         name  = "${environment.name}-${node.component}-${node.name}-smtp"
         token = variable.do_token
@@ -188,7 +194,8 @@ environment {
   # Database user hook - additional users on managed databases
   databaseUser {
     module "db_user" {
-      build = "./modules/do-database-user"
+      plugin = "opentofu"
+      build  = "./modules/do-database-user"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         database = node.inputs.database
@@ -206,7 +213,8 @@ environment {
   # Secret hook - App Platform environment variables (encrypted)
   secret {
     module "app_secret" {
-      build = "./modules/do-app-secret"
+      plugin = "opentofu"
+      build  = "./modules/do-app-secret"
       inputs = {
         name  = "${environment.name}-${node.component}-${node.name}"
         token = variable.do_token
@@ -226,7 +234,8 @@ environment {
     when = node.inputs.image != null
 
     module "app_service" {
-      build = "./modules/do-app-service"
+      plugin = "opentofu"
+      build  = "./modules/do-app-service"
       inputs = merge(node.inputs, {
         name   = "${environment.name}-${node.component}-${node.name}"
         region = variable.region
@@ -242,7 +251,8 @@ environment {
   # Function hook - App Platform supports serverless functions
   function {
     module "app_function" {
-      build = "./modules/do-app-function"
+      plugin = "opentofu"
+      build  = "./modules/do-app-function"
       inputs = merge(node.inputs, {
         name   = "${environment.name}-${node.component}-${node.name}"
         region = variable.region
@@ -259,7 +269,8 @@ environment {
   # Service hook - App Platform internal routing
   service {
     module "app_internal_service" {
-      build = "./modules/do-app-internal-service"
+      plugin = "opentofu"
+      build  = "./modules/do-app-internal-service"
       inputs = merge(node.inputs, {
         name  = "${environment.name}-${node.component}-${node.name}"
         token = variable.do_token
@@ -276,7 +287,8 @@ environment {
   # Ingress hook - App Platform handles routing and TLS automatically
   ingress {
     module "app_domain" {
-      build = "./modules/do-app-domain"
+      plugin = "opentofu"
+      build  = "./modules/do-app-domain"
       inputs = merge(node.inputs, {
         name   = "${environment.name}-${node.component}-${node.name}"
         domain = variable.domain
@@ -296,7 +308,8 @@ environment {
   # Cronjob hook - App Platform scheduled jobs
   cronjob {
     module "app_cron" {
-      build = "./modules/do-app-job"
+      plugin = "opentofu"
+      build  = "./modules/do-app-job"
       inputs = merge(node.inputs, {
         name     = "${environment.name}-${node.component}-${node.name}"
         schedule = node.inputs.schedule
@@ -313,7 +326,8 @@ environment {
   # Docker build hook - build and push to DO Container Registry
   dockerBuild {
     module "docker_build" {
-      build = "./modules/docker-build-push"
+      plugin = "opentofu"
+      build  = "./modules/docker-build-push"
       inputs = {
         context    = node.inputs.context
         dockerfile = node.inputs.dockerfile
@@ -332,7 +346,8 @@ environment {
   # Observability hook - DigitalOcean App Platform built-in monitoring
   observability {
     module "app_monitoring" {
-      build = "./modules/do-app-monitoring"
+      plugin = "opentofu"
+      build  = "./modules/do-app-monitoring"
       inputs = {
         name   = "${environment.name}-otel"
         region = variable.region

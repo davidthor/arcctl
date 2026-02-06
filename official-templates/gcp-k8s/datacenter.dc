@@ -63,7 +63,8 @@ variable "smtp_password" {
 
 # VPC network for Cloud SQL / Memorystore private connectivity
 module "vpc" {
-  build = "./modules/gcp-vpc"
+  plugin = "opentofu"
+  build  = "./modules/gcp-vpc"
   inputs = {
     name    = "${variable.cluster_name}-vpc"
     project = variable.gcp_project
@@ -73,7 +74,8 @@ module "vpc" {
 
 # GKE cluster (shared across all environments)
 module "gke" {
-  build = "./modules/gcp-gke-cluster"
+  plugin = "opentofu"
+  build  = "./modules/gcp-gke-cluster"
   inputs = {
     name    = variable.cluster_name
     project = variable.gcp_project
@@ -92,7 +94,8 @@ module "gke" {
 environment {
   # Kubernetes namespace per environment
   module "namespace" {
-    build = "./modules/k8s-namespace"
+    plugin = "opentofu"
+    build  = "./modules/k8s-namespace"
     inputs = {
       name       = environment.name
       kubeconfig = module.gke.kubeconfig
@@ -101,8 +104,9 @@ environment {
 
   # Gateway for HTTP routes (only when ingress resources exist)
   module "gateway" {
-    when  = contains(environment.nodes.*.type, "ingress")
-    build = "./modules/k8s-gateway"
+    plugin = "opentofu"
+    when   = contains(environment.nodes.*.type, "ingress")
+    build  = "./modules/k8s-gateway"
     inputs = {
       name          = "${environment.name}-gateway"
       namespace     = environment.name
@@ -117,7 +121,8 @@ environment {
 
   # Cloud DNS records per environment
   module "dns_records" {
-    build = "./modules/gcp-cloud-dns"
+    plugin = "opentofu"
+    build  = "./modules/gcp-cloud-dns"
     inputs = {
       project   = variable.gcp_project
       zone_name = variable.domain
@@ -131,7 +136,8 @@ environment {
     when = element(split(":", node.inputs.type), 0) == "postgres"
 
     module "cloud_sql_pg" {
-      build = "./modules/gcp-cloud-sql"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-sql"
       inputs = {
         name          = "${environment.name}-${node.component}-${node.name}"
         project       = variable.gcp_project
@@ -159,7 +165,8 @@ environment {
     when = element(split(":", node.inputs.type), 0) == "mysql"
 
     module "cloud_sql_mysql" {
-      build = "./modules/gcp-cloud-sql"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-sql"
       inputs = {
         name          = "${environment.name}-${node.component}-${node.name}"
         project       = variable.gcp_project
@@ -187,7 +194,8 @@ environment {
     when = element(split(":", node.inputs.type), 0) == "redis"
 
     module "memorystore_redis" {
-      build = "./modules/gcp-memorystore"
+      plugin = "opentofu"
+      build  = "./modules/gcp-memorystore"
       inputs = {
         name    = "${environment.name}-${node.component}-${node.name}"
         project = variable.gcp_project
@@ -209,7 +217,8 @@ environment {
   # Task hook - Kubernetes Jobs for one-time execution
   task {
     module "task_job" {
-      build = "./modules/k8s-job"
+      plugin = "opentofu"
+      build  = "./modules/k8s-job"
       inputs = {
         name        = "${node.component}--${node.name}"
         namespace   = environment.name
@@ -231,7 +240,8 @@ environment {
   # Bucket hook - Google Cloud Storage with HMAC keys
   bucket {
     module "gcs_bucket" {
-      build = "./modules/gcp-gcs"
+      plugin = "opentofu"
+      build  = "./modules/gcp-gcs"
       inputs = {
         name       = "${variable.gcp_project}-${environment.name}-${node.name}"
         project    = variable.gcp_project
@@ -255,7 +265,8 @@ environment {
     when = node.inputs.keyType == "rsa" || node.inputs.keyType == "ecdsa"
 
     module "asymmetric_key" {
-      build = "./modules/gcp-kms-key"
+      plugin = "opentofu"
+      build  = "./modules/gcp-kms-key"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         project  = variable.gcp_project
@@ -278,7 +289,8 @@ environment {
     when = node.inputs.keyType == "symmetric"
 
     module "symmetric_key" {
-      build = "./modules/gcp-kms-key"
+      plugin = "opentofu"
+      build  = "./modules/gcp-kms-key"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         project  = variable.gcp_project
@@ -297,7 +309,8 @@ environment {
   # SMTP hook - configurable external relay (GCP has no native SMTP service)
   smtp {
     module "smtp_relay" {
-      build = "./modules/gcp-smtp-relay"
+      plugin = "opentofu"
+      build  = "./modules/gcp-smtp-relay"
       inputs = {
         host     = variable.smtp_host
         port     = variable.smtp_port
@@ -319,7 +332,8 @@ environment {
     when = node.inputs.image != null
 
     module "k8s_deployment" {
-      build = "./modules/k8s-deployment"
+      plugin = "opentofu"
+      build  = "./modules/k8s-deployment"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.gke.kubeconfig
@@ -356,7 +370,8 @@ environment {
   # Function hook - Knative on GKE (scale-to-zero)
   function {
     module "knative_service" {
-      build = "./modules/knative-service"
+      plugin = "opentofu"
+      build  = "./modules/knative-service"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.gke.kubeconfig
@@ -372,7 +387,8 @@ environment {
   # Service hook - Kubernetes ClusterIP service
   service {
     module "k8s_service" {
-      build = "./modules/k8s-service"
+      plugin = "opentofu"
+      build  = "./modules/k8s-service"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.gke.kubeconfig
@@ -389,7 +405,8 @@ environment {
   # Ingress hook - GKE Gateway API
   ingress {
     module "httproute" {
-      build = "./modules/k8s-httproute"
+      plugin = "opentofu"
+      build  = "./modules/k8s-httproute"
       inputs = merge(node.inputs, {
         namespace    = environment.name
         gateway_name = "${environment.name}-gateway"
@@ -409,7 +426,8 @@ environment {
   # Cronjob hook - Kubernetes CronJobs
   cronjob {
     module "k8s_cronjob" {
-      build = "./modules/k8s-cronjob"
+      plugin = "opentofu"
+      build  = "./modules/k8s-cronjob"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.gke.kubeconfig
@@ -424,7 +442,8 @@ environment {
   # Database user hook
   databaseUser {
     module "cloud_sql_user" {
-      build = "./modules/gcp-cloud-sql-user"
+      plugin = "opentofu"
+      build  = "./modules/gcp-cloud-sql-user"
       inputs = {
         database = node.inputs.database
         username = node.inputs.username
@@ -443,7 +462,8 @@ environment {
   # Secret hook - Secret Manager
   secret {
     module "secret_manager" {
-      build = "./modules/gcp-secret-manager"
+      plugin = "opentofu"
+      build  = "./modules/gcp-secret-manager"
       inputs = {
         name    = "${environment.name}-${node.name}"
         project = variable.gcp_project
@@ -459,7 +479,8 @@ environment {
   # Docker build hook - Artifact Registry
   dockerBuild {
     module "artifact_build" {
-      build = "./modules/gcp-artifact-build"
+      plugin = "opentofu"
+      build  = "./modules/gcp-artifact-build"
       inputs = {
         context    = node.inputs.context
         dockerfile = node.inputs.dockerfile
@@ -478,7 +499,8 @@ environment {
   # Observability - Cloud Monitoring + OTel collector on GKE
   observability {
     module "gke_otel" {
-      build = "./modules/gcp-gke-otel"
+      plugin = "opentofu"
+      build  = "./modules/gcp-gke-otel"
       inputs = {
         name       = "${environment.name}-otel"
         namespace  = environment.name

@@ -80,7 +80,8 @@ variable "region" {
 # Each environment deploys to this project using Vercel's environment
 # targets (production vs preview) and aliases for DNS mapping.
 module "vercel_project" {
-  build = "./modules/vercel-project"
+  plugin = "opentofu"
+  build  = "./modules/vercel-project"
   inputs = {
     name    = variable.vercel_project_name
     token   = variable.vercel_token
@@ -101,7 +102,8 @@ environment {
     when = element(split(":", node.inputs.type), 0) == "postgres"
 
     module "neon_db" {
-      build = "./modules/neon-database"
+      plugin = "opentofu"
+      build  = "./modules/neon-database"
       inputs = {
         name       = "${node.component}-${node.name}"
         api_key    = variable.neon_api_key
@@ -136,7 +138,8 @@ environment {
     when = element(split(":", node.inputs.type), 0) == "redis"
 
     module "upstash_redis" {
-      build = "./modules/upstash-redis"
+      plugin = "opentofu"
+      build  = "./modules/upstash-redis"
       inputs = {
         name    = "${environment.name}-${node.component}-${node.name}"
         api_key = variable.upstash_api_key
@@ -160,7 +163,8 @@ environment {
   # ---------------------------------------------------------------------------
   databaseUser {
     module "neon_user" {
-      build = "./modules/neon-database-user"
+      plugin = "opentofu"
+      build  = "./modules/neon-database-user"
       inputs = {
         name       = "${node.component}-${node.name}"
         api_key    = variable.neon_api_key
@@ -207,7 +211,8 @@ environment {
   # ---------------------------------------------------------------------------
   bucket {
     module "vercel_blob" {
-      build = "./modules/vercel-blob"
+      plugin = "opentofu"
+      build  = "./modules/vercel-blob"
       inputs = {
         name    = "${environment.name}-${node.component}-${node.name}"
         token   = variable.vercel_token
@@ -232,7 +237,8 @@ environment {
     when = node.inputs.keyType == "rsa" || node.inputs.keyType == "ecdsa"
 
     module "asymmetric_key" {
-      build = "./modules/encryption-key"
+      plugin = "opentofu"
+      build  = "./modules/encryption-key"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         key_type = node.inputs.keyType
@@ -255,7 +261,8 @@ environment {
     when = node.inputs.keyType == "symmetric"
 
     module "symmetric_key" {
-      build = "./modules/encryption-key"
+      plugin = "opentofu"
+      build  = "./modules/encryption-key"
       inputs = {
         name     = "${environment.name}-${node.component}-${node.name}"
         key_type = "symmetric"
@@ -274,7 +281,8 @@ environment {
   # ---------------------------------------------------------------------------
   smtp {
     module "resend" {
-      build = "./modules/resend-smtp"
+      plugin = "opentofu"
+      build  = "./modules/resend-smtp"
       inputs = {
         name    = "${environment.name}-${node.component}-${node.name}"
         api_key = variable.resend_api_key
@@ -295,7 +303,8 @@ environment {
   # Secrets are scoped to the Vercel environment target for the tier.
   secret {
     module "secret" {
-      build = "./modules/vercel-secret"
+      plugin = "opentofu"
+      build  = "./modules/vercel-secret"
       inputs = {
         name       = "${environment.name}-${node.component}-${node.name}"
         value      = node.inputs.value
@@ -320,7 +329,8 @@ environment {
     when = node.inputs.image != null
 
     module "vercel_deployment" {
-      build = "./modules/vercel-serverless"
+      plugin = "opentofu"
+      build  = "./modules/vercel-serverless"
       inputs = merge(node.inputs, {
         name       = "${node.component}-${node.name}"
         token      = variable.vercel_token
@@ -349,7 +359,8 @@ environment {
   # Same shared-project and alias model as deployments.
   function {
     module "vercel_function" {
-      build = "./modules/vercel-function"
+      plugin = "opentofu"
+      build  = "./modules/vercel-function"
       inputs = merge(node.inputs, {
         name       = "${node.component}-${node.name}"
         token      = variable.vercel_token
@@ -378,7 +389,8 @@ environment {
   # ---------------------------------------------------------------------------
   service {
     module "vercel_service" {
-      build = "./modules/vercel-service"
+      plugin = "opentofu"
+      build  = "./modules/vercel-service"
       inputs = {
         name        = "${environment.name}-${node.component}-${node.name}"
         target      = node.inputs.target
@@ -403,7 +415,8 @@ environment {
   # ---------------------------------------------------------------------------
   ingress {
     module "vercel_ingress" {
-      build = "./modules/vercel-ingress"
+      plugin = "opentofu"
+      build  = "./modules/vercel-ingress"
       inputs = {
         name       = "${environment.name}-${node.component}-${node.name}"
         token      = variable.vercel_token
@@ -432,7 +445,8 @@ environment {
   # ---------------------------------------------------------------------------
   route {
     module "vercel_route" {
-      build = "./modules/vercel-ingress"
+      plugin = "opentofu"
+      build  = "./modules/vercel-ingress"
       inputs = {
         name       = "${environment.name}-${node.component}-${node.name}"
         token      = variable.vercel_token
@@ -459,7 +473,8 @@ environment {
   # ---------------------------------------------------------------------------
   cronjob {
     module "vercel_cron" {
-      build = "./modules/vercel-cron"
+      plugin = "opentofu"
+      build  = "./modules/vercel-cron"
       inputs = {
         name        = "${environment.name}-${node.component}-${node.name}"
         token       = variable.vercel_token
@@ -483,7 +498,8 @@ environment {
   # ---------------------------------------------------------------------------
   dockerBuild {
     module "docker_build" {
-      build = "./modules/vercel-docker-build"
+      plugin = "opentofu"
+      build  = "./modules/vercel-docker-build"
       inputs = {
         context    = node.inputs.context
         dockerfile = node.inputs.dockerfile

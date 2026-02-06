@@ -1,0 +1,35 @@
+plugin: native
+type: process
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: Task name for identification
+  image:
+    type: string
+    description: Container image to run (optional, uses local process if omitted)
+  command:
+    type: list
+    description: Command and arguments to execute
+  environment:
+    type: map
+    default: {}
+    description: Environment variables for the task
+
+resources:
+  task:
+    type: exec
+    properties:
+      name: "{{ inputs.name }}"
+      image: "{{ inputs.image }}"
+      command: "{{ inputs.command }}"
+      environment: "{{ inputs.environment }}"
+
+outputs:
+  id:
+    value: "{{ resources.task.id }}"
+    description: Task execution ID
+  status:
+    value: "{{ resources.task.status }}"
+    description: Task execution status

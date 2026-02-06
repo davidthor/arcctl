@@ -63,7 +63,8 @@ variable "ses_smtp_password" {
 
 # Application Load Balancer (shared across environments)
 module "alb" {
-  build = "./modules/alb"
+  plugin = "opentofu"
+  build  = "./modules/alb"
   inputs = {
     name            = "arcctl-alb"
     vpc_id          = variable.vpc_id
@@ -74,7 +75,8 @@ module "alb" {
 environment {
   # ALB target group per environment
   module "target_group" {
-    build = "./modules/alb-target-group"
+    plugin = "opentofu"
+    build  = "./modules/alb-target-group"
     inputs = {
       name    = environment.name
       vpc_id  = variable.vpc_id
@@ -84,7 +86,8 @@ environment {
 
   # Security group for environment
   module "security_group" {
-    build = "./modules/security-group"
+    plugin = "opentofu"
+    build  = "./modules/security-group"
     inputs = {
       name   = "${environment.name}-sg"
       vpc_id = variable.vpc_id
@@ -93,7 +96,8 @@ environment {
 
   # CloudWatch log group
   module "log_group" {
-    build = "./modules/cloudwatch-logs"
+    plugin = "opentofu"
+    build  = "./modules/cloudwatch-logs"
     inputs = {
       name           = "/ec2/${environment.name}"
       retention_days = 30
@@ -102,7 +106,8 @@ environment {
 
   # DNS records per environment
   module "dns_records" {
-    build = "./modules/route53-records"
+    plugin = "opentofu"
+    build  = "./modules/route53-records"
     inputs = {
       hosted_zone_id = variable.hosted_zone_id
       domain         = "${environment.name}.${variable.domain}"
@@ -114,7 +119,8 @@ environment {
   # Database hook - RDS
   database {
     module "rds_database" {
-      build = "./modules/rds-database"
+      plugin = "opentofu"
+      build  = "./modules/rds-database"
       inputs = {
         name              = "${environment.name}-${node.name}"
         type              = element(split(":", node.inputs.type), 0)
@@ -162,7 +168,8 @@ environment {
   # Bucket hook - S3
   bucket {
     module "s3_bucket" {
-      build = "./modules/s3-bucket"
+      plugin = "opentofu"
+      build  = "./modules/s3-bucket"
       inputs = {
         name       = "${environment.name}-${node.name}"
         region     = variable.aws_region
@@ -185,7 +192,8 @@ environment {
     when = node.inputs.keyType == "rsa" || node.inputs.keyType == "ecdsa"
 
     module "asymmetric_key" {
-      build = "./modules/secrets-manager-keypair"
+      plugin = "opentofu"
+      build  = "./modules/secrets-manager-keypair"
       inputs = {
         name     = "${environment.name}/${node.component}/${node.name}"
         key_type = node.inputs.keyType
@@ -207,7 +215,8 @@ environment {
     when = node.inputs.keyType == "symmetric"
 
     module "symmetric_key" {
-      build = "./modules/kms-key"
+      plugin = "opentofu"
+      build  = "./modules/kms-key"
       inputs = {
         name   = "${environment.name}-${node.component}-${node.name}"
         region = variable.aws_region
@@ -223,7 +232,8 @@ environment {
   # SMTP hook - AWS SES
   smtp {
     module "ses_smtp" {
-      build = "./modules/ses-smtp"
+      plugin = "opentofu"
+      build  = "./modules/ses-smtp"
       inputs = {
         region       = variable.aws_region
         identity_arn = variable.ses_identity_arn
@@ -316,7 +326,8 @@ environment {
   # Service hook - ALB target group routing
   service {
     module "alb_target" {
-      build = "./modules/alb-target-registration"
+      plugin = "opentofu"
+      build  = "./modules/alb-target-registration"
       inputs = {
         name             = node.name
         target_group_arn = module.target_group.arn
@@ -336,7 +347,8 @@ environment {
   # Ingress hook - ALB listener rules
   ingress {
     module "alb_listener_rule" {
-      build = "./modules/alb-listener-rule"
+      plugin = "opentofu"
+      build  = "./modules/alb-listener-rule"
       inputs = merge(node.inputs, {
         alb_arn          = module.alb.arn
         target_group_arn = module.target_group.arn
@@ -376,7 +388,8 @@ environment {
   # Database user hook
   databaseUser {
     module "rds_user" {
-      build = "./modules/rds-user"
+      plugin = "opentofu"
+      build  = "./modules/rds-user"
       inputs = {
         database = node.inputs.database
         username = node.inputs.username
@@ -393,7 +406,8 @@ environment {
   # Secret hook - Secrets Manager
   secret {
     module "secrets_manager" {
-      build = "./modules/secrets-manager"
+      plugin = "opentofu"
+      build  = "./modules/secrets-manager"
       inputs = {
         name = "${environment.name}/${node.name}"
         data = node.inputs.data
@@ -408,7 +422,8 @@ environment {
   # Docker build hook - ECR
   dockerBuild {
     module "ecr_build" {
-      build = "./modules/ecr-build"
+      plugin = "opentofu"
+      build  = "./modules/ecr-build"
       inputs = {
         context    = node.inputs.context
         dockerfile = node.inputs.dockerfile
@@ -428,7 +443,8 @@ environment {
   # collector sidecar process that receives OTLP telemetry.
   observability {
     module "cloudwatch_agent" {
-      build = "./modules/cloudwatch-agent"
+      plugin = "opentofu"
+      build  = "./modules/cloudwatch-agent"
       inputs = {
         name      = "${environment.name}-observability"
         region    = variable.aws_region

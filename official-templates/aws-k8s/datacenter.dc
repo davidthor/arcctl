@@ -61,7 +61,8 @@ variable "ssh_key_pair" {
 
 # EKS Cluster (shared across environments)
 module "eks" {
-  build = "./modules/eks-cluster"
+  plugin = "opentofu"
+  build  = "./modules/eks-cluster"
   inputs = {
     name   = variable.cluster_name
     region = variable.aws_region
@@ -79,7 +80,8 @@ module "eks" {
 
 # AWS ALB Ingress Controller (shared)
 module "alb_controller" {
-  build = "./modules/eks-alb-controller"
+  plugin = "opentofu"
+  build  = "./modules/eks-alb-controller"
   inputs = {
     cluster_name = variable.cluster_name
     region       = variable.aws_region
@@ -91,7 +93,8 @@ module "alb_controller" {
 environment {
   # Kubernetes namespace per environment
   module "namespace" {
-    build = "./modules/k8s-namespace"
+    plugin = "opentofu"
+    build  = "./modules/k8s-namespace"
     inputs = {
       name       = environment.name
       kubeconfig = module.eks.kubeconfig
@@ -100,7 +103,8 @@ environment {
 
   # CloudWatch log group
   module "log_group" {
-    build = "./modules/cloudwatch-logs"
+    plugin = "opentofu"
+    build  = "./modules/cloudwatch-logs"
     inputs = {
       name           = "/eks/${variable.cluster_name}/${environment.name}"
       retention_days = 30
@@ -109,7 +113,8 @@ environment {
 
   # Security group for environment
   module "security_group" {
-    build = "./modules/security-group"
+    plugin = "opentofu"
+    build  = "./modules/security-group"
     inputs = {
       name   = "${environment.name}-sg"
       vpc_id = variable.vpc_id
@@ -118,7 +123,8 @@ environment {
 
   # DNS records per environment
   module "dns_records" {
-    build = "./modules/route53-records"
+    plugin = "opentofu"
+    build  = "./modules/route53-records"
     inputs = {
       hosted_zone_id = variable.hosted_zone_id
       domain         = "${environment.name}.${variable.domain}"
@@ -130,7 +136,8 @@ environment {
   # Database hook - RDS
   database {
     module "rds_database" {
-      build = "./modules/rds-database"
+      plugin = "opentofu"
+      build  = "./modules/rds-database"
       inputs = {
         name              = "${environment.name}-${node.name}"
         type              = element(split(":", node.inputs.type), 0)
@@ -154,7 +161,8 @@ environment {
   # Task hook - Kubernetes Jobs
   task {
     module "k8s_job" {
-      build = "./modules/k8s-job"
+      plugin = "opentofu"
+      build  = "./modules/k8s-job"
       inputs = {
         name        = "${node.component}--${node.name}"
         namespace   = environment.name
@@ -176,7 +184,8 @@ environment {
   # Bucket hook - S3
   bucket {
     module "s3_bucket" {
-      build = "./modules/s3-bucket"
+      plugin = "opentofu"
+      build  = "./modules/s3-bucket"
       inputs = {
         name       = "${environment.name}-${node.name}"
         region     = variable.aws_region
@@ -199,7 +208,8 @@ environment {
     when = node.inputs.keyType == "rsa" || node.inputs.keyType == "ecdsa"
 
     module "asymmetric_key" {
-      build = "./modules/secrets-manager-keypair"
+      plugin = "opentofu"
+      build  = "./modules/secrets-manager-keypair"
       inputs = {
         name     = "${environment.name}/${node.component}/${node.name}"
         key_type = node.inputs.keyType
@@ -221,7 +231,8 @@ environment {
     when = node.inputs.keyType == "symmetric"
 
     module "symmetric_key" {
-      build = "./modules/kms-key"
+      plugin = "opentofu"
+      build  = "./modules/kms-key"
       inputs = {
         name   = "${environment.name}-${node.component}-${node.name}"
         region = variable.aws_region
@@ -237,7 +248,8 @@ environment {
   # SMTP hook - AWS SES
   smtp {
     module "ses_smtp" {
-      build = "./modules/ses-smtp"
+      plugin = "opentofu"
+      build  = "./modules/ses-smtp"
       inputs = {
         region       = variable.aws_region
         identity_arn = variable.ses_identity_arn
@@ -257,7 +269,8 @@ environment {
     when = node.inputs.image != null
 
     module "k8s_deployment" {
-      build = "./modules/k8s-deployment"
+      plugin = "opentofu"
+      build  = "./modules/k8s-deployment"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.eks.kubeconfig
@@ -294,7 +307,8 @@ environment {
   # Function hook - Knative serving on EKS
   function {
     module "knative_service" {
-      build = "./modules/knative-service"
+      plugin = "opentofu"
+      build  = "./modules/knative-service"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.eks.kubeconfig
@@ -310,7 +324,8 @@ environment {
   # Service hook - Kubernetes Service
   service {
     module "k8s_service" {
-      build = "./modules/k8s-service"
+      plugin = "opentofu"
+      build  = "./modules/k8s-service"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.eks.kubeconfig
@@ -327,7 +342,8 @@ environment {
   # Ingress hook - ALB Ingress via AWS Load Balancer Controller
   ingress {
     module "alb_ingress" {
-      build = "./modules/k8s-alb-ingress"
+      plugin = "opentofu"
+      build  = "./modules/k8s-alb-ingress"
       inputs = merge(node.inputs, {
         namespace       = environment.name
         kubeconfig      = module.eks.kubeconfig
@@ -348,7 +364,8 @@ environment {
   # Cronjob hook - Kubernetes CronJob
   cronjob {
     module "k8s_cronjob" {
-      build = "./modules/k8s-cronjob"
+      plugin = "opentofu"
+      build  = "./modules/k8s-cronjob"
       inputs = merge(node.inputs, {
         namespace  = environment.name
         kubeconfig = module.eks.kubeconfig
@@ -363,7 +380,8 @@ environment {
   # Database user hook
   databaseUser {
     module "rds_user" {
-      build = "./modules/rds-user"
+      plugin = "opentofu"
+      build  = "./modules/rds-user"
       inputs = {
         database = node.inputs.database
         username = node.inputs.username
@@ -380,7 +398,8 @@ environment {
   # Secret hook - Secrets Manager
   secret {
     module "secrets_manager" {
-      build = "./modules/secrets-manager"
+      plugin = "opentofu"
+      build  = "./modules/secrets-manager"
       inputs = {
         name = "${environment.name}/${node.name}"
         data = node.inputs.data
@@ -395,7 +414,8 @@ environment {
   # Docker build hook - ECR
   dockerBuild {
     module "ecr_build" {
-      build = "./modules/ecr-build"
+      plugin = "opentofu"
+      build  = "./modules/ecr-build"
       inputs = {
         context    = node.inputs.context
         dockerfile = node.inputs.dockerfile
@@ -415,7 +435,8 @@ environment {
   # telemetry and exports to CloudWatch Logs, Metrics, and X-Ray.
   observability {
     module "otel_collector" {
-      build = "./modules/eks-otel-collector"
+      plugin = "opentofu"
+      build  = "./modules/eks-otel-collector"
       inputs = {
         name       = "${environment.name}-otel-collector"
         namespace  = environment.name
