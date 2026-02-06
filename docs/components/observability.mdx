@@ -1,0 +1,222 @@
+---
+title: "Observability"
+description: "Configure OpenTelemetry observability for component workloads"
+---
+
+# Observability
+
+Components can declare observability preferences using the optional `observability` block. When a datacenter provides an `observability` hook, the hook's outputs become available via expressions so component authors can wire them into workload environment variables.
+
+There are two modes: **expression-only** (default) and **auto-inject**.
+
+## Basic Usage
+
+```yaml
+# Boolean shorthand - enable with all defaults (expression-only)
+observability: true
+
+# Full object form - customize attributes and injection mode
+observability:
+  inject: false     # default: false (expression-only mode)
+  attributes:       # custom OTel resource attributes
+    team: payments
+    tier: critical
+
+# Auto-inject mode - engine injects OTEL_* env vars into all workloads
+observability:
+  inject: true
+
+# Disable entirely
+observability: false
+
+# Omit = enabled with defaults when datacenter supports it
+```
+
+## Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `inject` | bool | `false` | When `true`, the engine auto-injects OTEL_* env vars into all workloads |
+| `attributes` | map | `{}` | Custom OTel resource attributes (key-value pairs) |
+
+## Expression-Only Mode (default)
+
+When `inject` is `false` (or omitted), component authors explicitly reference observability outputs in their environment blocks. This gives full control over which OTEL env vars are set and what values they use:
+
+```yaml
+observability:
+  attributes:
+    team: backend
+
+deployments:
+  api:
+    image: ${{ builds.api.image }}
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${{ observability.endpoint }}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${{ observability.protocol }}
+      OTEL_RESOURCE_ATTRIBUTES: ${{ observability.attributes }}
+      OTEL_SERVICE_NAME: my-api
+```
+
+## Auto-Inject Mode
+
+When `inject: true`, the engine automatically injects standard OTEL_* environment variables into all workloads (deployments, functions, cronjobs). This is convenient for teams that want convention-based configuration with minimal boilerplate:
+
+```yaml
+observability:
+  inject: true
+  attributes:
+    team: backend
+
+deployments:
+  api:
+    image: ${{ builds.api.image }}
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      # No need to set OTEL_* vars -- they're injected automatically
+```
+
+### Auto-Injected Variables
+
+The following variables are injected. The engine **never** overwrites a value the component author explicitly set.
+
+| Variable | Value |
+|----------|-------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | From datacenter hook output |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | From datacenter hook output |
+| `OTEL_SERVICE_NAME` | `<component>-<workload>` |
+| `OTEL_LOGS_EXPORTER` | `otlp` |
+| `OTEL_TRACES_EXPORTER` | `otlp` |
+| `OTEL_METRICS_EXPORTER` | `otlp` |
+| `OTEL_RESOURCE_ATTRIBUTES` | Merged attributes (see below) |
+
+To disable a specific signal, set the exporter to `none` in your environment block:
+
+```yaml
+observability:
+  inject: true
+
+deployments:
+  api:
+    environment:
+      OTEL_METRICS_EXPORTER: none  # Disable metrics, keep logs and traces
+```
+
+## Outputs
+
+Access observability configuration in expressions:
+
+| Output | Description |
+|--------|-------------|
+| `${{ observability.endpoint }}` | OTel collector OTLP endpoint |
+| `${{ observability.protocol }}` | OTLP protocol (e.g., `http/protobuf`, `grpc`) |
+| `${{ observability.attributes }}` | Merged resource attributes as comma-separated `key=value` string |
+
+## Attribute Merging
+
+The `${{ observability.attributes }}` expression returns a comma-separated `key=value` string that merges three sources. Later values override earlier ones:
+
+1. **Auto-generated**: `service.namespace=<component>`, `deployment.environment=<env>`, `service.type=<resource-type>`
+2. **Datacenter hook** `attributes` output (e.g., `cloud.provider=aws,cloud.region=us-east-1`)
+3. **Component** `attributes` (from the `observability` block)
+
+For example, with a component named `my-app` deployed to `staging` with the datacenter providing `cloud.provider=aws`:
+
+```yaml
+observability:
+  attributes:
+    team: payments
+```
+
+The merged attributes would be:
+
+```
+service.namespace=my-app,deployment.environment=staging,service.type=deployment,cloud.provider=aws,team=payments
+```
+
+## Viewing Logs
+
+When observability is enabled and the datacenter's observability hook provides `query_type` and `query_endpoint` outputs, you can use `arcctl logs` to view and stream workload logs:
+
+```bash
+# All logs in the environment
+arcctl logs -e staging
+
+# Logs from one component
+arcctl logs -e staging my-app
+
+# All deployment logs in a component
+arcctl logs -e staging my-app/deployment
+
+# Stream a specific deployment's logs
+arcctl logs -e staging my-app/deployment/api -f
+
+# Logs from the last 5 minutes
+arcctl logs -e staging --since 5m
+```
+
+<Note>
+Container stdout is automatically forwarded to the OTel collector in the local Docker datacenter (via Docker's fluentd logging driver), so even applications without OTel SDK instrumentation have queryable logs.
+</Note>
+
+## Opening the Dashboard
+
+If the datacenter provides a `dashboard_url` output, open the monitoring UI with:
+
+```bash
+arcctl observability dashboard -e staging
+```
+
+In the local Docker datacenter, this opens Grafana where you can explore logs (Loki), traces (Tempo), and metrics (Prometheus).
+
+## Complete Example
+
+```yaml
+# architect.yml
+
+databases:
+  main:
+    type: postgres:^15
+
+observability:
+  inject: true
+  attributes:
+    team: backend
+    tier: critical
+
+builds:
+  api:
+    context: ./api
+
+deployments:
+  api:
+    image: ${{ builds.api.image }}
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      # OTEL_* variables are auto-injected
+
+functions:
+  web:
+    src:
+      path: ./web
+      framework: nextjs
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      # OTEL_* variables are auto-injected here too
+
+services:
+  api:
+    deployment: api
+    port: 8080
+
+routes:
+  main:
+    type: http
+    function: web
+```
+
+## See Also
+
+- [Observability Hook](/datacenters/observability-hook) - Datacenter-side observability configuration
+- [`arcctl logs`](/cli/logs) - View and stream logs from the CLI
+- [`arcctl observability dashboard`](/cli/observability/dashboard) - Open the monitoring dashboard

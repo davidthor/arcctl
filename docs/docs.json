@@ -33,7 +33,8 @@
               "components/routes",
               "components/cronjobs",
               "components/variables",
-              "components/dependencies"
+              "components/dependencies",
+              "components/observability"
             ]
           },
           {
@@ -80,8 +81,15 @@
         ]
       },
       {
-        "tab": "Guides",
+        "tab": "Developer Guides",
         "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "guides/developer-workflow",
+              "guides/ci-cd-integration"
+            ]
+          },
           {
             "group": "Component Examples",
             "pages": [
@@ -93,6 +101,18 @@
               "guides/components/microservices",
               "guides/components/shared-database"
             ]
+          }
+        ]
+      },
+      {
+        "tab": "DevOps Guides",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "guides/platform-engineer-workflow",
+              "guides/managing-environments"
+            ]
           },
           {
             "group": "Datacenter Examples",
@@ -103,14 +123,6 @@
               "guides/datacenters/serverless-neon",
               "guides/datacenters/vercel-functions",
               "guides/datacenters/shared-database"
-            ]
-          },
-          {
-            "group": "Workflows",
-            "pages": [
-              "guides/developer-workflow",
-              "guides/platform-engineer-workflow",
-              "guides/ci-cd-integration"
             ]
           }
         ]
