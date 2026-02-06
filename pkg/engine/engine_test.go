@@ -616,3 +616,170 @@ func TestDestroy_DryRun(t *testing.T) {
 		t.Error("Environment should still exist after dry run")
 	}
 }
+
+func TestFindDependents_HasDependents(t *testing.T) {
+	envState := &types.EnvironmentState{
+		Name: "staging",
+		Components: map[string]*types.ComponentState{
+			"shared-db": {
+				Name: "shared-db",
+			},
+			"api": {
+				Name:         "api",
+				Dependencies: []string{"shared-db"},
+			},
+			"frontend": {
+				Name:         "frontend",
+				Dependencies: []string{"api"},
+			},
+			"worker": {
+				Name:         "worker",
+				Dependencies: []string{"shared-db", "api"},
+			},
+		},
+	}
+
+	dependents := FindDependents(envState, "shared-db")
+	if len(dependents) != 2 {
+		t.Fatalf("expected 2 dependents, got %d: %v", len(dependents), dependents)
+	}
+	// Should be sorted
+	if dependents[0] != "api" || dependents[1] != "worker" {
+		t.Errorf("expected [api worker], got %v", dependents)
+	}
+}
+
+func TestFindDependents_NoDependents(t *testing.T) {
+	envState := &types.EnvironmentState{
+		Name: "staging",
+		Components: map[string]*types.ComponentState{
+			"api": {
+				Name: "api",
+			},
+			"frontend": {
+				Name:         "frontend",
+				Dependencies: []string{"api"},
+			},
+		},
+	}
+
+	dependents := FindDependents(envState, "frontend")
+	if len(dependents) != 0 {
+		t.Errorf("expected no dependents, got %v", dependents)
+	}
+}
+
+func TestFindDependents_EmptyEnvironment(t *testing.T) {
+	envState := &types.EnvironmentState{
+		Name:       "staging",
+		Components: map[string]*types.ComponentState{},
+	}
+
+	dependents := FindDependents(envState, "api")
+	if len(dependents) != 0 {
+		t.Errorf("expected no dependents, got %v", dependents)
+	}
+}
+
+func TestFindDependents_NilDependencies(t *testing.T) {
+	envState := &types.EnvironmentState{
+		Name: "staging",
+		Components: map[string]*types.ComponentState{
+			"api": {
+				Name:         "api",
+				Dependencies: nil,
+			},
+			"frontend": {
+				Name:         "frontend",
+				Dependencies: nil,
+			},
+		},
+	}
+
+	dependents := FindDependents(envState, "api")
+	if len(dependents) != 0 {
+		t.Errorf("expected no dependents, got %v", dependents)
+	}
+}
+
+func TestDestroyComponent_BlockedByDependents(t *testing.T) {
+	sm := newMockStateManager()
+	sm.environments["test-env"] = &types.EnvironmentState{
+		Name:       "test-env",
+		Datacenter: "test-dc",
+		Components: map[string]*types.ComponentState{
+			"shared-db": {
+				Name: "shared-db",
+				Resources: map[string]*types.ResourceState{
+					"database.main": {
+						Name: "main", Type: "database", Component: "shared-db",
+					},
+				},
+			},
+			"api": {
+				Name:         "api",
+				Dependencies: []string{"shared-db"},
+				Resources: map[string]*types.ResourceState{
+					"deployment.api": {
+						Name: "api", Type: "deployment", Component: "api",
+					},
+				},
+			},
+		},
+	}
+
+	registry := iac.DefaultRegistry
+	eng := NewEngine(sm, registry)
+
+	// Destroying shared-db should fail because api depends on it
+	_, err := eng.DestroyComponent(context.Background(), DestroyComponentOptions{
+		Environment: "test-env",
+		Component:   "shared-db",
+		DryRun:      true,
+	})
+	if err == nil {
+		t.Fatal("expected error when destroying component with dependents")
+	}
+	if !bytes.Contains([]byte(err.Error()), []byte("api")) {
+		t.Errorf("error should mention the dependent 'api', got: %v", err)
+	}
+}
+
+func TestDestroyComponent_ForceOverridesDependents(t *testing.T) {
+	sm := newMockStateManager()
+	sm.environments["test-env"] = &types.EnvironmentState{
+		Name:       "test-env",
+		Datacenter: "test-dc",
+		Components: map[string]*types.ComponentState{
+			"shared-db": {
+				Name: "shared-db",
+				Resources: map[string]*types.ResourceState{
+					"database.main": {
+						Name: "main", Type: "database", Component: "shared-db",
+					},
+				},
+			},
+			"api": {
+				Name:         "api",
+				Dependencies: []string{"shared-db"},
+			},
+		},
+	}
+
+	registry := iac.DefaultRegistry
+	eng := NewEngine(sm, registry)
+
+	// Force should bypass the dependent check (dry run to avoid needing real IaC)
+	result, err := eng.DestroyComponent(context.Background(), DestroyComponentOptions{
+		Environment: "test-env",
+		Component:   "shared-db",
+		DryRun:      true,
+		Force:       true,
+	})
+	if err != nil {
+		t.Fatalf("expected force to bypass dependent check, got: %v", err)
+	}
+	if !result.Success {
+		t.Error("expected success for forced dry run")
+	}
+}

@@ -15,6 +15,10 @@ type Graph struct {
 
 	// Datacenter name
 	Datacenter string
+
+	// ComponentDependencies maps component names to the list of other component
+	// names they depend on. Populated by the graph builder from component schemas.
+	ComponentDependencies map[string][]string
 }
 
 // NewGraph creates a new empty graph.

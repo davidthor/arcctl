@@ -29,7 +29,7 @@ func newDestroyComponentCmd() *cobra.Command {
 	var (
 		environment   string
 		autoApprove   bool
-		targets       []string
+		force         bool
 		backendType   string
 		backendConfig []string
 	)
@@ -40,9 +40,13 @@ func newDestroyComponentCmd() *cobra.Command {
 		Short:   "Destroy a deployed component",
 		Long: `Destroy a deployed component and its resources.
 
+If other components in the environment depend on this component, the destroy
+will be blocked. Use --force to override this check.
+
 Examples:
   arcctl destroy component my-app -e production
-  arcctl destroy component api -e staging --auto-approve`,
+  arcctl destroy component api -e staging --auto-approve
+  arcctl destroy component shared-db -e staging --force`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			componentName := args[0]
@@ -70,20 +74,6 @@ Examples:
 
 			resourceCount := 0
 			for _, res := range comp.Resources {
-				// Filter by targets if specified
-				if len(targets) > 0 {
-					matched := false
-					for _, t := range targets {
-						if strings.HasPrefix(res.Name, t) || strings.HasPrefix(res.Type+"/"+res.Name, t) || strings.HasPrefix(res.Type+"."+res.Name, t) {
-							matched = true
-							break
-						}
-					}
-					if !matched {
-						continue
-					}
-				}
-
 				fmt.Printf("  - %s %q (%s)\n", res.Type, res.Name, res.Status)
 				resourceCount++
 			}
@@ -117,6 +107,7 @@ Examples:
 				Output:      os.Stdout,
 				DryRun:      false,
 				AutoApprove: autoApprove,
+				Force:       force,
 			})
 			if err != nil {
 				return fmt.Errorf("destroy failed: %w", err)
@@ -143,7 +134,7 @@ Examples:
 
 	cmd.Flags().StringVarP(&environment, "environment", "e", "", "Target environment (required)")
 	cmd.Flags().BoolVar(&autoApprove, "auto-approve", false, "Skip confirmation prompt")
-	cmd.Flags().StringArrayVar(&targets, "target", nil, "Target specific resource by name or type/name (repeatable)")
+	cmd.Flags().BoolVar(&force, "force", false, "Force destroy even if other components depend on this one")
 	cmd.Flags().StringVar(&backendType, "backend", "", "State backend type")
 	cmd.Flags().StringArrayVar(&backendConfig, "backend-config", nil, "Backend configuration (key=value)")
 	_ = cmd.MarkFlagRequired("environment")

@@ -346,6 +346,10 @@ func (e *Executor) executeApply(ctx context.Context, change *planner.ResourceCha
 			Status:    types.ResourceStatusProvisioning,
 			UpdatedAt: time.Now(),
 		}
+		// Record inter-component dependencies from the graph
+		if e.graph != nil && e.graph.ComponentDependencies != nil {
+			compState.Dependencies = e.graph.ComponentDependencies[change.Node.Component]
+		}
 		envState.Components[change.Node.Component] = compState
 	}
 

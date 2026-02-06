@@ -72,6 +72,10 @@ type ComponentState struct {
 	// Variables used for this deployment
 	Variables map[string]string `json:"variables,omitempty"`
 
+	// Dependencies lists the names of other components this component depends on.
+	// Populated at deploy time from the component schema's dependency declarations.
+	Dependencies []string `json:"dependencies,omitempty"`
+
 	// Resource states
 	Resources map[string]*ResourceState `json:"resources,omitempty"`
 }

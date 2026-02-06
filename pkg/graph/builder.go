@@ -24,6 +24,18 @@ func NewBuilder(environment, datacenter string) *Builder {
 // AddComponent adds a component's resources to the graph.
 // The componentName is provided externally since component specs no longer contain names.
 func (b *Builder) AddComponent(componentName string, comp component.Component) error {
+	// Record inter-component dependencies
+	if deps := comp.Dependencies(); len(deps) > 0 {
+		if b.graph.ComponentDependencies == nil {
+			b.graph.ComponentDependencies = make(map[string][]string)
+		}
+		depNames := make([]string, len(deps))
+		for i, dep := range deps {
+			depNames[i] = dep.Name()
+		}
+		b.graph.ComponentDependencies[componentName] = depNames
+	}
+
 	// Get the component's base directory for resolving relative paths
 	// This is crucial for OCI-pulled components where build contexts need to be
 	// resolved relative to the extracted artifact location

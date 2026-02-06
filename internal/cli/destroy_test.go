@@ -38,7 +38,7 @@ func TestDestroyComponentCmd_Flags(t *testing.T) {
 	}
 
 	// Check flags
-	flags := []string{"environment", "auto-approve", "target", "backend", "backend-config"}
+	flags := []string{"environment", "auto-approve", "force", "backend", "backend-config"}
 	for _, flagName := range flags {
 		if cmd.Flags().Lookup(flagName) == nil {
 			t.Errorf("expected --%s flag", flagName)

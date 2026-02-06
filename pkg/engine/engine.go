@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/architect-io/arcctl/pkg/schema/datacenter"
 	"github.com/architect-io/arcctl/pkg/schema/environment"
 	"github.com/architect-io/arcctl/pkg/state"
+	"github.com/architect-io/arcctl/pkg/state/types"
 )
 
 // OCIClient defines the interface for OCI registry operations needed by the engine.
@@ -428,6 +430,29 @@ type DestroyComponentOptions struct {
 
 	// AutoApprove skips confirmation
 	AutoApprove bool
+
+	// Force allows destroying a component even if other components depend on it
+	Force bool
+}
+
+// FindDependents returns the names of components in the environment that depend
+// on the given component. This is used to prevent destroying a component that
+// other components rely on.
+func FindDependents(envState *types.EnvironmentState, targetComponent string) []string {
+	var dependents []string
+	for compName, compState := range envState.Components {
+		if compName == targetComponent {
+			continue
+		}
+		for _, dep := range compState.Dependencies {
+			if dep == targetComponent {
+				dependents = append(dependents, compName)
+				break
+			}
+		}
+	}
+	sort.Strings(dependents)
+	return dependents
 }
 
 // DestroyComponent destroys a single component within an environment.
@@ -446,6 +471,18 @@ func (e *Engine) DestroyComponent(ctx context.Context, opts DestroyComponentOpti
 	compState, ok := currentState.Components[opts.Component]
 	if !ok {
 		return nil, fmt.Errorf("component %s not found in environment %s", opts.Component, opts.Environment)
+	}
+
+	// Check for dependents unless --force is used
+	if !opts.Force {
+		dependents := FindDependents(currentState, opts.Component)
+		if len(dependents) > 0 {
+			return nil, fmt.Errorf(
+				"cannot destroy component %q because the following components depend on it: %s\n"+
+					"Destroy those components first, or use --force to override",
+				opts.Component, strings.Join(dependents, ", "),
+			)
+		}
 	}
 
 	// Build graph from component state only
