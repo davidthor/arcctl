@@ -1,0 +1,20 @@
+---
+description: Git workflow rules - never commit or push on behalf of the user
+alwaysApply: true
+---
+
+# Git Workflow
+
+**NEVER run `git commit`, `git push`, or any command that creates commits or pushes to a remote.** The user will always handle commits and pushes themselves.
+
+This includes:
+- `git commit` (with any flags)
+- `git push` (with any flags)
+- `git merge` (if it creates a commit)
+- `gh pr create` (pushes to remote)
+- Any compound command that includes commit or push
+
+You MAY run read-only git commands such as:
+- `git status`, `git diff`, `git log`
+- `git add` (staging is acceptable)
+- `git branch`, `git stash`
