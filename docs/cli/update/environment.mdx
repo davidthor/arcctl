@@ -29,6 +29,8 @@ arcctl update environment <name> [config-file] [options]
 | Option | Description |
 |--------|-------------|
 | `-d, --datacenter <name>` | Target datacenter (resolved from flag, `ARCCTL_DATACENTER` env var, or CLI config default) |
+| `--var <key=value>` | Override an environment variable (repeatable) |
+| `--var-file <path>` | Load variable overrides from a file (KEY=value format) |
 | `--auto-approve` | Skip confirmation prompt (when using config file) |
 | `--backend <type>` | State backend type |
 | `--backend-config <key=value>` | Backend configuration |
@@ -36,6 +38,17 @@ arcctl update environment <name> [config-file] [options]
 ## Description
 
 Apply a configuration file to update an environment's components and settings. Components not in the file will be removed, and new components will be deployed.
+
+### Variable Resolution
+
+When the environment file declares a `variables` block, values are resolved automatically from (highest priority first):
+
+1. `--var` CLI flags
+2. OS environment variables (auto-mapped from UPPER_SNAKE_CASE of variable name)
+3. `.env` file chain from the current working directory
+4. Default values from the variable declaration
+
+This means the environment file can be safely checked into version control without hardcoded secrets. See [Environment Variables](/environments/variables) for details.
 
 ## Examples
 
@@ -49,7 +62,15 @@ arcctl update env staging environment.yml
 # Specify datacenter explicitly
 arcctl update environment staging environment.yml -d my-datacenter
 
-# Apply with auto-approval
+# Override environment variables
+arcctl update environment staging environment.yml \
+  --var posthog_debug=true
+
+# Load variable overrides from a file
+arcctl update environment staging environment.yml \
+  --var-file ./secrets.env
+
+# Apply with auto-approval (CI/CD)
 arcctl update environment staging ./envs/staging.yml --auto-approve
 ```
 

@@ -13,6 +13,9 @@ type Datacenter interface {
 	// Modules (datacenter-level)
 	Modules() []Module
 
+	// Components (datacenter-level component declarations)
+	Components() []DatacenterComponent
+
 	// Environment configuration
 	Environment() Environment
 
@@ -24,6 +27,18 @@ type Datacenter interface {
 
 	// Internal access (for engine use)
 	Internal() *internal.InternalDatacenter
+}
+
+// DatacenterComponent represents a component declared at the datacenter level.
+// These components are deployed into environments on-demand when needed as
+// dependencies by other components.
+type DatacenterComponent interface {
+	// Name returns the registry address (e.g., "questra/stripe")
+	Name() string
+	// Source returns the version tag (e.g., "latest") or file path
+	Source() string
+	// Variables returns HCL expression strings for runtime evaluation
+	Variables() map[string]string
 }
 
 // Variable represents a datacenter variable.

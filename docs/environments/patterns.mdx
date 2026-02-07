@@ -309,3 +309,43 @@ arcctl deploy ghcr.io/myorg/web-app:v1.6.0 -e production
 ```
 
 Using the same artifact ensures consistency across environments.
+
+## Secrets with Environment Variables
+
+Use the `variables` block to keep secrets out of version control:
+
+```yaml
+# environment.yml (checked in)
+name: staging
+
+variables:
+  stripe_key:
+    description: "Stripe secret key"
+    required: true
+    sensitive: true
+  sentry_dsn:
+    description: "Sentry DSN"
+    required: true
+  log_level:
+    description: "Log level"
+    default: "info"
+
+locals:
+  base_domain: staging.example.com
+
+components:
+  ghcr.io/myorg/web-app:
+    source: v1.5.0
+    variables:
+      stripe_key: ${{ variables.stripe_key }}
+      sentry_dsn: ${{ variables.sentry_dsn }}
+      log_level: ${{ variables.log_level }}
+```
+
+```bash
+# .env.local (gitignored)
+STRIPE_KEY=sk_test_abc123
+SENTRY_DSN=https://abc@sentry.io/123
+```
+
+The environment file is safe to check in. Secrets resolve from `.env.local` locally or from OS environment variables in CI. See [Environment Variables](/environments/variables) for full details.

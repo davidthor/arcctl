@@ -24,16 +24,22 @@ func NewBuilder(environment, datacenter string) *Builder {
 // AddComponent adds a component's resources to the graph.
 // The componentName is provided externally since component specs no longer contain names.
 func (b *Builder) AddComponent(componentName string, comp component.Component) error {
-	// Record inter-component dependencies
+	// Record inter-component dependencies (only required, non-optional ones).
+	// Optional dependencies do not create hard edges for destroy protection
+	// or execution ordering.
 	if deps := comp.Dependencies(); len(deps) > 0 {
-		if b.graph.ComponentDependencies == nil {
-			b.graph.ComponentDependencies = make(map[string][]string)
+		var depNames []string
+		for _, dep := range deps {
+			if !dep.Optional() {
+				depNames = append(depNames, dep.Name())
+			}
 		}
-		depNames := make([]string, len(deps))
-		for i, dep := range deps {
-			depNames[i] = dep.Name()
+		if len(depNames) > 0 {
+			if b.graph.ComponentDependencies == nil {
+				b.graph.ComponentDependencies = make(map[string][]string)
+			}
+			b.graph.ComponentDependencies[componentName] = depNames
 		}
-		b.graph.ComponentDependencies[componentName] = depNames
 	}
 
 	// Get the component's base directory for resolving relative paths

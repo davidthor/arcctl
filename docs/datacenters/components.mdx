@@ -1,0 +1,150 @@
+---
+title: "Components"
+description: "Declare shared components at the datacenter level for automatic dependency resolution"
+---
+
+# Datacenter Components
+
+Datacenter-level component declarations allow platform engineers to pre-configure shared components that are automatically deployed into environments when needed as dependencies. This is especially useful for pass-through components like external API credentials (Stripe, Google Cloud, Clerk, etc.) that are shared across all environments.
+
+## Syntax
+
+```hcl
+component "<registry-address>" {
+  source    = "<version-tag-or-path>"
+  variables = {
+    <name> = <value-or-expression>
+  }
+}
+```
+
+### Arguments
+
+| Argument | Type | Required | Description |
+|----------|------|----------|-------------|
+| `source` | `string` | Yes | Version tag (e.g., `"latest"`, `"v1.0.0"`) or file path to the component |
+| `variables` | `map` | No | Variable values for the component. Values can reference datacenter variables and module outputs |
+
+The block label is the component's registry address (e.g., `myorg/stripe`, `ghcr.io/myorg/my-app`).
+
+## How It Works
+
+1. **Declaration**: Platform engineers declare components in the datacenter file with their source and variable values
+2. **Registration**: When the datacenter is deployed (`arcctl deploy datacenter`), component declarations are stored in the datacenter state
+3. **Resolution**: When a component deployed to an environment declares a dependency on a datacenter-level component, the engine automatically uses the datacenter's source and variables instead of prompting the user
+4. **Deployment**: The dependency component is deployed into the environment using the datacenter-provided configuration
+
+Components declared at the datacenter level are **not** deployed at the datacenter level -- they are deployed into individual environments on demand when another component needs them as a dependency.
+
+## Variable Expressions
+
+Component variables can reference datacenter variables and module outputs:
+
+```hcl
+variable "stripe_secret_key" {
+  type      = string
+  sensitive = true
+}
+
+module "shared_infra" {
+  build = "./modules/shared"
+  inputs = {
+    region = variable.region
+  }
+}
+
+component "myorg/stripe" {
+  source = "latest"
+  variables = {
+    secret_key = variable.stripe_secret_key
+    region     = module.shared_infra.region
+  }
+}
+```
+
+Variable expressions are evaluated at deploy time when the component is needed as a dependency, using the actual datacenter variable values.
+
+## Priority
+
+When resolving dependencies, the engine checks in this order:
+
+1. **Already deployed** -- If the component is already in the environment, it is skipped
+2. **Explicitly provided** -- Variables from environment config files or CLI flags take priority over datacenter values
+3. **Datacenter component** -- The datacenter's source and variable values are used
+4. **Fallback** -- If not declared in the datacenter, the existing behavior continues (OCI pull + prompt for variables)
+
+## Example
+
+### Datacenter Configuration
+
+```hcl
+# Variables for external service credentials
+variable "stripe_publishable_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "stripe_secret_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "clerk_publishable_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "clerk_secret_key" {
+  type      = string
+  sensitive = true
+}
+
+# Shared credential components -- deployed into environments automatically
+# when a component declares them as a dependency
+component "myorg/stripe" {
+  source = "latest"
+  variables = {
+    publishable_key = variable.stripe_publishable_key
+    secret_key      = variable.stripe_secret_key
+  }
+}
+
+component "myorg/clerk" {
+  source = "latest"
+  variables = {
+    publishable_key = variable.clerk_publishable_key
+    secret_key      = variable.clerk_secret_key
+  }
+}
+
+environment {
+  # ... hooks as usual ...
+}
+```
+
+### Application Component (architect.yml)
+
+```yaml
+# architect.yml for myorg/web-app
+dependencies:
+  myorg/stripe:
+    component: myorg/stripe
+  myorg/clerk:
+    component: myorg/clerk
+
+databases:
+  main:
+    type: postgres:16
+
+functions:
+  web:
+    src:
+      path: .
+      framework: nextjs
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      STRIPE_KEY: ${{ dependencies.myorg/stripe.secret_key }}
+      CLERK_KEY: ${{ dependencies.myorg/clerk.secret_key }}
+```
+
+When deploying `myorg/web-app` to any environment in this datacenter, the Stripe and Clerk components are automatically deployed with the credentials configured at the datacenter level -- no manual variable entry required.

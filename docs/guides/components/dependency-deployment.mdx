@@ -296,6 +296,25 @@ dependencies:
 
 Deploying `app` will automatically deploy `api`, `shared-db`, `auth`, and `clerk` -- in the right order, with proper dependency tracking. Circular dependencies are detected and produce a clear error.
 
+## Optional Dependencies
+
+Dependencies marked as `optional: true` are excluded from automatic deployment entirely. They are never pulled, loaded, or deployed by the recursive resolution process.
+
+```yaml
+dependencies:
+  # Required -- will be auto-deployed if missing
+  auth: ghcr.io/myorg/auth:v1
+
+  # Optional -- will NOT be auto-deployed
+  analytics:
+    source: ghcr.io/myorg/analytics:v1
+    optional: true
+```
+
+If an optional dependency happens to already be deployed in the environment (for example, from a previous manual deployment or because another component required it), its outputs are available through expressions as usual. Otherwise, those expressions resolve to empty values and the component should handle the absence gracefully.
+
+Optional dependencies also do not participate in destroy protection -- destroying an optional dependency does not require `--force` from components that optionally depend on it.
+
 ## Skipping Existing Dependencies
 
 arcctl never updates a dependency that is already deployed. If `clerk` is already in the environment from a previous deployment, it is skipped entirely -- even if a newer version is available in the OCI registry. This is intentional:

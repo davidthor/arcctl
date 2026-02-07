@@ -9,6 +9,18 @@ type environmentWrapper struct {
 	env *internal.InternalEnvironment
 }
 
+func (e *environmentWrapper) Variables() map[string]EnvironmentVariable {
+	if e.env.Variables == nil {
+		return nil
+	}
+	result := make(map[string]EnvironmentVariable, len(e.env.Variables))
+	for name := range e.env.Variables {
+		v := e.env.Variables[name]
+		result[name] = &environmentVariableWrapper{v: &v}
+	}
+	return result
+}
+
 func (e *environmentWrapper) Locals() map[string]interface{} {
 	return e.env.Locals
 }
@@ -118,3 +130,15 @@ type tlsConfigWrapper struct {
 
 func (t *tlsConfigWrapper) Enabled() bool     { return t.t.Enabled }
 func (t *tlsConfigWrapper) SecretName() string { return t.t.SecretName }
+
+// environmentVariableWrapper wraps an InternalEnvironmentVariable.
+type environmentVariableWrapper struct {
+	v *internal.InternalEnvironmentVariable
+}
+
+func (v *environmentVariableWrapper) Name() string            { return v.v.Name }
+func (v *environmentVariableWrapper) Description() string     { return v.v.Description }
+func (v *environmentVariableWrapper) Default() interface{}    { return v.v.Default }
+func (v *environmentVariableWrapper) Required() bool          { return v.v.Required }
+func (v *environmentVariableWrapper) Sensitive() bool         { return v.v.Sensitive }
+func (v *environmentVariableWrapper) Env() string             { return v.v.Env }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/architect-io/arcctl/pkg/engine"
 	"github.com/architect-io/arcctl/pkg/engine/executor"
+	"github.com/architect-io/arcctl/pkg/envfile"
 	"github.com/architect-io/arcctl/pkg/schema/environment"
 	"github.com/architect-io/arcctl/pkg/state"
 	"github.com/architect-io/arcctl/pkg/state/types"
@@ -30,6 +31,8 @@ func newUpdateEnvironmentCmd() *cobra.Command {
 	var (
 		datacenter    string
 		autoApprove   bool
+		variables     []string
+		varFile       string
 		backendType   string
 		backendConfig []string
 	)
@@ -87,7 +90,25 @@ Examples:
 
 			// If a config file is provided, apply it
 			if configFile != "" {
-				return applyEnvironmentConfig(ctx, mgr, dc, env, configFile, autoApprove)
+				// Parse CLI variable overrides
+				cliVars := make(map[string]string)
+				if varFile != "" {
+					data, err := os.ReadFile(varFile)
+					if err != nil {
+						return fmt.Errorf("failed to read var file: %w", err)
+					}
+					if err := parseVarFile(data, cliVars); err != nil {
+						return fmt.Errorf("failed to parse var file: %w", err)
+					}
+				}
+				for _, v := range variables {
+					parts := strings.SplitN(v, "=", 2)
+					if len(parts) == 2 {
+						cliVars[parts[0]] = parts[1]
+					}
+				}
+
+				return applyEnvironmentConfig(ctx, mgr, dc, env, configFile, autoApprove, cliVars)
 			}
 
 			// Otherwise, update individual settings
@@ -100,6 +121,8 @@ Examples:
 
 	cmd.Flags().StringVarP(&datacenter, "datacenter", "d", "", "Target datacenter (uses default if not set)")
 	cmd.Flags().BoolVar(&autoApprove, "auto-approve", false, "Skip confirmation prompt (when using config file)")
+	cmd.Flags().StringArrayVar(&variables, "var", nil, "Set an environment variable (key=value)")
+	cmd.Flags().StringVar(&varFile, "var-file", "", "Load variables from a file (KEY=value format)")
 	cmd.Flags().StringVar(&backendType, "backend", "", "State backend type")
 	cmd.Flags().StringArrayVar(&backendConfig, "backend-config", nil, "Backend configuration (key=value)")
 
@@ -107,12 +130,31 @@ Examples:
 }
 
 // applyEnvironmentConfig applies an environment configuration file to an existing environment.
-func applyEnvironmentConfig(ctx context.Context, mgr state.Manager, dc string, env *types.EnvironmentState, configFile string, autoApprove bool) error {
+func applyEnvironmentConfig(ctx context.Context, mgr state.Manager, dc string, env *types.EnvironmentState, configFile string, autoApprove bool, cliVars map[string]string) error {
 	// Load and validate the environment file
 	loader := environment.NewLoader()
 	envConfig, err := loader.Load(configFile)
 	if err != nil {
 		return fmt.Errorf("failed to load environment config: %w", err)
+	}
+
+	// Load dotenv file chain from current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+	dotenvVars, err := envfile.Load(cwd, env.Name)
+	if err != nil {
+		return fmt.Errorf("failed to load .env files: %w", err)
+	}
+
+	// Resolve environment-level variables and substitute expressions
+	if err := environment.ResolveVariables(envConfig.Internal(), environment.ResolveOptions{
+		CLIVars:    cliVars,
+		DotenvVars: dotenvVars,
+		EnvName:    env.Name,
+	}); err != nil {
+		return fmt.Errorf("failed to resolve environment variables: %w", err)
 	}
 
 	// Note: Name is a CLI parameter, not part of the config file

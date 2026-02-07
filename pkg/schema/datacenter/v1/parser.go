@@ -73,6 +73,7 @@ func (p *Parser) ParseBytes(data []byte, filename string) (*SchemaV1, hcl.Diagno
 		Blocks: []hcl.BlockHeaderSchema{
 			{Type: "variable", LabelNames: []string{"name"}},
 			{Type: "module", LabelNames: []string{"name"}},
+			{Type: "component", LabelNames: []string{"name"}},
 			{Type: "environment"},
 		},
 	}
@@ -107,6 +108,15 @@ func (p *Parser) ParseBytes(data []byte, filename string) (*SchemaV1, hcl.Diagno
 		diags = append(diags, blockDiags...)
 		if module != nil {
 			schema.Modules = append(schema.Modules, *module)
+		}
+	}
+
+	// Parse top-level component declarations
+	for _, block := range content.Blocks.OfType("component") {
+		comp, blockDiags := p.parseComponent(block)
+		diags = append(diags, blockDiags...)
+		if comp != nil {
+			schema.Components = append(schema.Components, *comp)
 		}
 	}
 
@@ -412,6 +422,42 @@ func (p *Parser) parseEnvironment(block *hcl.Block) (*EnvironmentBlockV1, hcl.Di
 	}
 
 	return env, diags
+}
+
+func (p *Parser) parseComponent(block *hcl.Block) (*ComponentBlockV1, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+	hclCtx := p.getHCLContext()
+
+	compSchema := &hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{Name: "source", Required: true},
+			{Name: "variables"},
+		},
+	}
+
+	content, moreDiags := block.Body.Content(compSchema)
+	diags = append(diags, moreDiags...)
+
+	comp := &ComponentBlockV1{
+		Name:   block.Labels[0],
+		Remain: block.Body,
+	}
+
+	if attr, ok := content.Attributes["source"]; ok {
+		val, valDiags := attr.Expr.Value(hclCtx)
+		diags = append(diags, valDiags...)
+		if !valDiags.HasErrors() {
+			comp.Source = val.AsString()
+		}
+	}
+
+	if attr, ok := content.Attributes["variables"]; ok {
+		// Store the raw expression for runtime evaluation (variables may reference
+		// datacenter variables that are only known at deploy time)
+		comp.VariablesExpr = attr.Expr
+	}
+
+	return comp, diags
 }
 
 func (p *Parser) parseHook(block *hcl.Block) (*HookBlockV1, hcl.Diagnostics) {

@@ -9,12 +9,26 @@ type InternalDatacenter struct {
 	// Datacenter-level modules
 	Modules []InternalModule
 
+	// Datacenter-level component declarations.
+	// These components are deployed into environments on-demand when needed
+	// as dependencies by other components.
+	Components []InternalDatacenterComponent
+
 	// Environment configuration
 	Environment InternalEnvironment
 
 	// Source information
 	SourceVersion string
 	SourcePath    string
+}
+
+// InternalDatacenterComponent represents a component declared at the datacenter level.
+// It provides source and variable configuration so the component can be automatically
+// deployed into environments when referenced as a dependency.
+type InternalDatacenterComponent struct {
+	Name      string            // Registry address (e.g., "questra/stripe")
+	Source    string            // Version tag (e.g., "latest") or file path
+	Variables map[string]string // HCL expression strings (evaluated at runtime with datacenter variables)
 }
 
 // InternalVariable represents a datacenter variable.

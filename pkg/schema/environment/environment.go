@@ -9,6 +9,9 @@ import (
 // Note: Name and Datacenter are not part of the config - they are provided via CLI
 // when creating/updating an environment.
 type Environment interface {
+	// Variables returns environment-level variable declarations
+	Variables() map[string]EnvironmentVariable
+
 	// Locals
 	Locals() map[string]interface{}
 
@@ -23,6 +26,27 @@ type Environment interface {
 
 	// Internal access (for engine use)
 	Internal() *internal.InternalEnvironment
+}
+
+// EnvironmentVariable represents an environment-level variable declaration.
+type EnvironmentVariable interface {
+	// Name returns the variable name
+	Name() string
+
+	// Description returns a human-readable description
+	Description() string
+
+	// Default returns the default value, or nil if none
+	Default() interface{}
+
+	// Required returns true if the variable must be provided
+	Required() bool
+
+	// Sensitive returns true if the value should be masked
+	Sensitive() bool
+
+	// Env returns the explicit OS env var name, or empty string for auto-mapping
+	Env() string
 }
 
 // ComponentConfig represents a component's configuration within an environment.

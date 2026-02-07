@@ -18,11 +18,24 @@ variable "cluster_name" {
   type        = string
 }
 
+variable "stripe_key" {
+  type      = string
+  sensitive = true
+}
+
 # Datacenter-level modules (shared across all environments)
 module "k8s" {
   build = "./modules/k8s-cluster"
   inputs = {
     name = variable.cluster_name
+  }
+}
+
+# Datacenter-level components (auto-deployed as dependencies)
+component "myorg/stripe" {
+  source = "latest"
+  variables = {
+    secret_key = variable.stripe_key
   }
 }
 
@@ -52,6 +65,9 @@ environment {
   </Card>
   <Card title="Modules" icon="cube" href="/datacenters/modules">
     IaC templates for infrastructure provisioning
+  </Card>
+  <Card title="Components" icon="puzzle-piece" href="/datacenters/components">
+    Shared component declarations for automatic dependency resolution
   </Card>
 </CardGroup>
 

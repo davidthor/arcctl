@@ -16,6 +16,9 @@ Environments define the desired state of a deployment context, including which c
 name: string           # Environment name (optional, can be set via CLI)
 datacenter: string     # Target datacenter (optional, can be set via CLI)
 
+# Variables resolved from env vars and .env files
+variables: map<string, EnvironmentVariable>
+
 # Reusable values
 locals: map<string, any>
 
@@ -26,6 +29,9 @@ components: map<string, ComponentConfig>
 ## Key Concepts
 
 <CardGroup cols={2}>
+  <Card title="Variables" icon="key" href="/environments/variables">
+    Secrets and config from env vars and .env files
+  </Card>
   <Card title="Component Config" icon="cube" href="/environments/components">
     Configure components for deployment
   </Card>

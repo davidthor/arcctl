@@ -17,8 +17,20 @@ type DatacenterState struct {
 	// Configuration
 	Variables map[string]string `json:"variables,omitempty"`
 
+	// Datacenter-level component declarations.
+	// These are deployed into environments on-demand when needed as dependencies.
+	Components map[string]*DatacenterComponentConfig `json:"components,omitempty"`
+
 	// Module states (datacenter-level modules)
 	Modules map[string]*ModuleState `json:"modules,omitempty"`
+}
+
+// DatacenterComponentConfig represents a component declared at the datacenter level.
+// It stores the source and variable expressions so the engine can deploy the component
+// into environments when needed as a dependency.
+type DatacenterComponentConfig struct {
+	Source    string            `json:"source"`              // Version tag or file path
+	Variables map[string]string `json:"variables,omitempty"` // HCL expression strings (evaluated at runtime)
 }
 
 // EnvironmentState represents the state of an environment.

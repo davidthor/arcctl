@@ -8,10 +8,20 @@ import (
 
 // SchemaV1 represents the v1 datacenter schema.
 type SchemaV1 struct {
-	Version   string `hcl:"version,optional"`
-	Variables []VariableBlockV1 `hcl:"variable,block"`
-	Modules   []ModuleBlockV1   `hcl:"module,block"`
+	Version     string              `hcl:"version,optional"`
+	Variables   []VariableBlockV1   `hcl:"variable,block"`
+	Modules     []ModuleBlockV1     `hcl:"module,block"`
+	Components  []ComponentBlockV1  `hcl:"-"` // Parsed manually from HCL
 	Environment *EnvironmentBlockV1 `hcl:"environment,block"`
+}
+
+// ComponentBlockV1 represents a datacenter-level component declaration.
+// These components are deployed into environments on-demand when needed as dependencies.
+type ComponentBlockV1 struct {
+	Name          string         `hcl:"name,label"`
+	Source        string         `hcl:"source"`
+	VariablesExpr hcl.Expression `hcl:"-"` // Raw variables expression for runtime evaluation
+	Remain        hcl.Body       `hcl:",remain"`
 }
 
 // VariableBlockV1 represents a variable block.

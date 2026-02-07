@@ -15,9 +15,15 @@ func NewTransformer() *Transformer {
 // Transform converts a v1 schema to the internal representation.
 func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalEnvironment, error) {
 	env := &internal.InternalEnvironment{
+		Variables:     make(map[string]internal.InternalEnvironmentVariable),
 		Locals:        v1.Locals,
 		Components:    make(map[string]internal.InternalComponentConfig),
 		SourceVersion: "v1",
+	}
+
+	// Transform variables
+	for name, variable := range v1.Variables {
+		env.Variables[name] = t.transformVariable(name, variable)
 	}
 
 	// Transform components
@@ -26,6 +32,17 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalEnvironment, er
 	}
 
 	return env, nil
+}
+
+func (t *Transformer) transformVariable(name string, v1 EnvironmentVariableV1) internal.InternalEnvironmentVariable {
+	return internal.InternalEnvironmentVariable{
+		Name:        name,
+		Description: v1.Description,
+		Default:     v1.Default,
+		Required:    v1.Required,
+		Sensitive:   v1.Sensitive,
+		Env:         v1.Env,
+	}
 }
 
 func (t *Transformer) transformComponent(v1 ComponentConfigV1) internal.InternalComponentConfig {

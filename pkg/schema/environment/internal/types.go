@@ -5,6 +5,9 @@ package internal
 // Note: Name and Datacenter are not part of the config - they are provided via CLI
 // when creating/updating an environment.
 type InternalEnvironment struct {
+	// Environment-level variable declarations
+	Variables map[string]InternalEnvironmentVariable
+
 	// Reusable values
 	Locals map[string]interface{}
 
@@ -14,6 +17,17 @@ type InternalEnvironment struct {
 	// Source information
 	SourceVersion string
 	SourcePath    string
+}
+
+// InternalEnvironmentVariable represents an environment-level variable declaration.
+// Variables are resolved from OS environment variables, dotenv files, or defaults.
+type InternalEnvironmentVariable struct {
+	Name        string
+	Description string
+	Default     interface{}
+	Required    bool
+	Sensitive   bool
+	Env         string // Explicit OS env var name override (defaults to UPPER_SNAKE_CASE of Name)
 }
 
 // InternalComponentConfig represents the configuration for a component in an environment.

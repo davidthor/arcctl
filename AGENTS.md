@@ -110,12 +110,13 @@ When deploying a component that declares `dependencies` in its `architect.yml`, 
 
 - Dependencies are resolved **transitively** (dependency of a dependency is also deployed).
 - Dependencies already deployed in the environment are **skipped** (not updated).
+- **Optional dependencies** (`optional: true`) are never auto-deployed. Their outputs are available if the dependency is already present in the environment, but arcctl does not pull or deploy them automatically.
 - If a dependency has required variables without defaults:
   - **Interactive mode**: the user is prompted for values.
   - **CI / `--auto-approve`**: the command errors with a message listing the missing variables.
 - Circular dependencies are detected and produce an error.
 - Dependency components are pulled from their OCI registry references, cached locally, and registered in the unified artifact registry.
-- Destroy protection prevents destroying a component that other deployed components depend on (use `--force` to override).
+- Destroy protection prevents destroying a component that other deployed components depend on (use `--force` to override). Optional dependencies do not participate in destroy protection.
 
 ### Key Directories
 | Path | Purpose |
@@ -385,6 +386,30 @@ environment {
 }
 ```
 
+### Datacenter-Level Components
+
+Datacenters can declare components at the top level that are automatically deployed into environments when needed as dependencies. This is useful for shared credential pass-through components (Stripe, Clerk, Google Cloud, etc.):
+
+```hcl
+variable "stripe_secret_key" {
+  type      = string
+  sensitive = true
+}
+
+# Deployed into environments on-demand when a component depends on it
+component "myorg/stripe" {
+  source = "latest"
+  variables = {
+    secret_key = variable.stripe_secret_key
+  }
+}
+```
+
+- `source` (required): Version tag or file path
+- `variables` (optional): Map of variable values; can reference `variable.*` and `module.*.*`
+- Components are **not** deployed at the datacenter level -- they are deployed into individual environments when another component declares them as a dependency
+- Datacenter component variables take priority over interactive prompts but not over explicitly provided values (from environment config files or CLI flags)
+
 ### Hook Types & Required Outputs
 | Hook | Required Outputs |
 |------|-----------------|
@@ -432,6 +457,47 @@ Rules:
 - `module.<name>.<output>` - Module outputs
 
 For `observability` hooks, `node.inputs` includes: `inject`, `attributes`
+
+## Environment Files
+
+Environment files (`environment.yml`) define which components to deploy and how they're configured. They support a `variables` block for declaring secrets and configuration that are resolved from OS environment variables and `.env` files.
+
+### Environment Variables
+
+```yaml
+variables:
+  clerk_secret_key:
+    description: "Clerk secret key"
+    required: true
+    sensitive: true
+  posthog_debug:
+    description: "PostHog debug mode"
+    default: "false"
+  google_project_id:
+    required: true
+    env: GOOGLE_CLOUD_PROJECT  # explicit env var name override
+
+components:
+  my-app/clerk:
+    source: latest
+    variables:
+      secret_key: ${{ variables.clerk_secret_key }}
+```
+
+Resolution priority (highest first): CLI `--var` flags > OS env vars > dotenv files > defaults.
+
+By default, `clerk_secret_key` looks up env var `CLERK_SECRET_KEY` (uppercased). Use the `env` field to override.
+
+### Dotenv File Chain (loaded from CWD)
+
+1. `.env` (base)
+2. `.env.local` (local overrides)
+3. `.env.{name}` (environment-specific, e.g., `.env.staging`)
+4. `.env.{name}.local` (environment-specific local overrides)
+
+### Expression Resolution
+
+Environment files support `${{ variables.* }}` and `${{ locals.* }}` expressions in component variable values. These are resolved before passing to the engine.
 
 ## Go Code Conventions
 

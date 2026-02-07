@@ -43,6 +43,7 @@
               "datacenters/overview",
               "datacenters/variables",
               "datacenters/modules",
+              "datacenters/components",
               {
                 "group": "Hooks",
                 "pages": [
@@ -65,6 +66,7 @@
             "group": "Environments",
             "pages": [
               "environments/overview",
+              "environments/variables",
               "environments/components",
               "environments/locals",
               "environments/scaling",

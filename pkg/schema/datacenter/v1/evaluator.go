@@ -258,6 +258,32 @@ func (e *Evaluator) EvaluateErrorMessage(expr hcl.Expression) (string, error) {
 	return fmt.Sprintf("%v", fromCtyValue(val)), nil
 }
 
+// EvaluateComponentVariables evaluates a component's variables expression with the
+// current context (which includes datacenter variable values). This resolves references
+// like variable.stripe_key into their actual values at deploy time.
+func (e *Evaluator) EvaluateComponentVariables(comp *ComponentBlockV1) (map[string]interface{}, error) {
+	if comp.VariablesExpr == nil {
+		return nil, nil
+	}
+
+	hclCtx := e.ctx.ToHCLContext()
+	val, diags := comp.VariablesExpr.Value(hclCtx)
+	if diags.HasErrors() {
+		return nil, fmt.Errorf("failed to evaluate component %s variables: %s", comp.Name, diags.Error())
+	}
+
+	if !val.Type().IsObjectType() && !val.Type().IsMapType() {
+		return nil, fmt.Errorf("component %s variables must be an object or map, got %s", comp.Name, val.Type().FriendlyName())
+	}
+
+	result := make(map[string]interface{})
+	for k, v := range val.AsValueMap() {
+		result[k] = fromCtyValue(v)
+	}
+
+	return result, nil
+}
+
 // SetNodeContext sets the current node context for evaluation.
 func (e *Evaluator) SetNodeContext(nodeType, name, component string, inputs map[string]interface{}) {
 	nodeInputs := make(map[string]cty.Value)

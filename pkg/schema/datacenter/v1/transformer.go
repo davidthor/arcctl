@@ -34,6 +34,12 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalDatacenter, err
 		dc.Modules = append(dc.Modules, im)
 	}
 
+	// Transform datacenter-level components
+	for _, c := range v1.Components {
+		ic := t.transformComponent(c)
+		dc.Components = append(dc.Components, ic)
+	}
+
 	// Transform environment
 	if v1.Environment != nil {
 		dc.Environment = t.transformEnvironment(v1.Environment)
@@ -62,6 +68,40 @@ func (t *Transformer) transformVariable(v VariableBlockV1) internal.InternalVari
 	iv.Required = v.Default == nil
 
 	return iv
+}
+
+func (t *Transformer) transformComponent(c ComponentBlockV1) internal.InternalDatacenterComponent {
+	ic := internal.InternalDatacenterComponent{
+		Name:      c.Name,
+		Source:    c.Source,
+		Variables: make(map[string]string),
+	}
+
+	// Transform variables - store as HCL expression strings for runtime evaluation.
+	// Variable values may reference datacenter variables (e.g., variable.stripe_key)
+	// that are only known at deploy time.
+	if c.VariablesExpr != nil {
+		// Try to get the expression value to extract key-value pairs
+		val, diags := c.VariablesExpr.Value(nil)
+		if !diags.HasErrors() && (val.Type().IsObjectType() || val.Type().IsMapType()) {
+			for k, v := range val.AsValueMap() {
+				ic.Variables[k] = ctyValueToString(v)
+			}
+		} else {
+			// Expression references runtime values - store individual attribute expressions
+			// by reading from the source file
+			rng := c.VariablesExpr.Range()
+			if rng.Filename != "" {
+				data, err := os.ReadFile(rng.Filename)
+				if err == nil && rng.Start.Byte < len(data) && rng.End.Byte <= len(data) {
+					// Store the entire expression as a single entry for runtime evaluation
+					ic.Variables["__expr__"] = string(data[rng.Start.Byte:rng.End.Byte])
+				}
+			}
+		}
+	}
+
+	return ic
 }
 
 func (t *Transformer) transformModule(m ModuleBlockV1) internal.InternalModule {

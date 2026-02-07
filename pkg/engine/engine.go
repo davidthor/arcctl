@@ -772,6 +772,28 @@ func (e *Engine) DeployDatacenter(ctx context.Context, opts DeployDatacenterOpti
 		}
 	}
 
+	// Persist datacenter-level component declarations into state.
+	// These are stored (not deployed) so the engine can reference them during
+	// dependency resolution when components are deployed to environments.
+	dcComponents := dc.Components()
+	if len(dcComponents) > 0 {
+		if dcState.Components == nil {
+			dcState.Components = make(map[string]*types.DatacenterComponentConfig)
+		}
+		for _, comp := range dcComponents {
+			dcState.Components[comp.Name()] = &types.DatacenterComponentConfig{
+				Source:    comp.Source(),
+				Variables: comp.Variables(),
+			}
+		}
+		dcState.UpdatedAt = time.Now()
+		_ = e.stateManager.SaveDatacenter(ctx, dcState)
+
+		if opts.Output != nil {
+			fmt.Fprintf(opts.Output, "\nRegistered %d datacenter-level component(s)\n", len(dcComponents))
+		}
+	}
+
 	// Phase 1: Provision root-level modules
 	rootModules := dc.Modules()
 	if len(rootModules) > 0 {
@@ -1474,6 +1496,10 @@ type DependencyInfo struct {
 
 	// MissingVariables lists required variables that have no default and were not provided.
 	MissingVariables []component.Variable
+
+	// Optional indicates this dependency was declared as optional.
+	// Optional dependencies are not auto-deployed and do not block destroy.
+	Optional bool
 }
 
 // ResolveDependencies discovers component dependencies that are not yet deployed
@@ -1486,6 +1512,25 @@ type DependencyInfo struct {
 func (e *Engine) ResolveDependencies(ctx context.Context, opts DeployOptions) ([]DependencyInfo, error) {
 	// Get current environment state to check which components already exist
 	envState, _ := e.stateManager.GetEnvironment(ctx, opts.Datacenter, opts.Environment)
+
+	// Load datacenter state to access component declarations and variable values
+	dcState, _ := e.stateManager.GetDatacenter(ctx, opts.Datacenter)
+
+	// Build datacenter variables and module outputs for evaluating component variable expressions
+	var dcVars map[string]interface{}
+	var dcModuleOutputs map[string]map[string]interface{}
+	if dcState != nil {
+		dcVars = make(map[string]interface{})
+		for k, v := range dcState.Variables {
+			dcVars[k] = v
+		}
+		dcModuleOutputs = make(map[string]map[string]interface{})
+		for modName, modState := range dcState.Modules {
+			if modState.Outputs != nil {
+				dcModuleOutputs[modName] = modState.Outputs
+			}
+		}
+	}
 
 	// Track what's already being deployed (primary components) or already in the environment
 	deployed := make(map[string]bool)
@@ -1512,6 +1557,13 @@ func (e *Engine) ResolveDependencies(ctx context.Context, opts DeployOptions) ([
 			depName := dep.Name()
 			depRef := dep.Component()
 
+			// Optional dependencies are never auto-deployed. If already present
+			// in the environment their outputs are available via expressions,
+			// but we do not pull/load/deploy them here.
+			if dep.Optional() {
+				continue
+			}
+
 			// Skip if already deployed in the environment or being deployed in this batch
 			if deployed[depName] {
 				continue
@@ -1527,6 +1579,37 @@ func (e *Engine) ResolveDependencies(ctx context.Context, opts DeployOptions) ([
 				return fmt.Errorf("circular dependency detected: %s -> %s", parentName, depName)
 			}
 			visiting[depName] = true
+
+			// Check if the datacenter declares this component.
+			// If so, use the datacenter's source and evaluate its variable expressions
+			// to provide all required variables automatically.
+			if dcState != nil && dcState.Components != nil {
+				if dcComp, ok := dcState.Components[depName]; ok {
+					// Override the OCI reference with the datacenter's source
+					depRef = depName + ":" + dcComp.Source
+
+					// Evaluate datacenter component variable expressions with actual DC variable values
+					if len(dcComp.Variables) > 0 && opts.Variables != nil {
+						if opts.Variables[depName] == nil {
+							opts.Variables[depName] = make(map[string]interface{})
+						}
+						for varName, exprStr := range dcComp.Variables {
+							// Only set if not already provided (explicit values take priority)
+							if _, exists := opts.Variables[depName][varName]; !exists {
+								opts.Variables[depName][varName] = evaluateModuleExpression(exprStr, dcVars, dcModuleOutputs, nil)
+							}
+						}
+					} else if len(dcComp.Variables) > 0 {
+						if opts.Variables == nil {
+							opts.Variables = make(map[string]map[string]interface{})
+						}
+						opts.Variables[depName] = make(map[string]interface{})
+						for varName, exprStr := range dcComp.Variables {
+							opts.Variables[depName][varName] = evaluateModuleExpression(exprStr, dcVars, dcModuleOutputs, nil)
+						}
+					}
+				}
+			}
 
 			// Pull and load the dependency component
 			localPath, err := e.loadComponentConfig(ctx, depRef)

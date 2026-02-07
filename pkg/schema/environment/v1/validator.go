@@ -2,8 +2,12 @@ package v1
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+// expressionPattern matches ${{ ... }} expressions.
+var validatorExprPattern = regexp.MustCompile(`\$\{\{\s*(.+?)\s*\}\}`)
 
 // ValidationError represents a validation error.
 type ValidationError struct {
@@ -27,10 +31,20 @@ func NewValidator() *Validator {
 func (v *Validator) Validate(schema *SchemaV1) []ValidationError {
 	var errors []ValidationError
 
+	// Validate variable declarations
+	for name, variable := range schema.Variables {
+		varErrors := v.validateVariable(name, variable)
+		errors = append(errors, varErrors...)
+	}
+
 	// Validate components
 	for name, comp := range schema.Components {
 		compErrors := v.validateComponent(name, comp)
 		errors = append(errors, compErrors...)
+
+		// Validate that ${{ variables.* }} references point to declared variables
+		refErrors := v.validateVariableReferences(name, comp, schema.Variables, schema.Locals)
+		errors = append(errors, refErrors...)
 	}
 
 	// Validate locals don't contain reserved keys
@@ -40,6 +54,65 @@ func (v *Validator) Validate(schema *SchemaV1) []ValidationError {
 				Field:   fmt.Sprintf("locals.%s", key),
 				Message: "reserved key name",
 			})
+		}
+	}
+
+	return errors
+}
+
+func (v *Validator) validateVariable(name string, variable EnvironmentVariableV1) []ValidationError {
+	var errors []ValidationError
+	prefix := fmt.Sprintf("variables.%s", name)
+
+	// Required variables should not have a default value
+	if variable.Required && variable.Default != nil {
+		errors = append(errors, ValidationError{
+			Field:   prefix,
+			Message: "required variables should not have a default value",
+		})
+	}
+
+	return errors
+}
+
+// validateVariableReferences checks that ${{ variables.* }} and ${{ locals.* }}
+// expressions in component variable values reference declared names.
+func (v *Validator) validateVariableReferences(compName string, comp ComponentConfigV1, vars map[string]EnvironmentVariableV1, locals map[string]interface{}) []ValidationError {
+	var errors []ValidationError
+
+	for key, val := range comp.Variables {
+		str, ok := val.(string)
+		if !ok {
+			continue
+		}
+
+		matches := validatorExprPattern.FindAllStringSubmatch(str, -1)
+		for _, match := range matches {
+			expr := strings.TrimSpace(match[1])
+			parts := strings.SplitN(expr, ".", 2)
+			if len(parts) != 2 {
+				continue
+			}
+
+			namespace := parts[0]
+			refName := parts[1]
+
+			switch namespace {
+			case "variables":
+				if _, ok := vars[refName]; !ok {
+					errors = append(errors, ValidationError{
+						Field:   fmt.Sprintf("components.%s.variables.%s", compName, key),
+						Message: fmt.Sprintf("references undefined variable %q", refName),
+					})
+				}
+			case "locals":
+				if _, ok := locals[refName]; !ok && locals != nil {
+					errors = append(errors, ValidationError{
+						Field:   fmt.Sprintf("components.%s.variables.%s", compName, key),
+						Message: fmt.Sprintf("references undefined local %q", refName),
+					})
+				}
+			}
 		}
 	}
 

@@ -7,11 +7,35 @@ package v1
 type SchemaV1 struct {
 	Version string `yaml:"version,omitempty" json:"version,omitempty"`
 
+	// Environment-level variables resolved from env vars, dotenv files, or defaults
+	Variables map[string]EnvironmentVariableV1 `yaml:"variables,omitempty" json:"variables,omitempty"`
+
 	// Reusable values
 	Locals map[string]interface{} `yaml:"locals,omitempty" json:"locals,omitempty"`
 
 	// Component configurations
 	Components map[string]ComponentConfigV1 `yaml:"components,omitempty" json:"components,omitempty"`
+}
+
+// EnvironmentVariableV1 represents a variable declaration in the v1 environment schema.
+// Variables are resolved from (highest priority first): CLI --var flags, OS environment
+// variables, dotenv file chain, then default values.
+type EnvironmentVariableV1 struct {
+	// Description of the variable's purpose
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+
+	// Default value if not provided via env var or CLI
+	Default interface{} `yaml:"default,omitempty" json:"default,omitempty"`
+
+	// Whether a value is required (error if missing and no default)
+	Required bool `yaml:"required,omitempty" json:"required,omitempty"`
+
+	// Whether the value is sensitive (masked in output)
+	Sensitive bool `yaml:"sensitive,omitempty" json:"sensitive,omitempty"`
+
+	// Explicit OS environment variable name to read from.
+	// If not set, defaults to UPPER_SNAKE_CASE of the variable name.
+	Env string `yaml:"env,omitempty" json:"env,omitempty"`
 }
 
 // ComponentConfigV1 represents a component configuration in v1 schema.

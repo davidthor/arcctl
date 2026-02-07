@@ -27,6 +27,14 @@ module "network" {
   }
 }
 
+# Datacenter-level components (auto-deployed as dependencies)
+component "myorg/stripe" {
+  source = "latest"
+  variables = {
+    secret_key = variable.stripe_key
+  }
+}
+
 # Environment configuration with hooks
 environment {
   # Environment-level modules
@@ -70,6 +78,28 @@ Each hook handles a component resource type:
 | `node.component` | Component the resource belongs to |
 | `node.inputs.<field>` | Resource input values |
 | `module.<name>.<output>` | Module output values |
+
+## Datacenter Components
+
+Declare shared components at the datacenter level for automatic dependency resolution. When a component in an environment depends on a datacenter-declared component, the engine automatically deploys it with the configured source and variables.
+
+```hcl
+variable "stripe_secret_key" {
+  type      = string
+  sensitive = true
+}
+
+component "myorg/stripe" {
+  source = "latest"
+  variables = {
+    secret_key = variable.stripe_secret_key
+  }
+}
+```
+
+- Components are **not** deployed at the datacenter level -- they are deployed into environments on demand
+- Variable values can reference `variable.*` and `module.*.*`
+- Datacenter component values take priority over interactive prompts but not over explicitly provided values
 
 ## Hook Pattern
 

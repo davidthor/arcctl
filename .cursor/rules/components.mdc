@@ -29,7 +29,7 @@ cronjobs: map<string, Cronjob>
 
 # Configuration
 variables: map<string, Variable>
-dependencies: map<string, string>  # key: reference name, value: repo:tag
+dependencies: map<string, string | Dependency>  # string shorthand or object with source + optional
 ```
 
 ## Expression Syntax

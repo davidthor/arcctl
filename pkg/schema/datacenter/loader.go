@@ -120,6 +120,14 @@ func (d *datacenterWrapper) Modules() []Module {
 	return result
 }
 
+func (d *datacenterWrapper) Components() []DatacenterComponent {
+	result := make([]DatacenterComponent, len(d.dc.Components))
+	for i := range d.dc.Components {
+		result[i] = &datacenterComponentWrapper{c: &d.dc.Components[i]}
+	}
+	return result
+}
+
 func (d *datacenterWrapper) Environment() Environment {
 	return &environmentWrapper{e: &d.dc.Environment}
 }
@@ -147,6 +155,15 @@ func (v *variableWrapper) Description() string { return v.v.Description }
 func (v *variableWrapper) Default() interface{} { return v.v.Default }
 func (v *variableWrapper) Required() bool      { return v.v.Required }
 func (v *variableWrapper) Sensitive() bool     { return v.v.Sensitive }
+
+// datacenterComponentWrapper implements DatacenterComponent interface.
+type datacenterComponentWrapper struct {
+	c *internal.InternalDatacenterComponent
+}
+
+func (c *datacenterComponentWrapper) Name() string              { return c.c.Name }
+func (c *datacenterComponentWrapper) Source() string            { return c.c.Source }
+func (c *datacenterComponentWrapper) Variables() map[string]string { return c.c.Variables }
 
 // moduleWrapper implements Module interface.
 type moduleWrapper struct {

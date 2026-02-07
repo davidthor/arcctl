@@ -21,9 +21,9 @@ type SchemaV1 struct {
 
 	Observability *ObservabilityV1 `yaml:"observability,omitempty" json:"observability,omitempty"`
 
-	Variables    map[string]VariableV1 `yaml:"variables,omitempty" json:"variables,omitempty"`
-	Dependencies map[string]string     `yaml:"dependencies,omitempty" json:"dependencies,omitempty"`
-	Outputs      map[string]OutputV1   `yaml:"outputs,omitempty" json:"outputs,omitempty"`
+	Variables    map[string]VariableV1   `yaml:"variables,omitempty" json:"variables,omitempty"`
+	Dependencies map[string]DependencyV1 `yaml:"dependencies,omitempty" json:"dependencies,omitempty"`
+	Outputs      map[string]OutputV1     `yaml:"outputs,omitempty" json:"outputs,omitempty"`
 }
 
 // ObservabilityV1 represents observability configuration in the v1 schema.
@@ -346,6 +346,33 @@ type OutputV1 struct {
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
 	Value       string `yaml:"value" json:"value"` // Expression that resolves to the output value
 	Sensitive   bool   `yaml:"sensitive,omitempty" json:"sensitive,omitempty"`
+}
+
+// DependencyV1 represents a dependency on another component in the v1 schema.
+// Supports both string shorthand (OCI reference) and full object form with
+// source and optional fields.
+type DependencyV1 struct {
+	Source   string `yaml:"source" json:"source"`                           // OCI reference in repo:tag format
+	Optional bool   `yaml:"optional,omitempty" json:"optional,omitempty"`   // If true, dependency is not auto-deployed (default: false)
+}
+
+// UnmarshalYAML supports both string shorthand ("ghcr.io/org/app:v1") and full object form.
+func (d *DependencyV1) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Try string shorthand first
+	var s string
+	if err := unmarshal(&s); err == nil {
+		d.Source = s
+		return nil
+	}
+
+	// Fall back to full object form
+	type rawDependency DependencyV1
+	var raw rawDependency
+	if err := unmarshal(&raw); err != nil {
+		return fmt.Errorf("dependency must be a string (OCI reference) or an object with a source field: %w", err)
+	}
+	*d = DependencyV1(raw)
+	return nil
 }
 
 // VolumeV1 represents a volume in the v1 schema.

@@ -93,6 +93,50 @@ deployments:
       FRONTEND_URL: ${{ dependents.frontend.routes.main.url }}
 ```
 
+## Optional Dependencies
+
+Dependencies can be marked as optional. Optional dependencies are **not** auto-deployed -- they are only used if already present in the target environment. This is useful for features that enhance a component but are not required for it to function.
+
+To mark a dependency as optional, expand the value from a string to an object with `source` and `optional` fields:
+
+```yaml
+dependencies:
+  # Required dependency (string shorthand)
+  auth: ghcr.io/myorg/auth-service:v1.0.0
+
+  # Optional dependency (object form)
+  analytics:
+    source: ghcr.io/myorg/analytics:v1
+    optional: true
+```
+
+When `optional: true`:
+
+- The dependency is **not auto-deployed** when deploying the component
+- If the dependency is already deployed in the environment, its outputs are available via `${{ dependencies.<name>.* }}` expressions as usual
+- If the dependency is **not** deployed, expressions referencing it resolve to empty values
+- Destroying the optional dependency does **not** require `--force` from components that optionally depend on it
+
+### Example
+
+A component that optionally integrates with an analytics service:
+
+```yaml
+dependencies:
+  analytics:
+    source: ghcr.io/myorg/posthog:v1
+    optional: true
+
+deployments:
+  api:
+    image: ${{ builds.api.image }}
+    environment:
+      # Will be empty if analytics is not deployed
+      POSTHOG_API_KEY: ${{ dependencies.analytics.outputs.key }}
+```
+
+The application code should handle the case where `POSTHOG_API_KEY` is empty.
+
 ## Automatic Deployment
 
 When you deploy a component, arcctl automatically deploys any missing dependencies into the target environment. This recursive resolution means a single `arcctl deploy` or `arcctl up` command brings up an entire application stack -- including all transitive dependencies.

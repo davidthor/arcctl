@@ -108,8 +108,8 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
 	}
 
 	// Transform dependencies
-	for name, component := range v1.Dependencies {
-		id := t.transformDependency(name, component)
+	for name, dep := range v1.Dependencies {
+		id := t.transformDependency(name, dep)
 		ic.Dependencies = append(ic.Dependencies, id)
 	}
 
@@ -471,10 +471,11 @@ func (t *Transformer) transformVariable(name string, v VariableV1) internal.Inte
 	}
 }
 
-func (t *Transformer) transformDependency(name string, component string) internal.InternalDependency {
+func (t *Transformer) transformDependency(name string, dep DependencyV1) internal.InternalDependency {
 	return internal.InternalDependency{
 		Name:      name,
-		Component: component,
+		Component: dep.Source,
+		Optional:  dep.Optional,
 	}
 }
 

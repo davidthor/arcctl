@@ -568,6 +568,7 @@ type dependencyWrapper struct {
 
 func (d *dependencyWrapper) Name() string      { return d.d.Name }
 func (d *dependencyWrapper) Component() string { return d.d.Component }
+func (d *dependencyWrapper) Optional() bool    { return d.d.Optional }
 
 // Output wrapper
 type outputWrapper struct {

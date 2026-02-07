@@ -1,0 +1,266 @@
+---
+title: "Variables"
+description: "Declare environment-level variables resolved from environment variables and dotenv files"
+---
+
+# Environment Variables
+
+Environment files can declare their own `variables` block. These variables are resolved automatically from OS environment variables and `.env` files, allowing environment configurations to be safely checked into version control without hardcoding secrets.
+
+## Declaration
+
+Declare variables at the top level of your environment file:
+
+```yaml
+variables:
+  clerk_secret_key:
+    description: "Clerk secret key"
+    required: true
+    sensitive: true
+
+  posthog_debug:
+    description: "Enable PostHog debug mode"
+    default: "false"
+
+  google_project_id:
+    description: "GCP project ID"
+    required: true
+    env: GOOGLE_CLOUD_PROJECT  # explicit env var name
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `description` | string | Human-readable description of the variable |
+| `required` | bool | Error if no value is found (default: `false`) |
+| `sensitive` | bool | Mask value in CLI output (default: `false`) |
+| `default` | any | Default value when no other source provides one |
+| `env` | string | Explicit OS environment variable name to read from |
+
+<Note>
+A variable cannot be both `required: true` and have a `default` value. If a default is provided, the variable is always satisfied.
+</Note>
+
+## Referencing Variables
+
+Component configs reference environment variables using `${{ variables.* }}` expressions:
+
+```yaml
+variables:
+  clerk_publishable_key:
+    description: "Clerk publishable key"
+    required: true
+  clerk_secret_key:
+    description: "Clerk secret key"
+    required: true
+    sensitive: true
+
+components:
+  questra/clerk:
+    source: latest
+    variables:
+      publishable_key: ${{ variables.clerk_publishable_key }}
+      secret_key: ${{ variables.clerk_secret_key }}
+```
+
+Each component maps environment-level variables to its own variable names explicitly. This means two components can both have a `secret_key` variable that pulls from different environment variables -- no naming collisions.
+
+## Resolution Priority
+
+Variable values are resolved from the following sources, highest priority first:
+
+1. **CLI `--var` flags** -- `--var clerk_secret_key=sk_test_abc`
+2. **OS environment variables** -- `CLERK_SECRET_KEY=sk_test_abc`
+3. **Dotenv file chain** -- loaded from your current working directory
+4. **Default value** -- from the variable declaration
+5. **Error** -- if `required: true` and no value found
+
+### Env Var Name Matching
+
+By default, arcctl looks up the **UPPER_SNAKE_CASE** version of the variable name:
+
+| Variable name | Looks up env var |
+|---------------|-----------------|
+| `clerk_secret_key` | `CLERK_SECRET_KEY` |
+| `posthog_debug` | `POSTHOG_DEBUG` |
+| `api_key` | `API_KEY` |
+
+To override this, use the `env` field:
+
+```yaml
+variables:
+  project_id:
+    description: "GCP project ID"
+    required: true
+    env: GOOGLE_CLOUD_PROJECT  # looks up GOOGLE_CLOUD_PROJECT instead of PROJECT_ID
+```
+
+## Dotenv File Chain
+
+arcctl automatically loads `.env` files from your **current working directory** (where you run the command). Files are loaded in order, with later files overriding earlier values:
+
+| Order | File | Purpose |
+|-------|------|---------|
+| 1 | `.env` | Base defaults (can be checked in) |
+| 2 | `.env.local` | Local overrides (gitignored) |
+| 3 | `.env.{name}` | Environment-specific (e.g., `.env.staging`) |
+| 4 | `.env.{name}.local` | Environment-specific local overrides (gitignored) |
+
+The `{name}` is the environment name (the first argument to `arcctl update environment`).
+
+Missing files are silently skipped. The file format is standard dotenv:
+
+```bash
+# .env.local
+CLERK_PUBLISHABLE_KEY=pk_test_abc123
+CLERK_SECRET_KEY=sk_test_xyz789
+
+# Comments start with #
+# Quotes are stripped
+STRIPE_SECRET_KEY="sk_test_quoted"
+
+# export prefix is supported
+export ANTHROPIC_API_KEY=sk-ant-abc123
+```
+
+### Recommended .gitignore
+
+```
+.env.local
+.env.*.local
+```
+
+This keeps `.env` (shared defaults) in version control while keeping `.env.local` and `.env.staging.local` (secrets) out.
+
+## Complete Example
+
+### Environment file (checked in)
+
+```yaml
+# environments/questra.yml
+name: questra
+
+variables:
+  # Auth
+  clerk_publishable_key:
+    description: "Clerk publishable key"
+    required: true
+  clerk_secret_key:
+    description: "Clerk secret key"
+    required: true
+    sensitive: true
+
+  # AI
+  anthropic_api_key:
+    description: "Anthropic API key"
+    required: true
+    sensitive: true
+  google_project_id:
+    description: "GCP project ID"
+    required: true
+    env: GOOGLE_CLOUD_PROJECT
+
+  # Analytics
+  posthog_key:
+    description: "PostHog project API key"
+    required: true
+  posthog_debug:
+    description: "PostHog debug mode"
+    default: "false"
+
+components:
+  questra/clerk:
+    source: latest
+    variables:
+      publishable_key: ${{ variables.clerk_publishable_key }}
+      secret_key: ${{ variables.clerk_secret_key }}
+
+  questra/anthropic:
+    source: latest
+    variables:
+      api_key: ${{ variables.anthropic_api_key }}
+
+  questra/google-vertex:
+    source: latest
+    variables:
+      project_id: ${{ variables.google_project_id }}
+
+  questra/posthog:
+    source: latest
+    variables:
+      key: ${{ variables.posthog_key }}
+      debug: ${{ variables.posthog_debug }}
+
+  questra/app:
+    source: latest
+```
+
+### Local secrets file (gitignored)
+
+```bash
+# .env.local
+CLERK_PUBLISHABLE_KEY=pk_test_abc123
+CLERK_SECRET_KEY=sk_test_xyz789
+ANTHROPIC_API_KEY=sk-ant-abc123
+GOOGLE_CLOUD_PROJECT=my-gcp-project
+POSTHOG_KEY=phc_abc123
+```
+
+### Deploy
+
+```bash
+arcctl update environment questra environments/questra.yml -d my-datacenter
+```
+
+All secrets are resolved from `.env.local` -- no prompts, no hardcoded values, no secrets in version control.
+
+## CI/CD Usage
+
+In CI pipelines, secrets are typically injected as OS environment variables by the CI provider. No `.env` files needed:
+
+```yaml
+# GitHub Actions
+- name: Deploy
+  env:
+    CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PK }}
+    CLERK_SECRET_KEY: ${{ secrets.CLERK_SK }}
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_KEY }}
+    GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+    POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+  run: |
+    arcctl update environment questra environments/questra.yml \
+      -d production --auto-approve
+```
+
+You can also use `--var` flags to override specific values:
+
+```bash
+arcctl update environment questra environments/questra.yml \
+  --var posthog_debug=true \
+  --auto-approve
+```
+
+## Mixing with Locals
+
+Environment files can use both `variables` (resolved from env vars) and `locals` (static values defined in the file). Both are available in component expressions:
+
+```yaml
+variables:
+  api_key:
+    required: true
+    sensitive: true
+
+locals:
+  log_level: debug
+  base_domain: staging.example.com
+
+components:
+  my-app:
+    source: v1.0.0
+    variables:
+      api_key: ${{ variables.api_key }}
+      log_level: ${{ locals.log_level }}
+```
+
+Use `variables` for secrets and values that change per machine. Use `locals` for non-sensitive values that are the same everywhere the environment file is used.

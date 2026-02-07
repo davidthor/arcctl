@@ -538,11 +538,11 @@ func (v *Validator) validateVariables(variables map[string]VariableV1) []Validat
 	return errs
 }
 
-func (v *Validator) validateDependencies(dependencies map[string]string) []ValidationError {
+func (v *Validator) validateDependencies(dependencies map[string]DependencyV1) []ValidationError {
 	var errs []ValidationError
 
-	for name, component := range dependencies {
-		if component == "" {
+	for name, dep := range dependencies {
+		if dep.Source == "" {
 			errs = append(errs, ValidationError{
 				Field:   fmt.Sprintf("dependencies.%s", name),
 				Message: "component reference is required",
@@ -551,7 +551,7 @@ func (v *Validator) validateDependencies(dependencies map[string]string) []Valid
 		}
 
 		// Reject file path references - dependencies must be OCI references
-		if isFilePath(component) {
+		if isFilePath(dep.Source) {
 			errs = append(errs, ValidationError{
 				Field:   fmt.Sprintf("dependencies.%s", name),
 				Message: "file path references are not allowed; use OCI registry references (e.g., ghcr.io/org/component:v1)",

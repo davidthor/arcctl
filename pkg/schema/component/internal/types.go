@@ -364,6 +364,7 @@ type InternalVariable struct {
 type InternalDependency struct {
 	Name      string
 	Component string // OCI reference in repo:tag format
+	Optional  bool   // If true, dependency is not auto-deployed and does not block destroy
 }
 
 // InternalOutput represents an output value exposed to dependents.
