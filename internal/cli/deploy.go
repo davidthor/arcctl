@@ -16,6 +16,7 @@ import (
 	"github.com/architect-io/arcctl/pkg/registry"
 	"github.com/architect-io/arcctl/pkg/schema/component"
 	"github.com/architect-io/arcctl/pkg/schema/datacenter"
+	"github.com/architect-io/arcctl/pkg/state"
 	"github.com/architect-io/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -49,15 +50,21 @@ func newDeployComponentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "component <source>",
 		Aliases: []string{"comp", "comps", "components"},
-		Short:   "Deploy a component to an environment",
-		Long: `Deploy a component to an environment.
+		Short:   "Deploy a component to an environment or register it with a datacenter",
+		Long: `Deploy a component to an environment, or register it as a datacenter-level
+component declaration when --environment is omitted.
 
 The source can be specified as either:
   - An OCI image reference (e.g., ghcr.io/myorg/myapp:v1.0.0)
   - A local directory containing an architect.yml file
   - A path to an architect.yml file directly
 
-When deploying from local source, arcctl will build container images as needed.
+When -e is provided, the component is deployed into the target environment
+with full resource provisioning.
+
+When -e is omitted, the component is registered as a datacenter-level
+declaration. Datacenter components are automatically deployed into
+environments when needed as dependencies by other components.
 
 In interactive mode (when not running in CI), you will be prompted to enter
 values for any required variables that were not provided via --var or --var-file.
@@ -65,7 +72,8 @@ values for any required variables that were not provided via --var or --var-file
 Examples:
   arcctl deploy component ./my-app -e production
   arcctl deploy component ./my-app -e staging -d my-dc
-  arcctl deploy component ghcr.io/myorg/myapp:v1.0.0 -e production --var api_key=secret123`,
+  arcctl deploy component ghcr.io/myorg/myapp:v1.0.0 -e production --var api_key=secret123
+  arcctl deploy component myorg/stripe:latest -d my-dc --var key=sk_live_xxx`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
@@ -81,6 +89,11 @@ Examples:
 			mgr, err := createStateManagerWithConfig(backendType, backendConfig)
 			if err != nil {
 				return fmt.Errorf("failed to create state manager: %w", err)
+			}
+
+			// If no environment specified, register as datacenter-level component
+			if environment == "" {
+				return deployDatacenterComponent(ctx, mgr, dc, source, variables, varFile)
 			}
 
 			// Verify environment exists
@@ -368,7 +381,7 @@ Examples:
 		},
 	}
 
-	cmd.Flags().StringVarP(&environment, "environment", "e", "", "Target environment (required)")
+	cmd.Flags().StringVarP(&environment, "environment", "e", "", "Target environment (omit to register as datacenter component)")
 	cmd.Flags().StringVarP(&datacenter, "datacenter", "d", "", "Target datacenter (uses default if not set)")
 	cmd.Flags().StringArrayVar(&variables, "var", nil, "Set variable (key=value)")
 	cmd.Flags().StringVar(&varFile, "var-file", "", "Load variables from file")
@@ -376,9 +389,81 @@ Examples:
 	cmd.Flags().StringArrayVar(&targets, "target", nil, "Target specific resource (repeatable)")
 	cmd.Flags().StringVar(&backendType, "backend", "", "State backend type")
 	cmd.Flags().StringArrayVar(&backendConfig, "backend-config", nil, "Backend configuration (key=value)")
-	_ = cmd.MarkFlagRequired("environment")
 
 	return cmd
+}
+
+// deployDatacenterComponent registers a component declaration at the datacenter level.
+// The component is not deployed immediately -- it is stored so the engine can
+// automatically deploy it into environments when needed as a dependency.
+func deployDatacenterComponent(ctx context.Context, mgr state.Manager, dc, source string, variables []string, varFile string) error {
+	// Verify the datacenter exists
+	_, err := mgr.GetDatacenter(ctx, dc)
+	if err != nil {
+		return fmt.Errorf("datacenter %q not found: %w", dc, err)
+	}
+
+	// Parse the source into component name and version.
+	// For OCI references like "myorg/stripe:latest", the name is "myorg/stripe" and source is "latest".
+	// For local paths, the name is derived from the directory.
+	isLocalPath := !strings.Contains(source, ":") || strings.HasPrefix(source, "./") || strings.HasPrefix(source, "/")
+
+	var componentName, componentSource string
+	if isLocalPath {
+		componentName = deriveComponentName(source, true)
+		componentSource = source
+	} else {
+		// OCI reference: split into name (registry address) and source (tag)
+		parts := strings.SplitN(source, ":", 2)
+		componentName = parts[0]
+		if len(parts) == 2 {
+			componentSource = parts[1]
+		} else {
+			componentSource = "latest"
+		}
+	}
+
+	// Load variables from file if specified
+	vars := make(map[string]string)
+	if varFile != "" {
+		data, err := os.ReadFile(varFile)
+		if err != nil {
+			return fmt.Errorf("failed to read var file: %w", err)
+		}
+		if err := parseVarFile(data, vars); err != nil {
+			return fmt.Errorf("failed to parse var file: %w", err)
+		}
+	}
+
+	// Parse inline variables
+	for _, v := range variables {
+		parts := strings.SplitN(v, "=", 2)
+		if len(parts) == 2 {
+			vars[parts[0]] = parts[1]
+		}
+	}
+
+	// Save the datacenter component state
+	compConfig := &types.DatacenterComponentConfig{
+		Name:      componentName,
+		Source:    componentSource,
+		Variables: vars,
+	}
+
+	if err := mgr.SaveDatacenterComponent(ctx, dc, compConfig); err != nil {
+		return fmt.Errorf("failed to save datacenter component: %w", err)
+	}
+
+	fmt.Printf("[success] Registered component %q in datacenter %q\n", componentName, dc)
+	fmt.Printf("  Source: %s\n", componentSource)
+	if len(vars) > 0 {
+		fmt.Printf("  Variables: %d\n", len(vars))
+	}
+	fmt.Println()
+	fmt.Println("This component will be automatically deployed into environments when")
+	fmt.Println("needed as a dependency by other components.")
+
+	return nil
 }
 
 func newDeployDatacenterCmd() *cobra.Command {

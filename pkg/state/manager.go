@@ -21,13 +21,19 @@ type Manager interface {
 	DeleteDatacenter(ctx context.Context, name string) error
 	ListDatacenters(ctx context.Context) ([]string, error)
 
+	// Datacenter component operations (datacenter-level component declarations)
+	GetDatacenterComponent(ctx context.Context, dc, component string) (*types.DatacenterComponentConfig, error)
+	SaveDatacenterComponent(ctx context.Context, dc string, state *types.DatacenterComponentConfig) error
+	DeleteDatacenterComponent(ctx context.Context, dc, component string) error
+	ListDatacenterComponents(ctx context.Context, dc string) ([]*types.DatacenterComponentConfig, error)
+
 	// Environment operations (datacenter-scoped)
 	ListEnvironments(ctx context.Context, datacenter string) ([]types.EnvironmentRef, error)
 	GetEnvironment(ctx context.Context, datacenter, name string) (*types.EnvironmentState, error)
 	SaveEnvironment(ctx context.Context, datacenter string, state *types.EnvironmentState) error
 	DeleteEnvironment(ctx context.Context, datacenter, name string) error
 
-	// Component operations (datacenter-scoped)
+	// Component operations (environment-scoped)
 	GetComponent(ctx context.Context, dc, env, component string) (*types.ComponentState, error)
 	SaveComponent(ctx context.Context, dc, env string, state *types.ComponentState) error
 	DeleteComponent(ctx context.Context, dc, env, component string) error
@@ -126,6 +132,42 @@ func (m *manager) ListDatacenters(ctx context.Context) ([]string, error) {
 		result = append(result, name)
 	}
 	return result, nil
+}
+
+// Datacenter component operations
+
+func (m *manager) GetDatacenterComponent(ctx context.Context, dc, component string) (*types.DatacenterComponentConfig, error) {
+	p := datacenterComponentPath(dc, component)
+	return readJSON[types.DatacenterComponentConfig](ctx, m.backend, p)
+}
+
+func (m *manager) SaveDatacenterComponent(ctx context.Context, dc string, state *types.DatacenterComponentConfig) error {
+	p := datacenterComponentPath(dc, state.Name)
+	return writeJSON(ctx, m.backend, p, state)
+}
+
+func (m *manager) DeleteDatacenterComponent(ctx context.Context, dc, component string) error {
+	p := datacenterComponentPath(dc, component)
+	return m.backend.Delete(ctx, p)
+}
+
+func (m *manager) ListDatacenterComponents(ctx context.Context, dc string) ([]*types.DatacenterComponentConfig, error) {
+	prefix := path.Join("datacenters", dc, "components") + "/"
+	paths, err := m.backend.List(ctx, prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	var components []*types.DatacenterComponentConfig
+	for _, p := range paths {
+		comp, err := readJSON[types.DatacenterComponentConfig](ctx, m.backend, p)
+		if err != nil {
+			continue // Skip files that can't be read
+		}
+		components = append(components, comp)
+	}
+
+	return components, nil
 }
 
 // Environment operations
@@ -257,6 +299,10 @@ func (m *manager) Lock(ctx context.Context, scope LockScope) (backend.Lock, erro
 
 func datacenterPath(name string) string {
 	return path.Join("datacenters", name, "datacenter.state.json")
+}
+
+func datacenterComponentPath(dc, component string) string {
+	return path.Join("datacenters", dc, "components", component+".state.json")
 }
 
 func environmentPath(dc, name string) string {

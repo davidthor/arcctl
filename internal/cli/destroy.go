@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/architect-io/arcctl/pkg/engine"
+	"github.com/architect-io/arcctl/pkg/state"
 	"github.com/spf13/cobra"
 )
 
@@ -38,16 +39,23 @@ func newDestroyComponentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "component <name>",
 		Aliases: []string{"comp", "comps", "components"},
-		Short:   "Destroy a deployed component",
-		Long: `Destroy a deployed component and its resources.
+		Short:   "Destroy a deployed component or remove a datacenter component declaration",
+		Long: `Destroy a deployed component and its resources, or remove a datacenter-level
+component declaration when --environment is omitted.
 
-If other components in the environment depend on this component, the destroy
-will be blocked. Use --force to override this check.
+When -e is provided, the component and all its resources are destroyed
+in the target environment. If other components depend on it, the destroy
+is blocked unless --force is used.
+
+When -e is omitted, the component declaration is removed from the
+datacenter. This does not destroy any already-deployed instances of the
+component in environments.
 
 Examples:
   arcctl destroy component my-app -e production
   arcctl destroy component api -e staging --auto-approve
-  arcctl destroy component shared-db -e staging --force`,
+  arcctl destroy component shared-db -e staging --force
+  arcctl destroy component myorg/stripe -d my-dc`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			componentName := args[0]
@@ -63,6 +71,11 @@ Examples:
 			mgr, err := createStateManagerWithConfig(backendType, backendConfig)
 			if err != nil {
 				return fmt.Errorf("failed to create state manager: %w", err)
+			}
+
+			// If no environment specified, remove datacenter-level component declaration
+			if environment == "" {
+				return destroyDatacenterComponent(ctx, mgr, dc, componentName, autoApprove)
 			}
 
 			// Get component state
@@ -141,15 +154,52 @@ Examples:
 		},
 	}
 
-	cmd.Flags().StringVarP(&environment, "environment", "e", "", "Target environment (required)")
+	cmd.Flags().StringVarP(&environment, "environment", "e", "", "Target environment (omit to remove datacenter component)")
 	cmd.Flags().StringVarP(&datacenter, "datacenter", "d", "", "Target datacenter (uses default if not set)")
 	cmd.Flags().BoolVar(&autoApprove, "auto-approve", false, "Skip confirmation prompt")
 	cmd.Flags().BoolVar(&force, "force", false, "Force destroy even if other components depend on this one")
 	cmd.Flags().StringVar(&backendType, "backend", "", "State backend type")
 	cmd.Flags().StringArrayVar(&backendConfig, "backend-config", nil, "Backend configuration (key=value)")
-	_ = cmd.MarkFlagRequired("environment")
 
 	return cmd
+}
+
+// destroyDatacenterComponent removes a component declaration from the datacenter.
+// This does not destroy any already-deployed instances of the component in environments.
+func destroyDatacenterComponent(ctx context.Context, mgr state.Manager, dc, componentName string, autoApprove bool) error {
+	// Verify the component exists
+	comp, err := mgr.GetDatacenterComponent(ctx, dc, componentName)
+	if err != nil || comp == nil {
+		return fmt.Errorf("component %q not found in datacenter %q", componentName, dc)
+	}
+
+	// Display what will be removed
+	fmt.Printf("Component:  %s\n", componentName)
+	fmt.Printf("Datacenter: %s\n", dc)
+	fmt.Printf("Source:     %s\n", comp.Source)
+	fmt.Println()
+	fmt.Println("This will remove the datacenter-level component declaration.")
+	fmt.Println("Already-deployed instances in environments will not be affected.")
+	fmt.Println()
+
+	// Confirm unless --auto-approve is provided
+	if !autoApprove {
+		fmt.Print("Are you sure you want to remove this component? [y/N]: ")
+		var response string
+		_, _ = fmt.Scanln(&response)
+		response = strings.ToLower(strings.TrimSpace(response))
+		if response != "y" && response != "yes" {
+			fmt.Println("Destroy cancelled.")
+			return nil
+		}
+	}
+
+	if err := mgr.DeleteDatacenterComponent(ctx, dc, componentName); err != nil {
+		return fmt.Errorf("failed to remove datacenter component: %w", err)
+	}
+
+	fmt.Printf("[success] Removed component %q from datacenter %q\n", componentName, dc)
+	return nil
 }
 
 func newDestroyDatacenterCmd() *cobra.Command {

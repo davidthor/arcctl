@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -99,6 +100,22 @@ func (m *mockStateManager) SaveResource(ctx context.Context, dc, env, comp strin
 
 func (m *mockStateManager) DeleteResource(ctx context.Context, dc, env, comp, name string) error {
 	return nil
+}
+
+func (m *mockStateManager) GetDatacenterComponent(ctx context.Context, dc, component string) (*types.DatacenterComponentConfig, error) {
+	return nil, fmt.Errorf("not found")
+}
+
+func (m *mockStateManager) SaveDatacenterComponent(ctx context.Context, dc string, s *types.DatacenterComponentConfig) error {
+	return nil
+}
+
+func (m *mockStateManager) DeleteDatacenterComponent(ctx context.Context, dc, component string) error {
+	return nil
+}
+
+func (m *mockStateManager) ListDatacenterComponents(ctx context.Context, dc string) ([]*types.DatacenterComponentConfig, error) {
+	return nil, nil
 }
 
 func (m *mockStateManager) Lock(ctx context.Context, scope state.LockScope) (backend.Lock, error) {

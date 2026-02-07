@@ -772,22 +772,23 @@ func (e *Engine) DeployDatacenter(ctx context.Context, opts DeployDatacenterOpti
 		}
 	}
 
-	// Persist datacenter-level component declarations into state.
+	// Persist datacenter-level component declarations as individual state files.
 	// These are stored (not deployed) so the engine can reference them during
 	// dependency resolution when components are deployed to environments.
+	// Each component is saved independently so that re-deploying the datacenter
+	// template does not remove components added via CLI.
 	dcComponents := dc.Components()
 	if len(dcComponents) > 0 {
-		if dcState.Components == nil {
-			dcState.Components = make(map[string]*types.DatacenterComponentConfig)
-		}
 		for _, comp := range dcComponents {
-			dcState.Components[comp.Name()] = &types.DatacenterComponentConfig{
+			compConfig := &types.DatacenterComponentConfig{
+				Name:      comp.Name(),
 				Source:    comp.Source(),
 				Variables: comp.Variables(),
 			}
+			if err := e.stateManager.SaveDatacenterComponent(ctx, opts.Datacenter, compConfig); err != nil {
+				return nil, fmt.Errorf("failed to save datacenter component %s: %w", comp.Name(), err)
+			}
 		}
-		dcState.UpdatedAt = time.Now()
-		_ = e.stateManager.SaveDatacenter(ctx, dcState)
 
 		if opts.Output != nil {
 			fmt.Fprintf(opts.Output, "\nRegistered %d datacenter-level component(s)\n", len(dcComponents))
@@ -1580,31 +1581,24 @@ func (e *Engine) ResolveDependencies(ctx context.Context, opts DeployOptions) ([
 			}
 			visiting[depName] = true
 
-			// Check if the datacenter declares this component.
+			// Check if the datacenter declares this component (per-component state file).
 			// If so, use the datacenter's source and evaluate its variable expressions
 			// to provide all required variables automatically.
-			if dcState != nil && dcState.Components != nil {
-				if dcComp, ok := dcState.Components[depName]; ok {
-					// Override the OCI reference with the datacenter's source
-					depRef = depName + ":" + dcComp.Source
+			if dcComp, err := e.stateManager.GetDatacenterComponent(ctx, opts.Datacenter, depName); err == nil && dcComp != nil {
+				// Override the OCI reference with the datacenter's source
+				depRef = depName + ":" + dcComp.Source
 
-					// Evaluate datacenter component variable expressions with actual DC variable values
-					if len(dcComp.Variables) > 0 && opts.Variables != nil {
-						if opts.Variables[depName] == nil {
-							opts.Variables[depName] = make(map[string]interface{})
-						}
-						for varName, exprStr := range dcComp.Variables {
-							// Only set if not already provided (explicit values take priority)
-							if _, exists := opts.Variables[depName][varName]; !exists {
-								opts.Variables[depName][varName] = evaluateModuleExpression(exprStr, dcVars, dcModuleOutputs, nil)
-							}
-						}
-					} else if len(dcComp.Variables) > 0 {
-						if opts.Variables == nil {
-							opts.Variables = make(map[string]map[string]interface{})
-						}
+				// Evaluate datacenter component variable expressions with actual DC variable values
+				if len(dcComp.Variables) > 0 {
+					if opts.Variables == nil {
+						opts.Variables = make(map[string]map[string]interface{})
+					}
+					if opts.Variables[depName] == nil {
 						opts.Variables[depName] = make(map[string]interface{})
-						for varName, exprStr := range dcComp.Variables {
+					}
+					for varName, exprStr := range dcComp.Variables {
+						// Only set if not already provided (explicit values take priority)
+						if _, exists := opts.Variables[depName][varName]; !exists {
 							opts.Variables[depName][varName] = evaluateModuleExpression(exprStr, dcVars, dcModuleOutputs, nil)
 						}
 					}

@@ -32,6 +32,7 @@ arcctl build datacenter ./dc                              # digest-only
 
 # Deploy commands
 arcctl deploy component ./my-app -e production -d my-datacenter
+arcctl deploy component myorg/stripe:latest -d my-dc --var key=secret  # datacenter-level component (no -e)
 arcctl deploy datacenter my-dc ./datacenter
 
 # Environment management
@@ -45,6 +46,7 @@ arcctl list component -e staging -d my-datacenter
 arcctl get component my-app -e production -d my-datacenter
 arcctl destroy component my-app -e staging -d my-datacenter
 arcctl destroy component shared-db -e staging -d my-datacenter --force  # Override dependency check
+arcctl destroy component myorg/stripe -d my-datacenter                  # Remove datacenter-level component (no -e)
 
 # CLI configuration
 arcctl config set default_datacenter my-datacenter  # Set default datacenter
@@ -409,6 +411,8 @@ component "myorg/stripe" {
 - `variables` (optional): Map of variable values; can reference `variable.*` and `module.*.*`
 - Components are **not** deployed at the datacenter level -- they are deployed into individual environments when another component declares them as a dependency
 - Datacenter component variables take priority over interactive prompts but not over explicitly provided values (from environment config files or CLI flags)
+- Component declarations are stored as individual state files (`datacenters/<dc>/components/<name>.state.json`), separate from the datacenter template state, so re-deploying a datacenter template does not remove previously registered components
+- Components can also be managed via CLI: `arcctl deploy component <source> -d <dc>` (no `-e` flag) and `arcctl destroy component <name> -d <dc>`
 
 ### Hook Types & Required Outputs
 | Hook | Required Outputs |
