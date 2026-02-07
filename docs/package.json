@@ -2,7 +2,7 @@
   "name": "docs",
   "version": "0.0.1",
   "private": true,
-  "description": "Documentation for arcctl",
+  "description": "Documentation for cldctl",
   "scripts": {
     "dev": "mintlify dev",
     "lint": "mintlify broken-links",

@@ -53,9 +53,9 @@ locals {
     ${local.env_exports}
 
     # Create a systemd service for the application
-    cat > /etc/systemd/system/arcctl-app.service <<'UNIT'
+    cat > /etc/systemd/system/cldctl-app.service <<'UNIT'
     [Unit]
-    Description=arcctl application
+    Description=cldctl application
     After=network.target
 
     [Service]
@@ -71,8 +71,8 @@ locals {
     UNIT
 
     systemctl daemon-reload
-    systemctl enable arcctl-app
-    systemctl start arcctl-app
+    systemctl enable cldctl-app
+    systemctl start cldctl-app
   EOT
 }
 
@@ -98,7 +98,7 @@ resource "google_compute_instance" "main" {
   }
 
   metadata = {
-    ssh-keys = var.ssh_key != "" ? "arcctl:${var.ssh_key}" : null
+    ssh-keys = var.ssh_key != "" ? "cldctl:${var.ssh_key}" : null
   }
 
   metadata_startup_script = local.startup_script
@@ -108,7 +108,7 @@ resource "google_compute_instance" "main" {
   }
 
   labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
   }
 
   tags = coalesce(var.tags, [])

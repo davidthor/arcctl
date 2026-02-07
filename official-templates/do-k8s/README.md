@@ -53,16 +53,16 @@ Deploy portable cloud-native applications to DigitalOcean Kubernetes (DOKS) with
 
 ```bash
 # Build and push the datacenter
-arcctl build datacenter ./do-k8s -t ghcr.io/myorg/do-k8s-dc:v1
-arcctl push datacenter ghcr.io/myorg/do-k8s-dc:v1
+cldctl build datacenter ./do-k8s -t ghcr.io/myorg/do-k8s-dc:v1
+cldctl push datacenter ghcr.io/myorg/do-k8s-dc:v1
 
 # Deploy the datacenter
-arcctl deploy datacenter do-production ghcr.io/myorg/do-k8s-dc:v1 \
+cldctl deploy datacenter do-production ghcr.io/myorg/do-k8s-dc:v1 \
   --var cluster_name=prod-cluster \
   --var domain=app.example.com \
   --var do_token=$DO_TOKEN
 
 # Create an environment and deploy a component
-arcctl create environment staging -d do-production
-arcctl deploy component ghcr.io/myorg/my-app:v1 -e staging
+cldctl create environment staging -d do-production
+cldctl deploy component ghcr.io/myorg/my-app:v1 -e staging
 ```

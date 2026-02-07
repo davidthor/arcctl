@@ -139,10 +139,10 @@ The application code should handle the case where `POSTHOG_API_KEY` is empty.
 
 ## Automatic Deployment
 
-When you deploy a component, arcctl automatically deploys any missing dependencies into the target environment. This recursive resolution means a single `arcctl deploy` or `arcctl up` command brings up an entire application stack -- including all transitive dependencies.
+When you deploy a component, cldctl automatically deploys any missing dependencies into the target environment. This recursive resolution means a single `cldctl deploy` or `cldctl up` command brings up an entire application stack -- including all transitive dependencies.
 
 - **Already deployed?** Dependencies that are already present in the environment are skipped.
-- **Variables required?** In interactive mode, arcctl prompts for any required variables. In CI or `--auto-approve` mode, missing variables cause a clear error.
+- **Variables required?** In interactive mode, cldctl prompts for any required variables. In CI or `--auto-approve` mode, missing variables cause a clear error.
 - **Transitive?** If a dependency has its own dependencies, those are resolved recursively.
 
 This is the foundation that makes ephemeral environments practical -- one command from zero to a running multi-service application.
@@ -153,19 +153,19 @@ This is the foundation that makes ephemeral environments practical -- one comman
 
 ## Dependency Graph
 
-arcctl automatically manages the dependency graph:
+cldctl automatically manages the dependency graph:
 
 1. Dependencies are deployed before dependents
 2. Circular dependencies are detected and rejected
 3. Updates propagate through the graph
-4. **Destroy protection**: You cannot destroy a component if other components in the environment depend on it. arcctl will list the dependents and block the operation. Use `--force` to override this check.
+4. **Destroy protection**: You cannot destroy a component if other components in the environment depend on it. cldctl will list the dependents and block the operation. Use `--force` to override this check.
 
 ## Complete Example
 
 ### Auth Service (Dependency)
 
 ```yaml
-# auth-service/architect.yml
+# auth-service/cloud.component.yml
 
 variables:
   jwt_secret:
@@ -207,7 +207,7 @@ outputs:
 ### Main Application (Dependent)
 
 ```yaml
-# my-app/architect.yml
+# my-app/cloud.component.yml
 
 dependencies:
   auth: ghcr.io/myorg/auth-service:v1.0.0
@@ -255,7 +255,7 @@ routes:
 ### Auth Service with CORS (Using Dependents)
 
 ```yaml
-# auth-service/architect.yml (updated to support CORS)
+# auth-service/cloud.component.yml (updated to support CORS)
 
 deployments:
   api:

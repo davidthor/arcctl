@@ -69,7 +69,7 @@ resource "google_cloud_run_v2_service" "otel_collector" {
     }
 
     labels = {
-      managed-by = "arcctl"
+      managed-by = "cldctl"
     }
   }
 }

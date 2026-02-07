@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/architect-io/arcctl/pkg/registry"
+	"github.com/davidthor/arcctl/pkg/registry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -24,10 +24,10 @@ This is similar to 'docker images' — it shows every artifact that has been
 built locally or pulled from a remote registry.
 
 Examples:
-  arcctl images                          # List all artifacts
-  arcctl images --type component         # Only components
-  arcctl images --type datacenter        # Only datacenters
-  arcctl images -o json                  # JSON output`,
+  cldctl images                          # List all artifacts
+  cldctl images --type component         # Only components
+  cldctl images --type datacenter        # Only datacenters
+  cldctl images -o json                  # JSON output`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reg, err := registry.NewRegistry()
 			if err != nil {
@@ -68,10 +68,10 @@ Examples:
 				if len(entries) == 0 {
 					fmt.Println("No locally cached artifacts found.")
 					fmt.Println()
-					fmt.Println("Build a component:   arcctl build component -t <repo:tag> <path>")
-					fmt.Println("Build a datacenter:  arcctl build datacenter -t <repo:tag> <path>")
-					fmt.Println("Pull a component:    arcctl pull component <repo:tag>")
-					fmt.Println("Pull a datacenter:   arcctl pull datacenter <repo:tag>")
+				fmt.Println("Build a component:   cldctl build component -t <repo:tag> <path>")
+				fmt.Println("Build a datacenter:  cldctl build datacenter -t <repo:tag> <path>")
+				fmt.Println("Pull a component:    cldctl pull component <repo:tag>")
+				fmt.Println("Pull a datacenter:   cldctl pull datacenter <repo:tag>")
 					return nil
 				}
 

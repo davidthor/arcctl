@@ -64,7 +64,7 @@ resource "google_container_cluster" "main" {
   }
 
   resource_labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
   }
 
   deletion_protection = false
@@ -86,7 +86,7 @@ resource "google_container_node_pool" "primary" {
     }
 
     labels = {
-      managed-by = "arcctl"
+      managed-by = "cldctl"
     }
   }
 

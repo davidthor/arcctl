@@ -3,18 +3,18 @@ title: "observability dashboard"
 description: "Open the observability dashboard UI in a web browser"
 ---
 
-# arcctl observability dashboard
+# cldctl observability dashboard
 
 Open the observability dashboard (e.g., Grafana) in your default web browser.
 
 <Note>
-Use `arcctl obs dashboard` as shorthand.
+Use `cldctl obs dashboard` as shorthand.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl observability dashboard -e <environment> [options]
+cldctl observability dashboard -e <environment> [options]
 ```
 
 ## Options
@@ -22,7 +22,7 @@ arcctl observability dashboard -e <environment> [options]
 | Option | Description |
 |--------|-------------|
 | `-e, --environment <name>` | Target environment (required) |
-| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `ARCCTL_DATACENTER` env var, or CLI config default) |
+| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `CLDCTL_DATACENTER` env var, or CLI config default) |
 | `--backend <type>` | State backend type |
 | `--backend-config <key=value>` | Backend configuration |
 
@@ -34,12 +34,12 @@ The datacenter's `observability` hook must include a `dashboard_url` output. For
 
 ```bash
 # Open the dashboard for staging
-arcctl observability dashboard -e staging
+cldctl observability dashboard -e staging
 
 # Using alias
-arcctl obs dashboard -e staging
+cldctl obs dashboard -e staging
 ```
 
 ## See Also
 
-- [`arcctl logs`](/cli/logs) - View and stream logs from the CLI
+- [`cldctl logs`](/cli/logs) - View and stream logs from the CLI

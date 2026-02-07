@@ -26,7 +26,7 @@ resource "kubernetes_manifest" "knative_service" {
       name      = var.name
       namespace = var.namespace
       labels = {
-        managed-by = "arcctl"
+        managed-by = "cldctl"
       }
     }
     spec = {
@@ -34,7 +34,7 @@ resource "kubernetes_manifest" "knative_service" {
         metadata = {
           labels = {
             app        = var.name
-            managed-by = "arcctl"
+            managed-by = "cldctl"
           }
           annotations = {
             "autoscaling.knative.dev/minScale" = "0"

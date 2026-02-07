@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/architect-io/arcctl/pkg/iac"
+	"github.com/davidthor/arcctl/pkg/iac"
 	"gopkg.in/yaml.v3"
 )
 

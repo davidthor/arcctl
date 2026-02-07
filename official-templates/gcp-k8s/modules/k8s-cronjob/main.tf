@@ -23,7 +23,7 @@ resource "kubernetes_cron_job_v1" "main" {
     namespace = var.namespace
 
     labels = {
-      managed-by = "arcctl"
+      managed-by = "cldctl"
     }
   }
 
@@ -37,7 +37,7 @@ resource "kubernetes_cron_job_v1" "main" {
       metadata {
         labels = {
           app        = var.name
-          managed-by = "arcctl"
+          managed-by = "cldctl"
         }
       }
 
@@ -48,7 +48,7 @@ resource "kubernetes_cron_job_v1" "main" {
           metadata {
             labels = {
               app        = var.name
-              managed-by = "arcctl"
+              managed-by = "cldctl"
             }
           }
 

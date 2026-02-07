@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/engine"
-	"github.com/architect-io/arcctl/pkg/engine/executor"
-	"github.com/architect-io/arcctl/pkg/schema/component"
-	"github.com/architect-io/arcctl/pkg/state"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/engine"
+	"github.com/davidthor/arcctl/pkg/engine/executor"
+	"github.com/davidthor/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/state"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +43,7 @@ It deploys your component with all its dependencies to an environment
 using the specified datacenter.
 
 The up command:
-  1. Parses your architect.yml file
+  1. Parses your cloud.component.yml file
   2. Creates or uses an existing environment with the specified datacenter
   3. Provisions all required resources (databases, etc.) in parallel
   4. Builds and deploys your application
@@ -51,9 +51,9 @@ The up command:
   6. Exposes routes for local access
 
 Examples:
-  arcctl up ./my-app -d local
-  arcctl up -d my-datacenter --name my-env
-  arcctl up ./my-app -d local --var API_KEY=secret`,
+  cldctl up ./my-app -d local
+  cldctl up -d my-datacenter --name my-env
+  cldctl up ./my-app -d local --var API_KEY=secret`,
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -68,7 +68,7 @@ Examples:
 				return fmt.Errorf("failed to resolve path: %w", err)
 			}
 
-			// Determine architect.yml location
+			// Determine cloud.component.yml location
 			componentFile := file
 			if componentFile == "" {
 				// Check if path is a file or directory
@@ -77,10 +77,10 @@ Examples:
 					return fmt.Errorf("failed to access path: %w", err)
 				}
 				if info.IsDir() {
-					// Look for architect.yml in the directory
-					componentFile = filepath.Join(absPath, "architect.yml")
+					// Look for cloud.component.yml in the directory
+					componentFile = filepath.Join(absPath, "cloud.component.yml")
 					if _, err := os.Stat(componentFile); os.IsNotExist(err) {
-						componentFile = filepath.Join(absPath, "architect.yaml")
+						componentFile = filepath.Join(absPath, "cloud.component.yaml")
 					}
 				} else {
 					// Path is a file, use it directly
@@ -149,7 +149,7 @@ Examples:
 			// Verify datacenter exists
 			_, err = mgr.GetDatacenter(ctx, dc)
 			if err != nil {
-				return fmt.Errorf("datacenter %q not found: %w\nDeploy a datacenter first with: arcctl deploy datacenter <name> <path>", dc, err)
+				return fmt.Errorf("datacenter %q not found: %w\nDeploy a datacenter first with: cldctl deploy datacenter <name> <path>", dc, err)
 			}
 
 			// Create the engine early for dependency resolution
@@ -351,8 +351,8 @@ Examples:
 			if err != nil {
 				fmt.Fprintln(os.Stderr)
 				fmt.Fprintln(os.Stderr, "Some resources may have been provisioned before the failure.")
-				fmt.Fprintf(os.Stderr, "Inspect the current state with:\n  arcctl inspect %s\n\n", envName)
-				fmt.Fprintf(os.Stderr, "Clean up with:\n  arcctl destroy environment %s\n\n", envName)
+				fmt.Fprintf(os.Stderr, "Inspect the current state with:\n  cldctl inspect %s\n\n", envName)
+				fmt.Fprintf(os.Stderr, "Clean up with:\n  cldctl destroy environment %s\n\n", envName)
 				return fmt.Errorf("deployment failed: %w", err)
 			}
 
@@ -361,8 +361,8 @@ Examples:
 				// can inspect what succeeded and what failed.
 				fmt.Fprintln(os.Stderr)
 				fmt.Fprintln(os.Stderr, "Some resources failed to deploy. Successful resources are still running.")
-				fmt.Fprintf(os.Stderr, "Inspect the current state with:\n  arcctl inspect %s\n\n", envName)
-				fmt.Fprintf(os.Stderr, "Clean up with:\n  arcctl destroy environment %s\n\n", envName)
+				fmt.Fprintf(os.Stderr, "Inspect the current state with:\n  cldctl inspect %s\n\n", envName)
+				fmt.Fprintf(os.Stderr, "Clean up with:\n  cldctl destroy environment %s\n\n", envName)
 				if result.Execution != nil && len(result.Execution.Errors) > 0 {
 					return fmt.Errorf("deployment failed: %v", result.Execution.Errors[0])
 				}
@@ -424,7 +424,7 @@ Examples:
 			if detach {
 				fmt.Println()
 				fmt.Println("Running in background. To stop:")
-				fmt.Printf("  arcctl destroy environment %s\n", envName)
+				fmt.Printf("  cldctl destroy environment %s\n", envName)
 			} else {
 				fmt.Println()
 				fmt.Println("Press Ctrl+C to stop...")
@@ -440,7 +440,7 @@ Examples:
 		},
 	}
 
-	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to architect.yml if not in default location")
+	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to cloud.component.yml if not in default location")
 	cmd.Flags().StringVarP(&datacenter, "datacenter", "d", "", "Datacenter to use for provisioning (uses default if not set)")
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Environment name (default: auto-generated from component name)")
 	cmd.Flags().StringArrayVar(&variables, "var", nil, "Set a component variable (key=value)")

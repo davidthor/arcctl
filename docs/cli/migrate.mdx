@@ -3,18 +3,18 @@ title: "migrate"
 description: "Migrate state to the latest format"
 ---
 
-# arcctl migrate
+# cldctl migrate
 
-Migrate arcctl state between format versions.
+Migrate cldctl state between format versions.
 
-## arcctl migrate state
+## cldctl migrate state
 
 Migrate state from the old flat structure to the new datacenter-nested hierarchy.
 
 ### Synopsis
 
 ```bash
-arcctl migrate state [options]
+cldctl migrate state [options]
 ```
 
 ### Options
@@ -26,7 +26,7 @@ arcctl migrate state [options]
 
 ### Description
 
-In earlier versions of arcctl, environment state was stored as a peer to datacenters:
+In earlier versions of cldctl, environment state was stored as a peer to datacenters:
 
 ```
 environments/<name>/environment.state.json
@@ -46,19 +46,19 @@ This migration reads each environment's `Datacenter` field from its state file a
 
 ```bash
 # Migrate local state (default backend)
-arcctl migrate state
+cldctl migrate state
 
 # Migrate S3 backend state
-arcctl migrate state --backend s3 --backend-config bucket=my-arcctl-state
+cldctl migrate state --backend s3 --backend-config bucket=my-cldctl-state
 
 # Migrate with custom local path
-arcctl migrate state --backend local --backend-config path=/opt/arcctl/state
+cldctl migrate state --backend local --backend-config path=/opt/cldctl/state
 ```
 
 ### Output
 
 ```
-$ arcctl migrate state
+$ cldctl migrate state
 
 Migrating state from flat to nested structure...
   environments/staging -> datacenters/aws-production/environments/staging (4 files)

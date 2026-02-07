@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/schema/component"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/state/types"
 )
 
 // DockerProvisioner handles local Docker-based resource provisioning.
@@ -29,7 +29,7 @@ type DockerProvisioner struct {
 func NewDockerProvisioner(envName string, basePort int) *DockerProvisioner {
 	return &DockerProvisioner{
 		envName:     envName,
-		networkName: fmt.Sprintf("arcctl-%s", envName),
+		networkName: fmt.Sprintf("cldctl-%s", envName),
 		basePort:    basePort,
 		nextPort:    basePort,
 		resources:   make(map[string]*types.ResourceState),
@@ -312,7 +312,7 @@ func (p *DockerProvisioner) provisionRedis(ctx context.Context, db component.Dat
 
 // BuildImage builds a Docker image from the given build context.
 func (p *DockerProvisioner) BuildImage(ctx context.Context, name string, buildContext string, dockerfile string, buildArgs map[string]string) (string, error) {
-	imageTag := fmt.Sprintf("arcctl-%s-%s:latest", p.envName, name)
+	imageTag := fmt.Sprintf("cldctl-%s-%s:latest", p.envName, name)
 
 	// Build the docker command with absolute path to context
 	args := []string{"build", "-t", imageTag}
@@ -447,11 +447,11 @@ func CleanupByEnvName(ctx context.Context, envName string) error {
 	}
 
 	// Remove network
-	networkName := fmt.Sprintf("arcctl-%s", envName)
+	networkName := fmt.Sprintf("cldctl-%s", envName)
 	_ = exec.CommandContext(ctx, "docker", "network", "rm", networkName).Run()
 
 	// Kill any orphaned local processes for this environment
-	// This handles cases where arcctl was force-killed and processes weren't cleaned up
+	// This handles cases where cldctl was force-killed and processes weren't cleaned up
 	KillProcessesByNamePattern(ctx, prefix)
 
 	return nil

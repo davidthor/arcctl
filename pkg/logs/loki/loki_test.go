@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/logs"
+	"github.com/davidthor/arcctl/pkg/logs"
 	"github.com/gorilla/websocket"
 )
 
@@ -58,7 +58,7 @@ func TestBuildLogQL_Empty(t *testing.T) {
 
 	logQL := buildLogQL(opts)
 
-	if logQL != `{job="arcctl"}` {
+	if logQL != `{job="cldctl"}` {
 		t.Errorf("unexpected LogQL for empty opts: %s", logQL)
 	}
 }

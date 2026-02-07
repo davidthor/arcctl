@@ -3,9 +3,9 @@ package cli
 import (
 	"testing"
 
-	"github.com/architect-io/arcctl/pkg/graph"
-	"github.com/architect-io/arcctl/pkg/resolver"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/graph"
+	"github.com/davidthor/arcctl/pkg/resolver"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -309,7 +309,7 @@ func TestExtractComponentName(t *testing.T) {
 			ref:  "./my-component",
 			resolved: resolver.ResolvedComponent{
 				Type: resolver.ReferenceTypeLocal,
-				Path: "/Users/test/my-component/architect.yml",
+				Path: "/Users/test/my-component/cloud.component.yml",
 			},
 			want: "my-component",
 		},

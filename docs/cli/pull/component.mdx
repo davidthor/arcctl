@@ -3,18 +3,18 @@ title: "pull component"
 description: "Pull a component artifact from an OCI registry"
 ---
 
-# arcctl pull component
+# cldctl pull component
 
 Pull a component artifact from an OCI registry to the local cache.
 
 <Note>
-Use `arcctl pull comp` as shorthand for `arcctl pull component`.
+Use `cldctl pull comp` as shorthand for `cldctl pull component`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl pull component <repo:tag> [options]
+cldctl pull component <repo:tag> [options]
 ```
 
 ## Arguments
@@ -33,33 +33,33 @@ arcctl pull component <repo:tag> [options]
 
 This command downloads the component artifact and registers it in the local
 artifact registry. The component can then be used for deployment or inspection.
-Once pulled, the component appears in `arcctl images`.
+Once pulled, the component appears in `cldctl images`.
 
 ## Examples
 
 ```bash
 # Pull a component
-arcctl pull component ghcr.io/myorg/myapp:v1.0.0
+cldctl pull component ghcr.io/myorg/myapp:v1.0.0
 
 # Using alias
-arcctl pull comp ghcr.io/myorg/myapp:v1.0.0
+cldctl pull comp ghcr.io/myorg/myapp:v1.0.0
 
 # Pull with quiet mode
-arcctl pull component docker.io/library/nginx:latest -q
+cldctl pull component docker.io/library/nginx:latest -q
 ```
 
 ## Output
 
 ```
-$ arcctl pull component ghcr.io/myorg/myapp:v1.0.0
+$ cldctl pull component ghcr.io/myorg/myapp:v1.0.0
 
 Pulling component: ghcr.io/myorg/myapp:v1.0.0
 [pull] Downloading ghcr.io/myorg/myapp:v1.0.0...
 [success] Pulled ghcr.io/myorg/myapp:v1.0.0
-  Cache: /home/user/.arcctl/cache/artifacts/ghcr.io_myorg_myapp_v1.0.0
+  Cache: /home/user/.cldctl/cache/artifacts/ghcr.io_myorg_myapp_v1.0.0
 ```
 
 ## See Also
 
-- [`arcctl push component`](/cli/push/component) - Push a component
-- [`arcctl list component`](/cli/list/component) - List components
+- [`cldctl push component`](/cli/push/component) - Push a component
+- [`cldctl list component`](/cli/list/component) - List components

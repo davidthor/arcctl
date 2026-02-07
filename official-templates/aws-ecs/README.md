@@ -58,11 +58,11 @@ Deploy portable applications to AWS ECS Fargate with managed AWS services for da
 
 ```bash
 # Build and push the datacenter
-arcctl dc build . -t ghcr.io/myorg/aws-ecs:v1
-arcctl dc push ghcr.io/myorg/aws-ecs:v1
+cldctl dc build . -t ghcr.io/myorg/aws-ecs:v1
+cldctl dc push ghcr.io/myorg/aws-ecs:v1
 
 # Deploy the datacenter
-arcctl dc deploy aws-prod \
+cldctl dc deploy aws-prod \
   --config ghcr.io/myorg/aws-ecs:v1 \
   --var cluster_name=prod-cluster \
   --var vpc_id=vpc-12345 \
@@ -71,6 +71,6 @@ arcctl dc deploy aws-prod \
   --var certificate_arn=arn:aws:acm:us-east-1:123456:certificate/abc
 
 # Create an environment and deploy a component
-arcctl env create staging --datacenter aws-prod
-arcctl deploy ghcr.io/myorg/my-app:v1 -e staging
+cldctl env create staging --datacenter aws-prod
+cldctl deploy ghcr.io/myorg/my-app:v1 -e staging
 ```

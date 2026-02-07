@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/oci"
-	"github.com/architect-io/arcctl/pkg/registry"
+	"github.com/davidthor/arcctl/pkg/oci"
+	"github.com/davidthor/arcctl/pkg/registry"
 	"github.com/spf13/cobra"
 )
 
@@ -38,8 +38,8 @@ This command downloads the component artifact and registers it in the local
 artifact registry. The component can then be used for deployment or inspection.
 
 Examples:
-  arcctl pull component ghcr.io/myorg/myapp:v1.0.0
-  arcctl pull component docker.io/library/nginx:latest`,
+  cldctl pull component ghcr.io/myorg/myapp:v1.0.0
+  cldctl pull component docker.io/library/nginx:latest`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reference := args[0]
@@ -151,8 +151,8 @@ This command downloads the datacenter artifact and registers it in the local
 artifact registry. The datacenter can then be used for deployment.
 
 Examples:
-  arcctl pull datacenter docker.io/davidthor/startup-datacenter:latest
-  arcctl pull datacenter ghcr.io/myorg/my-dc:v1.0.0`,
+  cldctl pull datacenter docker.io/davidthor/startup-datacenter:latest
+  cldctl pull datacenter ghcr.io/myorg/my-dc:v1.0.0`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reference := args[0]

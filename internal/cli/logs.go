@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/logs"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/logs"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 
 	// Register log query adapters
-	_ "github.com/architect-io/arcctl/pkg/logs/loki"
+	_ "github.com/davidthor/arcctl/pkg/logs/loki"
 )
 
 func newLogsCmd() *cobra.Command {
@@ -39,18 +39,18 @@ observability hook. Components must have observability enabled and the
 datacenter must provide an observability hook with query outputs.
 
 Scope:
-  arcctl logs -e staging                          # All logs in the environment
-  arcctl logs -e staging my-app                   # Logs from one component
-  arcctl logs -e staging my-app/deployment        # All deployments in a component
-  arcctl logs -e staging my-app/deployment/api    # A specific deployment
+  cldctl logs -e staging                          # All logs in the environment
+  cldctl logs -e staging my-app                   # Logs from one component
+  cldctl logs -e staging my-app/deployment        # All deployments in a component
+  cldctl logs -e staging my-app/deployment/api    # A specific deployment
 
 Streaming:
-  arcctl logs -e staging -f                       # Follow new logs in real-time
-  arcctl logs -e staging my-app -f                # Follow one component
+  cldctl logs -e staging -f                       # Follow new logs in real-time
+  cldctl logs -e staging my-app -f                # Follow one component
 
 Filtering:
-  arcctl logs -e staging --since 5m               # Logs from the last 5 minutes
-  arcctl logs -e staging -n 50                    # Last 50 lines`,
+  cldctl logs -e staging --since 5m               # Logs from the last 5 minutes
+  cldctl logs -e staging -n 50                    # Last 50 lines`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -185,7 +185,7 @@ func findObservabilityQueryConfig(envState *types.EnvironmentState) (string, str
 					return "", "", fmt.Errorf(
 						"observability resource found but missing query outputs (query_type=%q, query_endpoint=%q).\n"+
 							"The datacenter's observability hook must include query_type and query_endpoint in its outputs.\n"+
-							"See: arcctl observability dashboard -e %s",
+							"See: cldctl observability dashboard -e %s",
 						queryType, queryEndpoint, envState.Name,
 					)
 				}
@@ -197,7 +197,7 @@ func findObservabilityQueryConfig(envState *types.EnvironmentState) (string, str
 
 	return "", "", fmt.Errorf(
 		"no observability resource found in environment %q.\n"+
-			"To use 'arcctl logs', components must declare 'observability: true' (or inject: true)\n"+
+			"To use 'cldctl logs', components must declare 'observability: true' (or inject: true)\n"+
 			"and the datacenter must provide an observability hook with query outputs.\n\n"+
 			"Example component:\n"+
 			"  observability:\n"+

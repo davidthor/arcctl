@@ -8,7 +8,7 @@ description: "Deploy to Compute Engine VMs with Cloud SQL, GCS, and Cloud Monito
 This guide shows how to build a datacenter that deploys all workloads to Google Compute Engine VMs. Container-based deployments install Docker on the VM, runtime-based deployments install the language runtime directly, and functions run as long-running processes behind Cloud Load Balancing.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/gcp-vms/`](https://github.com/architect-io/arcctl/tree/main/official-templates/gcp-vms)
+This is an officially maintained datacenter template. Source: [`official-templates/gcp-vms/`](https://github.com/davidthor/arcctl/tree/main/official-templates/gcp-vms)
 </Info>
 
 ## Overview
@@ -415,21 +415,21 @@ observability {
 
 ```bash
 # Build the datacenter
-arcctl dc build . -t ghcr.io/myorg/gcp-vms-dc:v1.0.0
-arcctl dc push ghcr.io/myorg/gcp-vms-dc:v1.0.0
+cldctl dc build . -t ghcr.io/myorg/gcp-vms-dc:v1.0.0
+cldctl dc push ghcr.io/myorg/gcp-vms-dc:v1.0.0
 
 # Deploy with variables
-arcctl dc deploy gcp-vms-production \
+cldctl dc deploy gcp-vms-production \
   --config ghcr.io/myorg/gcp-vms-dc:v1.0.0 \
   --var gcp_project=my-project \
-  --var registry=us-central1-docker.pkg.dev/my-project/arcctl \
+  --var registry=us-central1-docker.pkg.dev/my-project/cldctl \
   --var ssh_key="$(cat ~/.ssh/id_rsa.pub)" \
   --var domain=app.example.com \
   --var smtp_password=$SMTP_PASSWORD
 
 # Create environment and deploy
-arcctl env create staging --datacenter gcp-vms-production
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl env create staging --datacenter gcp-vms-production
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 ## Cost Optimization

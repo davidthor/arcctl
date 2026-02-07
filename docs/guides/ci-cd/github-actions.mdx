@@ -1,11 +1,11 @@
 ---
 title: "GitHub Actions"
-description: "Automate arcctl builds and deployments with GitHub Actions"
+description: "Automate cldctl builds and deployments with GitHub Actions"
 ---
 
 # GitHub Actions
 
-This guide provides complete GitHub Actions workflow examples for building, deploying, and managing preview environments with arcctl.
+This guide provides complete GitHub Actions workflow examples for building, deploying, and managing preview environments with cldctl.
 
 ## Build and Push on Tag
 
@@ -31,8 +31,8 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install arcctl
-        run: go install github.com/architect-io/arcctl@latest
+      - name: Install cldctl
+        run: go install github.com/davidthor/arcctl@latest
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -43,12 +43,12 @@ jobs:
 
       - name: Build component
         run: |
-          arcctl build component . \
+          cldctl build component . \
             -t ghcr.io/${{ github.repository }}:${{ github.ref_name }}
 
       - name: Push component
         run: |
-          arcctl push component ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          cldctl push component ghcr.io/${{ github.repository }}:${{ github.ref_name }}
 ```
 
 ## Deploy on Push to Main
@@ -65,9 +65,9 @@ on:
       - main
 
 env:
-  ARCCTL_BACKEND: s3
-  ARCCTL_BACKEND_S3_BUCKET: my-arcctl-state
-  ARCCTL_BACKEND_S3_REGION: us-east-1
+  CLDCTL_BACKEND: s3
+  CLDCTL_BACKEND_S3_BUCKET: my-cldctl-state
+  CLDCTL_BACKEND_S3_REGION: us-east-1
 
 jobs:
   deploy:
@@ -81,11 +81,11 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789:role/arcctl-deploy
+          role-to-assume: arn:aws:iam::123456789:role/cldctl-deploy
           aws-region: us-east-1
 
-      - name: Install arcctl
-        run: go install github.com/architect-io/arcctl@latest
+      - name: Install cldctl
+        run: go install github.com/davidthor/arcctl@latest
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -93,14 +93,14 @@ jobs:
       - name: Build and deploy to staging
         run: |
           # Build with commit SHA tag
-          arcctl build component . \
+          cldctl build component . \
             -t ${{ secrets.ECR_REGISTRY }}/my-app:${{ github.sha }}
           
           # Push to ECR
-          arcctl push component ${{ secrets.ECR_REGISTRY }}/my-app:${{ github.sha }}
+          cldctl push component ${{ secrets.ECR_REGISTRY }}/my-app:${{ github.sha }}
           
           # Deploy to staging
-          arcctl deploy component ${{ secrets.ECR_REGISTRY }}/my-app:${{ github.sha }} \
+          cldctl deploy component ${{ secrets.ECR_REGISTRY }}/my-app:${{ github.sha }} \
             -e staging \
             --auto-approve
 ```
@@ -118,8 +118,8 @@ on:
     types: [opened, synchronize, reopened, closed]
 
 env:
-  ARCCTL_BACKEND: s3
-  ARCCTL_BACKEND_S3_BUCKET: my-arcctl-state
+  CLDCTL_BACKEND: s3
+  CLDCTL_BACKEND_S3_BUCKET: my-cldctl-state
 
 jobs:
   deploy-preview:
@@ -128,29 +128,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install arcctl
-        run: go install github.com/architect-io/arcctl@latest
+      - name: Install cldctl
+        run: go install github.com/davidthor/arcctl@latest
 
       - name: Create preview environment
         run: |
-          arcctl create environment preview-${{ github.event.number }} \
+          cldctl create environment preview-${{ github.event.number }} \
             -d aws-staging
 
       - name: Build and deploy
         run: |
-          arcctl build component . \
+          cldctl build component . \
             -t ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
           
-          arcctl push component ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+          cldctl push component ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
           
-          arcctl deploy component ghcr.io/${{ github.repository }}:pr-${{ github.event.number }} \
+          cldctl deploy component ghcr.io/${{ github.repository }}:pr-${{ github.event.number }} \
             -e preview-${{ github.event.number }} \
             --auto-approve
 
       - name: Get preview URL
         id: preview
         run: |
-          URL=$(arcctl get environment preview-${{ github.event.number }} --output json | jq -r '.urls[0]')
+          URL=$(cldctl get environment preview-${{ github.event.number }} --output json | jq -r '.urls[0]')
           echo "url=$URL" >> $GITHUB_OUTPUT
 
       - name: Comment on PR
@@ -168,12 +168,12 @@ jobs:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
-      - name: Install arcctl
-        run: go install github.com/architect-io/arcctl@latest
+      - name: Install cldctl
+        run: go install github.com/davidthor/arcctl@latest
 
       - name: Destroy preview environment
         run: |
-          arcctl destroy environment preview-${{ github.event.number }} --auto-approve
+          cldctl destroy environment preview-${{ github.event.number }} --auto-approve
 ```
 
 ## AWS Authentication
@@ -184,7 +184,7 @@ For AWS-based deployments, use IAM roles with OIDC for secure, credential-free a
 - name: Configure AWS credentials
   uses: aws-actions/configure-aws-credentials@v4
   with:
-    role-to-assume: arn:aws:iam::123456789:role/arcctl-deploy
+    role-to-assume: arn:aws:iam::123456789:role/cldctl-deploy
     aws-region: us-east-1
 ```
 

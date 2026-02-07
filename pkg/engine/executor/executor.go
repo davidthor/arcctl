@@ -14,14 +14,14 @@ import (
 	"sync"
 	"time"
 
-	arcerrors "github.com/architect-io/arcctl/pkg/errors"
-	"github.com/architect-io/arcctl/pkg/engine/planner"
-	"github.com/architect-io/arcctl/pkg/graph"
-	"github.com/architect-io/arcctl/pkg/iac"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter"
-	v1 "github.com/architect-io/arcctl/pkg/schema/datacenter/v1"
-	"github.com/architect-io/arcctl/pkg/state"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	arcerrors "github.com/davidthor/arcctl/pkg/errors"
+	"github.com/davidthor/arcctl/pkg/engine/planner"
+	"github.com/davidthor/arcctl/pkg/graph"
+	"github.com/davidthor/arcctl/pkg/iac"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter"
+	v1 "github.com/davidthor/arcctl/pkg/schema/datacenter/v1"
+	"github.com/davidthor/arcctl/pkg/state"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
@@ -112,7 +112,7 @@ type Executor struct {
 }
 
 // saveStateLocked flushes the in-memory environment state to the backend so that
-// other processes (e.g., `arcctl inspect`) can observe progress in real time.
+// other processes (e.g., `cldctl inspect`) can observe progress in real time.
 // MUST be called while holding e.stateMu. Uses a background context so that
 // saves complete even when the deployment context has been cancelled.
 func (e *Executor) saveStateLocked(envState *types.EnvironmentState) {
@@ -259,7 +259,7 @@ func (e *Executor) Execute(ctx context.Context, plan *planner.Plan, g *graph.Gra
 			result.Failed++
 			result.Success = false
 
-			// Persist the dependency failure to state so `arcctl inspect` shows it
+			// Persist the dependency failure to state so `cldctl inspect` shows it
 			e.stateMu.Lock()
 			if envState.Components == nil {
 				envState.Components = make(map[string]*types.ComponentState)
@@ -477,7 +477,7 @@ func (e *Executor) executeApply(ctx context.Context, change *planner.ResourceCha
 		compState.Resources = make(map[string]*types.ResourceState)
 	}
 
-	// Save a "provisioning" entry immediately so that `arcctl inspect` can see
+	// Save a "provisioning" entry immediately so that `cldctl inspect` can see
 	// in-progress resources before plugin.Apply returns (which may block for a
 	// long time, e.g. readiness checks on dev-server processes).
 	compState.Resources[resourceKey(change.Node)] = &types.ResourceState{
@@ -622,7 +622,7 @@ func (e *Executor) findMatchingHook(node *graph.Node, envName string) (modulePat
 	}
 
 	// Debug output for troubleshooting (only when env var is set)
-	if os.Getenv("ARCCTL_DEBUG") != "" && e.options.Output != nil {
+	if os.Getenv("CLDCTL_DEBUG") != "" && e.options.Output != nil {
 		fmt.Fprintf(e.options.Output, "  [debug] Node %s: dcPath=%s, dcDir=%s, moduleName=%s, moduleBuild=%q, moduleSource=%q\n",
 			node.ID, dcPath, dcDir, module.Name(), module.Build(), module.Source())
 	}
@@ -937,7 +937,7 @@ func (e *Executor) buildModuleInputs(module datacenter.Module, node *graph.Node,
 	}
 
 	// Get defaults for common datacenter variables
-	networkName := getStringVar(dcVars, "network_name", "arcctl-local")
+	networkName := getStringVar(dcVars, "network_name", "cldctl-local")
 	host := getStringVar(dcVars, "host", "localhost")
 
 	// Standard name format: ${environment.name}-${node.component}-${node.name}
@@ -1620,7 +1620,7 @@ func (e *Executor) evaluateInputExpression(expr string, node *graph.Node, envNam
 		// Return default for common variables
 		switch varName {
 		case "network_name":
-			return "arcctl-local"
+			return "cldctl-local"
 		case "host":
 			return "localhost"
 		case "base_port":
@@ -1970,7 +1970,7 @@ func (e *Executor) ExecuteParallel(ctx context.Context, plan *planner.Plan, g *g
 	nodeFinished := make(chan struct{}, len(pending))
 
 	// Debug: show all nodes and their dependencies
-	if os.Getenv("ARCCTL_DEBUG") != "" {
+	if os.Getenv("CLDCTL_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] All nodes and dependencies:\n")
 		for id, change := range pending {
 			fmt.Fprintf(os.Stderr, "[debug]   %s -> %v\n", id, change.Node.DependsOn)
@@ -2012,7 +2012,7 @@ func (e *Executor) ExecuteParallel(ctx context.Context, plan *planner.Plan, g *g
 						failed[id] = true
 						cascaded = true
 
-						// Persist the cascaded failure to state so `arcctl inspect` shows it
+						// Persist the cascaded failure to state so `cldctl inspect` shows it
 						e.stateMu.Lock()
 						if envState.Components == nil {
 							envState.Components = make(map[string]*types.ComponentState)
@@ -2073,9 +2073,9 @@ func (e *Executor) ExecuteParallel(ctx context.Context, plan *planner.Plan, g *g
 			if isReady {
 				inFlight[id] = true
 
-				if os.Getenv("ARCCTL_DEBUG") != "" {
-					fmt.Fprintf(os.Stderr, "[debug] Launching %s (deps satisfied)\n", id)
-				}
+			if os.Getenv("CLDCTL_DEBUG") != "" {
+				fmt.Fprintf(os.Stderr, "[debug] Launching %s (deps satisfied)\n", id)
+			}
 
 				wg.Add(1)
 
@@ -2105,13 +2105,13 @@ func (e *Executor) ExecuteParallel(ctx context.Context, plan *planner.Plan, g *g
 					defer func() { <-sem }()
 					defer wg.Done()
 
-					if os.Getenv("ARCCTL_DEBUG") != "" {
+					if os.Getenv("CLDCTL_DEBUG") != "" {
 						fmt.Fprintf(os.Stderr, "[debug] Goroutine started for %s, calling executeChange\n", c.Node.ID)
 					}
 
 					nodeResult := e.executeChange(ctx, c, envState)
 
-					if os.Getenv("ARCCTL_DEBUG") != "" {
+					if os.Getenv("CLDCTL_DEBUG") != "" {
 						fmt.Fprintf(os.Stderr, "[debug] executeChange completed for %s, success=%v\n", c.Node.ID, nodeResult.Success)
 					}
 
@@ -2206,13 +2206,13 @@ func (e *Executor) ExecuteParallel(ctx context.Context, plan *planner.Plan, g *g
 
 	// Check for stuck nodes (dependency cycle or unresolvable deps)
 	if len(pending) > 0 {
-		if os.Getenv("ARCCTL_DEBUG") != "" {
-			fmt.Fprintf(os.Stderr, "[debug] Deadlock detected! Pending nodes:\n")
-			for id, change := range pending {
-				fmt.Fprintf(os.Stderr, "[debug]   %s depends on: %v\n", id, change.Node.DependsOn)
-			}
-			fmt.Fprintf(os.Stderr, "[debug] Completed nodes: %v\n", completed)
+	if os.Getenv("CLDCTL_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[debug] Deadlock detected! Pending nodes:\n")
+		for id, change := range pending {
+			fmt.Fprintf(os.Stderr, "[debug]   %s depends on: %v\n", id, change.Node.DependsOn)
 		}
+		fmt.Fprintf(os.Stderr, "[debug] Completed nodes: %v\n", completed)
+	}
 		// Mark remaining nodes as failed
 		for id, change := range pending {
 			if !inFlight[id] {

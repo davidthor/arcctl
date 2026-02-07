@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/engine"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/engine"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 )
 
@@ -38,8 +38,8 @@ func newCreateEnvironmentCmd() *cobra.Command {
 		Long: `Create a new environment.
 
 Examples:
-  arcctl create environment staging -d my-datacenter
-  arcctl create environment production -d prod-dc --if-not-exists`,
+  cldctl create environment staging -d my-datacenter
+  cldctl create environment production -d prod-dc --if-not-exists`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envName := args[0]

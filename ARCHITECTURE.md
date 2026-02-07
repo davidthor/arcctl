@@ -1,6 +1,6 @@
-# arcctl Architecture Documentation
+# cldctl Architecture Documentation
 
-This document outlines the implementation architecture for arcctl, a CLI tool designed to help developers create and deploy cloud-native applications in a portable fashion.
+This document outlines the implementation architecture for cldctl, a CLI tool designed to help developers create and deploy cloud-native applications in a portable fashion.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ This document outlines the implementation architecture for arcctl, a CLI tool de
 
 ## Overview
 
-arcctl is implemented in Go for performance, cross-platform compatibility, and ease of distribution as a single binary. The architecture follows Go best practices with clear separation of concerns, interface-driven design for extensibility, and comprehensive testing support.
+cldctl is implemented in Go for performance, cross-platform compatibility, and ease of distribution as a single binary. The architecture follows Go best practices with clear separation of concerns, interface-driven design for extensibility, and comprehensive testing support.
 
 ### Design Principles
 
@@ -34,9 +34,9 @@ arcctl is implemented in Go for performance, cross-platform compatibility, and e
 ## Project Structure
 
 ```
-arcctl/
+cldctl/
 ├── cmd/
-│   └── arcctl/
+│   └── cldctl/
 │       └── main.go                    # CLI entry point
 ├── internal/
 │   ├── cli/                           # CLI command implementations
@@ -60,8 +60,8 @@ arcctl/
 │   │   │   ├── create.go
 │   │   │   ├── update.go
 │   │   │   └── destroy.go
-│   │   ├── logs.go                    # arcctl logs command
-│   │   ├── observability.go           # arcctl observability dashboard command
+│   │   ├── logs.go                    # cldctl logs command
+│   │   ├── observability.go           # cldctl observability dashboard command
 │   │   ├── browser.go                 # Shared browser-opening utility
 │   │   └── up/
 │   │       └── up.go
@@ -180,11 +180,11 @@ arcctl/
 
 ### Directory Rationale
 
-| Directory | Purpose |
-|-----------|---------|
-| `cmd/` | CLI entry points (minimal code, just wiring) |
-| `internal/` | Private implementation details (CLI, config, UI) |
-| `pkg/` | Public packages that can be imported by external tools |
+| Directory   | Purpose                                                          |
+| ----------- | ---------------------------------------------------------------- |
+| `cmd/`      | CLI entry points (minimal code, just wiring)                     |
+| `internal/` | Private implementation details (CLI, config, UI)                 |
+| `pkg/`      | Public packages that can be imported by external tools           |
 | `testdata/` | Test fixtures for component, datacenter, and environment parsing |
 
 ---
@@ -201,12 +201,12 @@ The schema package provides parsing, validation, and transformation for all thre
 package component
 
 // Component represents a parsed and validated component configuration.
-// This is the internal representation used throughout arcctl.
+// This is the internal representation used throughout cldctl.
 type Component interface {
     // Metadata
     Name() string
     Description() string
-    
+
     // Resources
     Databases() []Database
     Buckets() []Bucket
@@ -215,14 +215,14 @@ type Component interface {
     Services() []Service
     Routes() []Route
     Cronjobs() []Cronjob
-    
+
     // Configuration
     Variables() []Variable
     Dependencies() []Dependency
-    
+
     // Version information
     SchemaVersion() string
-    
+
     // Serialization
     ToYAML() ([]byte, error)
     ToJSON() ([]byte, error)
@@ -232,10 +232,10 @@ type Component interface {
 type Loader interface {
     // Load parses a component from the given path
     Load(path string) (Component, error)
-    
+
     // LoadFromBytes parses a component from raw bytes
     LoadFromBytes(data []byte) (Component, error)
-    
+
     // Validate validates a component without fully parsing
     Validate(path string) error
 }
@@ -253,7 +253,7 @@ func NewLoader() Loader {
 
 ### `pkg/state` - State Management Framework
 
-The state package provides an extensible framework for managing arcctl state across different backends.
+The state package provides an extensible framework for managing cldctl state across different backends.
 
 ```go
 // pkg/state/state.go
@@ -268,21 +268,21 @@ type StateManager interface {
     GetDatacenter(ctx context.Context, name string) (*DatacenterState, error)
     SaveDatacenter(ctx context.Context, state *DatacenterState) error
     DeleteDatacenter(ctx context.Context, name string) error
-    
+
     // Environment operations
     ListEnvironments(ctx context.Context) ([]EnvironmentRef, error)
     GetEnvironment(ctx context.Context, name string) (*EnvironmentState, error)
     SaveEnvironment(ctx context.Context, state *EnvironmentState) error
     DeleteEnvironment(ctx context.Context, name string) error
-    
+
     // Resource operations
     GetResource(ctx context.Context, env, component, resource string) (*ResourceState, error)
     SaveResource(ctx context.Context, env string, state *ResourceState) error
     DeleteResource(ctx context.Context, env, component, resource string) error
-    
+
     // Locking
     Lock(ctx context.Context, scope LockScope) (Lock, error)
-    
+
     // Backend info
     Backend() Backend
 }
@@ -301,10 +301,10 @@ package executor
 type Executor interface {
     // Deploy deploys or updates a component in an environment
     Deploy(ctx context.Context, opts DeployOptions) (*DeployResult, error)
-    
+
     // Destroy removes a component from an environment
     Destroy(ctx context.Context, opts DestroyOptions) (*DestroyResult, error)
-    
+
     // Plan generates an execution plan without applying changes
     Plan(ctx context.Context, opts PlanOptions) (*Plan, error)
 }
@@ -324,15 +324,15 @@ type DeployOptions struct {
 
 ## Specification Versioning
 
-The versioning system allows arcctl to support multiple versions of component and datacenter specifications simultaneously. This is critical for backward compatibility as specifications evolve.
+The versioning system allows cldctl to support multiple versions of component and datacenter specifications simultaneously. This is critical for backward compatibility as specifications evolve.
 
 ### Version Detection
 
 Each configuration file can optionally declare its schema version. If not specified, the loader infers the version based on the file structure.
 
 ```yaml
-# architect.yml
-version: v1  # Optional, defaults to latest stable
+# cloud.component.yml
+version: v1 # Optional, defaults to latest stable
 name: my-app
 # ...
 ```
@@ -360,7 +360,7 @@ package internal
 type InternalComponent struct {
     Name        string
     Description string
-    
+
     Databases   []InternalDatabase
     Buckets     []InternalBucket
     Deployments []InternalDeployment
@@ -368,10 +368,10 @@ type InternalComponent struct {
     Services    []InternalService
     Routes      []InternalRoute
     Cronjobs    []InternalCronjob
-    
+
     Variables    []InternalVariable
     Dependencies []InternalDependency
-    
+
     SourceVersion string  // Original schema version
 }
 
@@ -408,7 +408,7 @@ Each schema version has a transformer that converts from the external format to 
 
 package v1
 
-import "github.com/architect-io/arcctl/pkg/schema/component/internal"
+import "github.com/davidthor/arcctl/pkg/schema/component/internal"
 
 // Transformer converts v1 schema to internal representation
 type Transformer struct{}
@@ -419,7 +419,7 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
         Description:   v1.Description,
         SourceVersion: "v1",
     }
-    
+
     // Transform databases
     for name, db := range v1.Databases {
         idb, err := t.transformDatabase(name, db)
@@ -428,9 +428,9 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
         }
         ic.Databases = append(ic.Databases, idb)
     }
-    
+
     // Transform other resource types...
-    
+
     return ic, nil
 }
 
@@ -439,7 +439,7 @@ func (t *Transformer) transformDatabase(name string, db DatabaseV1) (internal.In
     if err != nil {
         return internal.InternalDatabase{}, err
     }
-    
+
     return internal.InternalDatabase{
         Name:       name,
         Type:       dbType,
@@ -463,10 +463,10 @@ type SchemaV2 struct {
     Version     string `yaml:"version"`
     Name        string `yaml:"name"`
     Description string `yaml:"description,omitempty"`
-    
+
     // New in v2: resource groups for organization
     ResourceGroups map[string]ResourceGroupV2 `yaml:"resourceGroups,omitempty"`
-    
+
     // Existing resources (may have updated structure)
     Databases   map[string]DatabaseV2   `yaml:"databases,omitempty"`
     // ...
@@ -511,22 +511,22 @@ import (
 type Backend interface {
     // Type returns the backend type identifier (e.g., "s3", "local")
     Type() string
-    
+
     // Read reads state data from the given path
     Read(ctx context.Context, path string) (io.ReadCloser, error)
-    
+
     // Write writes state data to the given path
     Write(ctx context.Context, path string, data io.Reader) error
-    
+
     // Delete removes state data at the given path
     Delete(ctx context.Context, path string) error
-    
+
     // List lists state files under the given prefix
     List(ctx context.Context, prefix string) ([]string, error)
-    
+
     // Exists checks if a state file exists
     Exists(ctx context.Context, path string) (bool, error)
-    
+
     // Lock acquires a lock for the given path
     Lock(ctx context.Context, path string, info LockInfo) (Lock, error)
 }
@@ -541,10 +541,10 @@ type BackendConfig struct {
 type Lock interface {
     // ID returns the lock identifier
     ID() string
-    
+
     // Unlock releases the lock
     Unlock(ctx context.Context) error
-    
+
     // Info returns lock metadata
     Info() LockInfo
 }
@@ -597,11 +597,11 @@ func (r *Registry) Create(config BackendConfig) (Backend, error) {
     r.mu.RLock()
     factory, ok := r.factories[config.Type]
     r.mu.RUnlock()
-    
+
     if !ok {
         return nil, fmt.Errorf("unknown backend type: %s", config.Type)
     }
-    
+
     return factory(config.Config)
 }
 
@@ -626,9 +626,9 @@ import (
     "fmt"
     "io"
     "path"
-    
+
     "github.com/aws/aws-sdk-go-v2/service/s3"
-    "github.com/architect-io/arcctl/pkg/state/backend"
+    "github.com/davidthor/arcctl/pkg/state/backend"
 )
 
 // Backend implements the state backend interface for S3-compatible storage
@@ -645,18 +645,18 @@ func NewBackend(config map[string]string) (backend.Backend, error) {
     if !ok {
         return nil, fmt.Errorf("s3 backend requires 'bucket' configuration")
     }
-    
+
     region := config["region"]
     if region == "" {
         region = "us-east-1"
     }
-    
+
     // Create AWS config and S3 client
     client, err := createS3Client(config)
     if err != nil {
         return nil, fmt.Errorf("failed to create S3 client: %w", err)
     }
-    
+
     return &Backend{
         client: client,
         bucket: bucket,
@@ -671,7 +671,7 @@ func (b *Backend) Type() string {
 
 func (b *Backend) Read(ctx context.Context, statePath string) (io.ReadCloser, error) {
     key := path.Join(b.prefix, statePath)
-    
+
     output, err := b.client.GetObject(ctx, &s3.GetObjectInput{
         Bucket: &b.bucket,
         Key:    &key,
@@ -679,13 +679,13 @@ func (b *Backend) Read(ctx context.Context, statePath string) (io.ReadCloser, er
     if err != nil {
         return nil, fmt.Errorf("failed to read state from s3://%s/%s: %w", b.bucket, key, err)
     }
-    
+
     return output.Body, nil
 }
 
 func (b *Backend) Write(ctx context.Context, statePath string, data io.Reader) error {
     key := path.Join(b.prefix, statePath)
-    
+
     _, err := b.client.PutObject(ctx, &s3.PutObjectInput{
         Bucket: &b.bucket,
         Key:    &key,
@@ -694,7 +694,7 @@ func (b *Backend) Write(ctx context.Context, statePath string, data io.Reader) e
     if err != nil {
         return fmt.Errorf("failed to write state to s3://%s/%s: %w", b.bucket, key, err)
     }
-    
+
     return nil
 }
 
@@ -716,7 +716,7 @@ To add a new state backend (e.g., for Consul):
 
 package consul
 
-import "github.com/architect-io/arcctl/pkg/state/backend"
+import "github.com/davidthor/arcctl/pkg/state/backend"
 
 type Backend struct {
     // Consul-specific fields
@@ -760,20 +760,20 @@ import (
 
 func NewRootCmd() *cobra.Command {
     cmd := &cobra.Command{
-        Use:   "arcctl",
+        Use:   "cldctl",
         Short: "Deploy cloud-native applications anywhere",
-        Long:  `arcctl is a CLI tool for deploying portable cloud applications.`,
+        Long:  `cldctl is a CLI tool for deploying portable cloud applications.`,
     }
-    
+
     // Global flags
     cmd.PersistentFlags().String("backend", "local", "State backend type")
     cmd.PersistentFlags().StringArray("backend-config", nil, "Backend configuration (key=value)")
-    
+
     // Bind to viper for env var support
     viper.BindPFlag("backend", cmd.PersistentFlags().Lookup("backend"))
-    viper.SetEnvPrefix("ARCCTL")
+    viper.SetEnvPrefix("CLDCTL")
     viper.AutomaticEnv()
-    
+
     // Add subcommands
     cmd.AddCommand(
         NewComponentCmd(),
@@ -781,18 +781,18 @@ func NewRootCmd() *cobra.Command {
         NewEnvironmentCmd(),
         NewUpCmd(),
     )
-    
+
     // Add aliases
     dcCmd := NewDatacenterCmd()
     dcCmd.Use = "dc"
     dcCmd.Aliases = []string{"datacenter"}
     cmd.AddCommand(dcCmd)
-    
+
     envCmd := NewEnvironmentCmd()
     envCmd.Use = "env"
     envCmd.Aliases = []string{"environment"}
     cmd.AddCommand(envCmd)
-    
+
     return cmd
 }
 ```
@@ -807,12 +807,12 @@ package component
 import (
     "context"
     "fmt"
-    
+
     "github.com/spf13/cobra"
-    "github.com/architect-io/arcctl/internal/ui"
-    "github.com/architect-io/arcctl/pkg/engine/executor"
-    "github.com/architect-io/arcctl/pkg/schema/component"
-    "github.com/architect-io/arcctl/pkg/state"
+    "github.com/davidthor/arcctl/internal/ui"
+    "github.com/davidthor/arcctl/pkg/engine/executor"
+    "github.com/davidthor/arcctl/pkg/schema/component"
+    "github.com/davidthor/arcctl/pkg/state"
 )
 
 func NewDeployCmd() *cobra.Command {
@@ -824,7 +824,7 @@ func NewDeployCmd() *cobra.Command {
         autoApprove bool
         targets     []string
     )
-    
+
     cmd := &cobra.Command{
         Use:   "deploy <name>",
         Short: "Deploy a component to an environment",
@@ -832,29 +832,29 @@ func NewDeployCmd() *cobra.Command {
         RunE: func(cmd *cobra.Command, args []string) error {
             ctx := cmd.Context()
             componentName := args[0]
-            
+
             // Load state manager from backend config
             stateManager, err := state.NewManagerFromFlags(cmd)
             if err != nil {
                 return fmt.Errorf("failed to initialize state: %w", err)
             }
-            
+
             // Parse component configuration
             loader := component.NewLoader()
             comp, err := loadComponent(loader, configRef)
             if err != nil {
                 return fmt.Errorf("failed to load component: %w", err)
             }
-            
+
             // Parse variables
             vars, err := parseVariables(variables, varFile)
             if err != nil {
                 return fmt.Errorf("failed to parse variables: %w", err)
             }
-            
+
             // Create executor
             exec := executor.New(stateManager)
-            
+
             // Generate plan
             plan, err := exec.Plan(ctx, executor.PlanOptions{
                 Environment:   environment,
@@ -866,10 +866,10 @@ func NewDeployCmd() *cobra.Command {
             if err != nil {
                 return fmt.Errorf("failed to create plan: %w", err)
             }
-            
+
             // Display plan
             ui.DisplayPlan(plan)
-            
+
             // Prompt for confirmation unless auto-approve
             if !autoApprove {
                 confirmed, err := ui.Confirm("Proceed with deployment?")
@@ -881,7 +881,7 @@ func NewDeployCmd() *cobra.Command {
                     return nil
                 }
             }
-            
+
             // Execute deployment
             result, err := exec.Deploy(ctx, executor.DeployOptions{
                 Environment:   environment,
@@ -894,24 +894,24 @@ func NewDeployCmd() *cobra.Command {
             if err != nil {
                 return fmt.Errorf("deployment failed: %w", err)
             }
-            
+
             // Display results
             ui.DisplayDeployResult(result)
-            
+
             return nil
         },
     }
-    
+
     cmd.Flags().StringVarP(&environment, "environment", "e", "", "Target environment (required)")
     cmd.Flags().StringVarP(&configRef, "config", "c", "", "Component config (path or OCI image)")
     cmd.Flags().StringArrayVar(&variables, "var", nil, "Set variable (key=value)")
     cmd.Flags().StringVar(&varFile, "var-file", "", "Load variables from file")
     cmd.Flags().BoolVar(&autoApprove, "auto-approve", false, "Skip confirmation")
     cmd.Flags().StringArrayVar(&targets, "target", nil, "Target specific resources")
-    
+
     cmd.MarkFlagRequired("environment")
     cmd.MarkFlagRequired("config")
-    
+
     return cmd
 }
 ```
@@ -920,7 +920,7 @@ func NewDeployCmd() *cobra.Command {
 
 ## IaC Plugin System
 
-The IaC plugin system allows arcctl to execute modules written in different Infrastructure-as-Code frameworks.
+The IaC plugin system allows cldctl to execute modules written in different Infrastructure-as-Code frameworks.
 
 ### Plugin Interface
 
@@ -938,16 +938,16 @@ import (
 type Plugin interface {
     // Name returns the plugin identifier (e.g., "pulumi", "opentofu")
     Name() string
-    
+
     // Preview generates a preview of changes
     Preview(ctx context.Context, opts RunOptions) (*PreviewResult, error)
-    
+
     // Apply applies the module and returns outputs
     Apply(ctx context.Context, opts RunOptions) (*ApplyResult, error)
-    
+
     // Destroy destroys resources created by the module
     Destroy(ctx context.Context, opts RunOptions) error
-    
+
     // Refresh refreshes state without applying changes
     Refresh(ctx context.Context, opts RunOptions) (*RefreshResult, error)
 }
@@ -957,19 +957,19 @@ type RunOptions struct {
     // Module configuration
     ModuleSource string            // OCI image reference or local path
     ModulePath   string            // Path within module if local
-    
+
     // Inputs and outputs
     Inputs  map[string]interface{} // Input values
-    
+
     // State management
     StateReader io.Reader          // Existing state (nil for new)
     StateWriter io.Writer          // Where to write new state
-    
+
     // Execution environment
     WorkDir     string             // Working directory
     Environment map[string]string  // Environment variables
     Volumes     []VolumeMount      // Volume mounts (for dockerBuild, etc.)
-    
+
     // Output handling
     Stdout io.Writer
     Stderr io.Writer
@@ -1000,8 +1000,8 @@ import (
     "encoding/json"
     "fmt"
     "os/exec"
-    
-    "github.com/architect-io/arcctl/pkg/iac"
+
+    "github.com/davidthor/arcctl/pkg/iac"
 )
 
 // Plugin implements the IaC plugin interface for Pulumi
@@ -1025,42 +1025,42 @@ func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResu
         return nil, fmt.Errorf("failed to prepare module: %w", err)
     }
     defer cleanup()
-    
+
     // Write inputs as Pulumi config
     if err := p.writeConfig(workDir, opts.Inputs); err != nil {
         return nil, fmt.Errorf("failed to write config: %w", err)
     }
-    
+
     // Import existing state if provided
     if opts.StateReader != nil {
         if err := p.importState(ctx, workDir, opts.StateReader); err != nil {
             return nil, fmt.Errorf("failed to import state: %w", err)
         }
     }
-    
+
     // Run pulumi up
     cmd := exec.CommandContext(ctx, "pulumi", "up", "--yes", "--json")
     cmd.Dir = workDir
     cmd.Env = p.buildEnvironment(opts.Environment)
     cmd.Stdout = opts.Stdout
     cmd.Stderr = opts.Stderr
-    
+
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("pulumi up failed: %w", err)
     }
-    
+
     // Extract outputs
     outputs, err := p.getOutputs(ctx, workDir)
     if err != nil {
         return nil, fmt.Errorf("failed to get outputs: %w", err)
     }
-    
+
     // Export state
     state, err := p.exportState(ctx, workDir)
     if err != nil {
         return nil, fmt.Errorf("failed to export state: %w", err)
     }
-    
+
     return &iac.ApplyResult{
         Outputs: outputs,
         State:   state,
@@ -1088,10 +1088,10 @@ import (
     "context"
     "encoding/json"
     "fmt"
-    
-    "github.com/architect-io/arcctl/pkg/iac"
-    "github.com/architect-io/arcctl/pkg/iac/native/docker"
-    "github.com/architect-io/arcctl/pkg/iac/native/process"
+
+    "github.com/davidthor/arcctl/pkg/iac"
+    "github.com/davidthor/arcctl/pkg/iac/native/docker"
+    "github.com/davidthor/arcctl/pkg/iac/native/process"
 )
 
 // Plugin implements the IaC plugin interface for native execution
@@ -1105,7 +1105,7 @@ func NewPlugin() (*Plugin, error) {
     if err != nil {
         return nil, fmt.Errorf("failed to create docker client: %w", err)
     }
-    
+
     return &Plugin{
         dockerClient: dockerClient,
         procManager:  process.NewManager(),
@@ -1122,7 +1122,7 @@ func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResu
     if err != nil {
         return nil, fmt.Errorf("failed to load module: %w", err)
     }
-    
+
     // Load existing state (if any)
     var existingState *State
     if opts.StateReader != nil {
@@ -1131,13 +1131,13 @@ func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResu
             return nil, fmt.Errorf("failed to load state: %w", err)
         }
     }
-    
+
     // Resolve inputs with expressions
     resolvedInputs, err := p.resolveInputs(module.Inputs, opts.Inputs)
     if err != nil {
         return nil, fmt.Errorf("failed to resolve inputs: %w", err)
     }
-    
+
     // Apply each resource
     state := &State{Resources: make(map[string]*ResourceState)}
     for name, resource := range module.Resources {
@@ -1149,19 +1149,19 @@ func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResu
         }
         state.Resources[name] = resourceState
     }
-    
+
     // Resolve outputs
     outputs, err := p.resolveOutputs(module.Outputs, state, resolvedInputs)
     if err != nil {
         return nil, fmt.Errorf("failed to resolve outputs: %w", err)
     }
-    
+
     // Serialize state
     stateBytes, err := json.Marshal(state)
     if err != nil {
         return nil, fmt.Errorf("failed to serialize state: %w", err)
     }
-    
+
     return &iac.ApplyResult{
         Outputs: outputs,
         State:   stateBytes,
@@ -1187,7 +1187,7 @@ func (p *Plugin) applyResource(ctx context.Context, name string, resource Resour
 
 func (p *Plugin) applyDockerContainer(ctx context.Context, name string, resource Resource, inputs map[string]interface{}, existing *State) (*ResourceState, error) {
     props := resource.Properties
-    
+
     // Check if container already exists and is running
     if existing != nil {
         if rs, ok := existing.Resources[name]; ok {
@@ -1200,13 +1200,13 @@ func (p *Plugin) applyDockerContainer(ctx context.Context, name string, resource
             }
         }
     }
-    
+
     // Resolve port mappings
     ports, err := p.resolvePorts(props.Ports)
     if err != nil {
         return nil, err
     }
-    
+
     // Create and start container
     containerID, err := p.dockerClient.Run(ctx, docker.RunOptions{
         Image:       props.Image,
@@ -1223,7 +1223,7 @@ func (p *Plugin) applyDockerContainer(ctx context.Context, name string, resource
     if err != nil {
         return nil, err
     }
-    
+
     // Wait for health check if configured
     if props.Healthcheck != nil {
         if err := p.dockerClient.WaitHealthy(ctx, containerID); err != nil {
@@ -1231,7 +1231,7 @@ func (p *Plugin) applyDockerContainer(ctx context.Context, name string, resource
             return nil, fmt.Errorf("container failed health check: %w", err)
         }
     }
-    
+
     return &ResourceState{
         Type:       "docker:container",
         ID:         containerID,
@@ -1248,12 +1248,12 @@ func (p *Plugin) Destroy(ctx context.Context, opts iac.RunOptions) error {
     if opts.StateReader == nil {
         return nil // Nothing to destroy
     }
-    
+
     state, err := p.loadState(opts.StateReader)
     if err != nil {
         return fmt.Errorf("failed to load state: %w", err)
     }
-    
+
     // Destroy in reverse order
     for name, rs := range state.Resources {
         if err := p.destroyResource(ctx, name, rs); err != nil {
@@ -1261,7 +1261,7 @@ func (p *Plugin) Destroy(ctx context.Context, opts iac.RunOptions) error {
             fmt.Fprintf(opts.Stderr, "warning: failed to destroy %s: %v\n", name, err)
         }
     }
-    
+
     return nil
 }
 
@@ -1439,14 +1439,14 @@ func NewParser() *Parser {
 // Parse parses a string that may contain expressions
 func (p *Parser) Parse(input string) (*Expression, error) {
     expr := &Expression{Raw: input}
-    
+
     matches := p.expressionPattern.FindAllStringSubmatchIndex(input, -1)
     if len(matches) == 0 {
         // No expressions, just a literal
         expr.Segments = []Segment{LiteralSegment{Value: input}}
         return expr, nil
     }
-    
+
     lastEnd := 0
     for _, match := range matches {
         // Add literal segment before this expression
@@ -1455,7 +1455,7 @@ func (p *Parser) Parse(input string) (*Expression, error) {
                 Value: input[lastEnd:match[0]],
             })
         }
-        
+
         // Parse the expression content
         exprContent := input[match[2]:match[3]]
         ref, err := p.parseReference(exprContent)
@@ -1463,31 +1463,31 @@ func (p *Parser) Parse(input string) (*Expression, error) {
             return nil, fmt.Errorf("invalid expression %q: %w", exprContent, err)
         }
         expr.Segments = append(expr.Segments, ref)
-        
+
         lastEnd = match[1]
     }
-    
+
     // Add trailing literal if any
     if lastEnd < len(input) {
         expr.Segments = append(expr.Segments, LiteralSegment{
             Value: input[lastEnd:],
         })
     }
-    
+
     return expr, nil
 }
 
 func (p *Parser) parseReference(content string) (ReferenceSegment, error) {
     // Parse reference path and optional pipe functions
     // e.g., "databases.main.url" or "dependents.*.routes.*.url | join \",\""
-    
+
     parts := strings.Split(content, "|")
     pathStr := strings.TrimSpace(parts[0])
-    
+
     ref := ReferenceSegment{
         Path: strings.Split(pathStr, "."),
     }
-    
+
     // Parse pipe functions
     for i := 1; i < len(parts); i++ {
         pipeStr := strings.TrimSpace(parts[i])
@@ -1497,7 +1497,7 @@ func (p *Parser) parseReference(content string) (ReferenceSegment, error) {
         }
         ref.Pipe = append(ref.Pipe, pf)
     }
-    
+
     return ref, nil
 }
 ```
@@ -1549,7 +1549,7 @@ func (e *Evaluator) Evaluate(expr *Expression, ctx *EvalContext) (interface{}, e
             return lit.Value, nil
         }
     }
-    
+
     var result strings.Builder
     for _, seg := range expr.Segments {
         switch s := seg.(type) {
@@ -1563,7 +1563,7 @@ func (e *Evaluator) Evaluate(expr *Expression, ctx *EvalContext) (interface{}, e
             result.WriteString(fmt.Sprintf("%v", val))
         }
     }
-    
+
     return result.String(), nil
 }
 
@@ -1571,7 +1571,7 @@ func (e *Evaluator) evaluateReference(ref ReferenceSegment, ctx *EvalContext) (i
     // Navigate the path to get the value
     var value interface{}
     var err error
-    
+
     switch ref.Path[0] {
     case "databases":
         value, err = e.resolveDatabase(ref.Path[1:], ctx.Databases)
@@ -1590,11 +1590,11 @@ func (e *Evaluator) evaluateReference(ref ReferenceSegment, ctx *EvalContext) (i
     default:
         return nil, fmt.Errorf("unknown reference type: %s", ref.Path[0])
     }
-    
+
     if err != nil {
         return nil, err
     }
-    
+
     // Apply pipe functions
     for _, pf := range ref.Pipe {
         fn, ok := e.functions[pf.Name]
@@ -1606,7 +1606,7 @@ func (e *Evaluator) evaluateReference(ref ReferenceSegment, ctx *EvalContext) (i
             return nil, fmt.Errorf("pipe function %s failed: %w", pf.Name, err)
         }
     }
-    
+
     return value, nil
 }
 ```
@@ -1670,9 +1670,9 @@ package oci
 import (
     "context"
     "fmt"
-    
-    "github.com/architect-io/arcctl/pkg/docker"
-    "github.com/architect-io/arcctl/pkg/schema/component"
+
+    "github.com/davidthor/arcctl/pkg/docker"
+    "github.com/davidthor/arcctl/pkg/schema/component"
 )
 
 // ComponentBuilder builds component OCI artifacts
@@ -1704,14 +1704,14 @@ func (b *ComponentBuilder) Build(ctx context.Context, opts BuildOptions) (*Build
     if err != nil {
         return nil, fmt.Errorf("failed to load component: %w", err)
     }
-    
+
     result := &BuildResult{
         RootArtifact:   opts.Tag,
         ChildArtifacts: make(map[string]string),
     }
-    
+
     // Build child artifacts (container images)
-    
+
     // Build deployments
     for _, dep := range comp.Deployments() {
         if dep.Build() != nil {
@@ -1722,7 +1722,7 @@ func (b *ComponentBuilder) Build(ctx context.Context, opts BuildOptions) (*Build
             result.ChildArtifacts["deployment/"+dep.Name()] = childTag
         }
     }
-    
+
     // Build functions
     for _, fn := range comp.Functions() {
         if fn.Build() != nil {
@@ -1733,7 +1733,7 @@ func (b *ComponentBuilder) Build(ctx context.Context, opts BuildOptions) (*Build
             result.ChildArtifacts["function/"+fn.Name()] = childTag
         }
     }
-    
+
     // Build migrations
     for _, db := range comp.Databases() {
         if db.Migrations() != nil && db.Migrations().Build() != nil {
@@ -1744,7 +1744,7 @@ func (b *ComponentBuilder) Build(ctx context.Context, opts BuildOptions) (*Build
             result.ChildArtifacts["migration/"+db.Name()] = childTag
         }
     }
-    
+
     // Build cronjobs
     for _, cj := range comp.Cronjobs() {
         if cj.Build() != nil {
@@ -1755,15 +1755,15 @@ func (b *ComponentBuilder) Build(ctx context.Context, opts BuildOptions) (*Build
             result.ChildArtifacts["cronjob/"+cj.Name()] = childTag
         }
     }
-    
+
     // Create compiled component configuration
     compiledConfig := b.createCompiledConfig(comp, result.ChildArtifacts)
-    
+
     // Build root artifact
     if err := b.buildRootArtifact(ctx, compiledConfig, opts.Tag); err != nil {
         return nil, fmt.Errorf("failed to build root artifact: %w", err)
     }
-    
+
     return result, nil
 }
 
@@ -1772,7 +1772,7 @@ func (b *ComponentBuilder) childArtifactTag(rootTag, artifactType, name string, 
     if override, ok := overrides[key]; ok {
         return override
     }
-    
+
     // Default naming convention: <root-repo>-<type>-<name>:<root-tag>
     ref, _ := ParseReference(rootTag)
     return fmt.Sprintf("%s-%s-%s:%s", ref.Repository, artifactType, name, ref.Tag)
@@ -1783,7 +1783,7 @@ func (b *ComponentBuilder) childArtifactTag(rootTag, artifactType, name string, 
 
 ## Error Handling Strategy
 
-arcctl uses structured errors throughout for better debugging and user feedback.
+cldctl uses structured errors throughout for better debugging and user feedback.
 
 ### Error Types
 
@@ -1810,7 +1810,7 @@ const (
     ErrCodePermission   ErrorCode = "PERMISSION_DENIED"
 )
 
-// Error is the base error type for arcctl
+// Error is the base error type for cldctl
 type Error struct {
     Code    ErrorCode
     Message string
@@ -1880,7 +1880,7 @@ func handleDeployError(err error) {
             fmt.Fprintf(os.Stderr, "  Operation:  %s\n", arcErr.Details["operation"])
             fmt.Fprintf(os.Stderr, "\nUse --force-unlock to break the lock (use with caution).\n")
             os.Exit(1)
-            
+
         case errors.ErrCodeValidation:
             fmt.Fprintf(os.Stderr, "Error: Validation failed\n\n")
             fmt.Fprintf(os.Stderr, "  %s\n", arcErr.Message)
@@ -1890,13 +1890,13 @@ func handleDeployError(err error) {
                 }
             }
             os.Exit(1)
-            
+
         default:
             fmt.Fprintf(os.Stderr, "Error: %s\n", arcErr.Message)
             os.Exit(1)
         }
     }
-    
+
     // Generic error
     fmt.Fprintf(os.Stderr, "Error: %v\n", err)
     os.Exit(1)
@@ -1918,7 +1918,7 @@ package v1
 
 import (
     "testing"
-    
+
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 )
@@ -1947,17 +1947,17 @@ databases:
             wantErr: true,
         },
     }
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             p := NewParser()
             result, err := p.ParseBytes([]byte(tt.input))
-            
+
             if tt.wantErr {
                 assert.Error(t, err)
                 return
             }
-            
+
             require.NoError(t, err)
             assert.Equal(t, tt.wantName, result.Name)
         })
@@ -1979,28 +1979,28 @@ package executor
 import (
     "context"
     "testing"
-    
-    "github.com/architect-io/arcctl/pkg/state/backend/local"
+
+    "github.com/davidthor/arcctl/pkg/state/backend/local"
 )
 
 func TestExecutor_Deploy_Integration(t *testing.T) {
     // Set up test backend
     tmpDir := t.TempDir()
     backend, _ := local.NewBackend(map[string]string{"path": tmpDir})
-    
+
     // Load test component
     comp, _ := component.NewLoader().Load("testdata/components/basic")
-    
+
     // Create executor
     exec := New(state.NewManager(backend))
-    
+
     // Deploy
     result, err := exec.Deploy(context.Background(), DeployOptions{
         Environment:   "test",
         ComponentName: "basic",
         Config:        comp,
     })
-    
+
     require.NoError(t, err)
     assert.NotEmpty(t, result.Resources)
 }

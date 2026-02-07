@@ -10,14 +10,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/engine"
-	"github.com/architect-io/arcctl/pkg/engine/executor"
-	"github.com/architect-io/arcctl/pkg/oci"
-	"github.com/architect-io/arcctl/pkg/registry"
-	"github.com/architect-io/arcctl/pkg/schema/component"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter"
-	"github.com/architect-io/arcctl/pkg/state"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/engine"
+	"github.com/davidthor/arcctl/pkg/engine/executor"
+	"github.com/davidthor/arcctl/pkg/oci"
+	"github.com/davidthor/arcctl/pkg/registry"
+	"github.com/davidthor/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter"
+	"github.com/davidthor/arcctl/pkg/state"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -56,8 +56,8 @@ component declaration when --environment is omitted.
 
 The source can be specified as either:
   - An OCI image reference (e.g., ghcr.io/myorg/myapp:v1.0.0)
-  - A local directory containing an architect.yml file
-  - A path to an architect.yml file directly
+  - A local directory containing a cloud.component.yml file
+  - A path to a cloud.component.yml file directly
 
 When -e is provided, the component is deployed into the target environment
 with full resource provisioning.
@@ -70,10 +70,10 @@ In interactive mode (when not running in CI), you will be prompted to enter
 values for any required variables that were not provided via --var or --var-file.
 
 Examples:
-  arcctl deploy component ./my-app -e production
-  arcctl deploy component ./my-app -e staging -d my-dc
-  arcctl deploy component ghcr.io/myorg/myapp:v1.0.0 -e production --var api_key=secret123
-  arcctl deploy component myorg/stripe:latest -d my-dc --var key=sk_live_xxx`,
+  cldctl deploy component ./my-app -e production
+  cldctl deploy component ./my-app -e staging -d my-dc
+  cldctl deploy component ghcr.io/myorg/myapp:v1.0.0 -e production --var api_key=secret123
+  cldctl deploy component myorg/stripe:latest -d my-dc --var key=sk_live_xxx`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
@@ -131,11 +131,11 @@ Examples:
 			// Load component to get variable definitions
 			var comp component.Component
 			if isLocalPath {
-				// Determine the path to architect.yml
-				componentFile := source
-				if !strings.HasSuffix(source, ".yml") && !strings.HasSuffix(source, ".yaml") {
-					componentFile = filepath.Join(source, "architect.yml")
-				}
+			// Determine the path to cloud.component.yml
+			componentFile := source
+			if !strings.HasSuffix(source, ".yml") && !strings.HasSuffix(source, ".yaml") {
+				componentFile = filepath.Join(source, "cloud.component.yml")
+			}
 
 				// Load component from local path
 				loader := component.NewLoader()
@@ -181,7 +181,7 @@ Examples:
 			// Determine component path
 			componentPath := source
 			if isLocalPath && !strings.HasSuffix(source, ".yml") && !strings.HasSuffix(source, ".yaml") {
-				componentPath = filepath.Join(source, "architect.yml")
+				componentPath = filepath.Join(source, "cloud.component.yml")
 			}
 
 			// Convert vars to interface{} map
@@ -486,8 +486,8 @@ Arguments:
   config  Datacenter config: OCI image reference or local path
 
 Examples:
-  arcctl deploy datacenter my-dc ./datacenter
-  arcctl deploy datacenter prod-dc ghcr.io/myorg/dc:v1.0.0`,
+  cldctl deploy datacenter my-dc ./datacenter
+  cldctl deploy datacenter prod-dc ghcr.io/myorg/dc:v1.0.0`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dcName := args[0]
@@ -749,7 +749,7 @@ func deriveComponentName(source string, isLocalPath bool) string {
 	if isLocalPath {
 		// Remove trailing slashes
 		source = strings.TrimRight(source, "/")
-		// If it's a file path (architect.yml), get the parent directory
+		// If it's a file path (cloud.component.yml), get the parent directory
 		if strings.HasSuffix(source, ".yml") || strings.HasSuffix(source, ".yaml") {
 			source = filepath.Dir(source)
 		}

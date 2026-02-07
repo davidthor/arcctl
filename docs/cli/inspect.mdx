@@ -1,18 +1,18 @@
 ---
-title: "arcctl inspect"
+title: "cldctl inspect"
 description: "Inspect deployed state or visualize component topology"
 ---
 
-# arcctl inspect
+# cldctl inspect
 
 Inspect deployed state by providing a slash-separated path, or visualize a component's topology.
 
 ## State Inspection
 
 ```bash
-arcctl inspect <environment>                          # Show environment details
-arcctl inspect <environment>/<component>              # Show component details
-arcctl inspect <environment>/<component>/<resource>   # Show resource details
+cldctl inspect <environment>                          # Show environment details
+cldctl inspect <environment>/<component>              # Show component details
+cldctl inspect <environment>/<component>/<resource>   # Show resource details
 ```
 
 Drill into deployed state at any level — environment, component, or individual resource.
@@ -22,7 +22,7 @@ and outputs a deployment or function received after expression resolution.
 ### Inspect an Environment
 
 ```bash
-arcctl inspect staging
+cldctl inspect staging
 ```
 
 Shows environment status, variables, a table of deployed components, and any route URLs.
@@ -48,7 +48,7 @@ URLs:
 ### Inspect a Component
 
 ```bash
-arcctl inspect staging/my-app
+cldctl inspect staging/my-app
 ```
 
 Shows component metadata, variables, dependencies, and a table of all resources
@@ -75,7 +75,7 @@ Resources:
 ### Inspect a Resource
 
 ```bash
-arcctl inspect staging/my-app/api
+cldctl inspect staging/my-app/api
 ```
 
 Shows full resource details including inputs, resolved environment variables, and outputs.
@@ -116,8 +116,8 @@ If two resources share the same name but have different types (e.g., a `deployme
 and a `service` both named `api`), qualify the resource with its type:
 
 ```bash
-arcctl inspect staging/my-app/deployment/api
-arcctl inspect staging/my-app/service/api
+cldctl inspect staging/my-app/deployment/api
+cldctl inspect staging/my-app/service/api
 ```
 
 ## Component Topology
@@ -125,9 +125,9 @@ arcctl inspect staging/my-app/service/api
 To visualize a component's resource graph (without deployed state), use the `component` subcommand:
 
 ```bash
-arcctl inspect component ./my-app
-arcctl inspect component ghcr.io/myorg/app:v1
-arcctl inspect component ./my-app --expand   # Include dependency graphs
+cldctl inspect component ./my-app
+cldctl inspect component ghcr.io/myorg/app:v1
+cldctl inspect component ./my-app --expand   # Include dependency graphs
 ```
 
 ## Flags
@@ -145,27 +145,27 @@ Use `-o json` or `-o yaml` for machine-readable output, useful for scripting:
 
 ```bash
 # Get resource env vars as JSON
-arcctl inspect staging/my-app/api -o json | jq '.inputs.environment'
+cldctl inspect staging/my-app/api -o json | jq '.inputs.environment'
 
 # Get all component resources as YAML
-arcctl inspect staging/my-app -o yaml
+cldctl inspect staging/my-app -o yaml
 ```
 
 ## Examples
 
 ```bash
 # Inspect environment in default datacenter
-arcctl inspect production
+cldctl inspect production
 
 # Inspect component in a specific datacenter
-arcctl inspect staging/my-app -d my-dc
+cldctl inspect staging/my-app -d my-dc
 
 # Inspect a function's configuration
-arcctl inspect production/frontend/web
+cldctl inspect production/frontend/web
 
 # Check what env vars a deployment received
-arcctl inspect staging/my-app/api -o json | jq '.inputs.environment'
+cldctl inspect staging/my-app/api -o json | jq '.inputs.environment'
 
 # Disambiguate resources with same name
-arcctl inspect staging/my-app/deployment/api
+cldctl inspect staging/my-app/deployment/api
 ```

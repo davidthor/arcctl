@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/schema/component/internal"
+	"github.com/davidthor/arcctl/pkg/schema/component/internal"
 )
 
 // Transformer converts v1 schema to internal representation.

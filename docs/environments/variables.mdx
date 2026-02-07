@@ -78,7 +78,7 @@ Variable values are resolved from the following sources, highest priority first:
 
 ### Env Var Name Matching
 
-By default, arcctl looks up the **UPPER_SNAKE_CASE** version of the variable name:
+By default, cldctl looks up the **UPPER_SNAKE_CASE** version of the variable name:
 
 | Variable name | Looks up env var |
 |---------------|-----------------|
@@ -98,7 +98,7 @@ variables:
 
 ## Dotenv File Chain
 
-arcctl automatically loads `.env` files from your **current working directory** (where you run the command). Files are loaded in order, with later files overriding earlier values:
+cldctl automatically loads `.env` files from your **current working directory** (where you run the command). Files are loaded in order, with later files overriding earlier values:
 
 | Order | File | Purpose |
 |-------|------|---------|
@@ -107,7 +107,7 @@ arcctl automatically loads `.env` files from your **current working directory** 
 | 3 | `.env.{name}` | Environment-specific (e.g., `.env.staging`) |
 | 4 | `.env.{name}.local` | Environment-specific local overrides (gitignored) |
 
-The `{name}` is the environment name (the first argument to `arcctl update environment`).
+The `{name}` is the environment name (the first argument to `cldctl update environment`).
 
 Missing files are silently skipped. The file format is standard dotenv:
 
@@ -210,7 +210,7 @@ POSTHOG_KEY=phc_abc123
 ### Deploy
 
 ```bash
-arcctl update environment questra environments/questra.yml -d my-datacenter
+cldctl update environment questra environments/questra.yml -d my-datacenter
 ```
 
 All secrets are resolved from `.env.local` -- no prompts, no hardcoded values, no secrets in version control.
@@ -229,14 +229,14 @@ In CI pipelines, secrets are typically injected as OS environment variables by t
     GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
     POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
   run: |
-    arcctl update environment questra environments/questra.yml \
+    cldctl update environment questra environments/questra.yml \
       -d production --auto-approve
 ```
 
 You can also use `--var` flags to override specific values:
 
 ```bash
-arcctl update environment questra environments/questra.yml \
+cldctl update environment questra environments/questra.yml \
   --var posthog_debug=true \
   --auto-approve
 ```

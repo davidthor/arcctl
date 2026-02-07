@@ -264,7 +264,7 @@ type EnvProvider struct {
 // NewEnvProvider creates a new environment variable provider.
 func NewEnvProvider() *EnvProvider {
 	return &EnvProvider{
-		prefix: "ARCCTL_SECRET_",
+		prefix: "CLDCTL_SECRET_",
 	}
 }
 

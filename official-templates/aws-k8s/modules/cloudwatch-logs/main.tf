@@ -13,6 +13,6 @@ resource "aws_cloudwatch_log_group" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

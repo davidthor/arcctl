@@ -1,4 +1,4 @@
-// Package types defines the data structures for arcctl state.
+// Package types defines the data structures for cldctl state.
 package types
 
 import (

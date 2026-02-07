@@ -1,8 +1,8 @@
-# arcctl Product Requirements Document
+# cldctl Product Requirements Document
 
 ## Overview
 
-arcctl is a command-line tool designed to help developers create and deploy cloud-native applications in a portable fashion—write once, deploy anywhere. The tool bridges the gap between application development and infrastructure management by separating concerns into three distinct configuration paradigms:
+cldctl is a command-line tool designed to help developers create and deploy cloud-native applications in a portable fashion—write once, deploy anywhere. The tool bridges the gap between application development and infrastructure management by separating concerns into three distinct configuration paradigms:
 
 1. **Components** - Developer-focused application bundles
 2. **Datacenters** - Platform engineer-focused infrastructure templates
@@ -24,9 +24,9 @@ This separation enables true self-service: developers can create environments an
 
 ### Non-Goals (for initial version)
 
-1. Replacing existing IaC tools (arcctl is an abstraction layer on top of IaC)
+1. Replacing existing IaC tools (cldctl is an abstraction layer on top of IaC)
 2. Managing non-application infrastructure (VPCs, base clusters, etc. are handled by datacenter modules)
-3. Providing a hosted platform (arcctl is a CLI tool with local or remote state)
+3. Providing a hosted platform (cldctl is a CLI tool with local or remote state)
 
 ---
 
@@ -54,7 +54,7 @@ This separation enables true self-service: developers can create environments an
 
 Components and Datacenters communicate through a resource contract. When a component is deployed:
 
-1. arcctl extracts all cloud resources from the component (databases, services, deployments, etc.)
+1. cldctl extracts all cloud resources from the component (databases, services, deployments, etc.)
 2. Each resource is matched against hooks defined in the datacenter
 3. The datacenter fulfills each resource request using its configured IaC modules
 4. Output values (URLs, credentials, etc.) are passed back to dependent resources
@@ -65,7 +65,7 @@ This contract allows components to be portable across any datacenter that implem
 
 ## File Specifications
 
-### 1. Component File (`architect.yml`)
+### 1. Component File (`cloud.component.yml`)
 
 The component file describes an application bundle using a docker-compose-like syntax. Developers define what their application needs without specifying how infrastructure should be provisioned.
 
@@ -79,7 +79,7 @@ The component file describes an application bundle using a docker-compose-like s
 
 #### File Location
 
-- Default: `architect.yml` in the project root
+- Default: `cloud.component.yml` in the project root
 - Can be specified explicitly via CLI
 
 #### Top-Level Structure
@@ -127,35 +127,35 @@ databases:
     # Option 1: Build from source (for development and CI builds)
     migrations:
       build:
-        context: ./database        # Required. Build context directory for the migration container
-        dockerfile: Dockerfile     # Optional. Defaults to "Dockerfile"
-      command: ["npm", "run", "migrate"]  # Optional. Command to run migrations (defaults to container entrypoint)
-      environment:                 # Optional. Additional environment variables for migration container
+        context: ./database # Required. Build context directory for the migration container
+        dockerfile: Dockerfile # Optional. Defaults to "Dockerfile"
+      command: ["npm", "run", "migrate"] # Optional. Command to run migrations (defaults to container entrypoint)
+      environment: # Optional. Additional environment variables for migration container
         MIGRATION_MODE: "up"
-      
+
   analytics:
     type: postgres:^15
-    
+
     # Option 2: Use pre-built image (for compiled components or shared migration images)
     migrations:
       image: myregistry.io/myorg/analytics-migrations:v1.0.0
       command: ["python", "seed.py", "--env", "production"]
 ```
 
-**Note:** When a component is built using `arcctl build component`, any `build:` blocks are compiled into `image:` references pointing to the built child artifacts. This allows the compiled component to be portable and self-contained.
+**Note:** When a component is built using `cldctl build component`, any `build:` blocks are compiled into `image:` references pointing to the built child artifacts. This allows the compiled component to be portable and self-contained.
 
 **Database properties:**
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `type` | string | required | Database type with optional semver constraint (`postgres:^15`, `mysql:^8`, etc.) |
-| `migrations` | object | - | Optional migration/seeding configuration |
-| `migrations.build` | object | - | Build configuration for migration container (mutually exclusive with `image`) |
-| `migrations.build.context` | string | required | Build context directory |
-| `migrations.build.dockerfile` | string | `"Dockerfile"` | Path to Dockerfile within context |
-| `migrations.image` | string | - | Pre-built migration container image (mutually exclusive with `build`) |
-| `migrations.command` | string[] | - | Command to run migrations (overrides container default) |
-| `migrations.environment` | map | - | Additional environment variables for migration container |
+| Property                      | Type     | Default        | Description                                                                      |
+| ----------------------------- | -------- | -------------- | -------------------------------------------------------------------------------- |
+| `type`                        | string   | required       | Database type with optional semver constraint (`postgres:^15`, `mysql:^8`, etc.) |
+| `migrations`                  | object   | -              | Optional migration/seeding configuration                                         |
+| `migrations.build`            | object   | -              | Build configuration for migration container (mutually exclusive with `image`)    |
+| `migrations.build.context`    | string   | required       | Build context directory                                                          |
+| `migrations.build.dockerfile` | string   | `"Dockerfile"` | Path to Dockerfile within context                                                |
+| `migrations.image`            | string   | -              | Pre-built migration container image (mutually exclusive with `build`)            |
+| `migrations.command`          | string[] | -              | Command to run migrations (overrides container default)                          |
+| `migrations.environment`      | map      | -              | Additional environment variables for migration container                         |
 
 **Notes:**
 
@@ -195,11 +195,11 @@ buckets:
 
 **Bucket properties:**
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `type` | string | required | Storage type (`s3`, `gcs`, `azure-blob`) |
-| `versioning` | boolean | `false` | Enable object versioning |
-| `public` | boolean | `false` | Allow public read access to objects |
+| Property     | Type    | Default  | Description                              |
+| ------------ | ------- | -------- | ---------------------------------------- |
+| `type`       | string  | required | Storage type (`s3`, `gcs`, `azure-blob`) |
+| `versioning` | boolean | `false`  | Enable object versioning                 |
+| `public`     | boolean | `false`  | Allow public read access to objects      |
 
 **Bucket outputs available via expressions:**
 
@@ -232,45 +232,47 @@ encryptionKeys:
   # RSA key pair for webhook signatures
   webhook-signing:
     type: rsa
-    bits: 2048  # Optional: 2048, 3072, 4096 (default: 2048)
+    bits: 2048 # Optional: 2048, 3072, 4096 (default: 2048)
 
   # ECDSA key pair for JWT signing
   jwt-signing:
     type: ecdsa
-    curve: P-256  # Optional: P-256, P-384, P-521 (default: P-256)
+    curve: P-256 # Optional: P-256, P-384, P-521 (default: P-256)
 
   # Symmetric key for encryption, secrets, or salts
   session-key:
     type: symmetric
-    bytes: 32  # Key length in bytes (default: 32)
+    bytes: 32 # Key length in bytes (default: 32)
 ```
 
 **Supported key types:**
 
-| Type | Description | Use Cases |
-|------|-------------|-----------|
-| `rsa` | RSA asymmetric key pair | Webhook signatures, JWT signing, encryption |
-| `ecdsa` | ECDSA asymmetric key pair | JWT signing, digital signatures |
+| Type        | Description                 | Use Cases                                                          |
+| ----------- | --------------------------- | ------------------------------------------------------------------ |
+| `rsa`       | RSA asymmetric key pair     | Webhook signatures, JWT signing, encryption                        |
+| `ecdsa`     | ECDSA asymmetric key pair   | JWT signing, digital signatures                                    |
 | `symmetric` | Random symmetric key/secret | Session encryption, AES keys, secret tokens, salts, key derivation |
 
 **Encryption key properties:**
 
-| Property | Type | Default | Applies To | Description |
-|----------|------|---------|------------|-------------|
-| `type` | string | required | all | Key type (`rsa`, `ecdsa`, `symmetric`) |
-| `bits` | number | `2048` | rsa | RSA key size (2048, 3072, or 4096) |
-| `curve` | string | `P-256` | ecdsa | ECDSA curve (P-256, P-384, or P-521) |
-| `bytes` | number | `32` | symmetric | Key length in bytes |
+| Property | Type   | Default  | Applies To | Description                            |
+| -------- | ------ | -------- | ---------- | -------------------------------------- |
+| `type`   | string | required | all        | Key type (`rsa`, `ecdsa`, `symmetric`) |
+| `bits`   | number | `2048`   | rsa        | RSA key size (2048, 3072, or 4096)     |
+| `curve`  | string | `P-256`  | ecdsa      | ECDSA curve (P-256, P-384, or P-521)   |
+| `bytes`  | number | `32`     | symmetric  | Key length in bytes                    |
 
 **Encryption key outputs available via expressions:**
 
 For asymmetric keys (`rsa`, `ecdsa`):
+
 - `${{ encryptionKeys.<name>.privateKey }}` - Private key in PEM format
 - `${{ encryptionKeys.<name>.publicKey }}` - Public key in PEM format
 - `${{ encryptionKeys.<name>.privateKeyBase64 }}` - Private key PEM, base64-encoded
 - `${{ encryptionKeys.<name>.publicKeyBase64 }}` - Public key PEM, base64-encoded
 
 For symmetric keys and salts (`symmetric`, `salt`):
+
 - `${{ encryptionKeys.<name>.key }}` - Key/salt as hex-encoded string
 - `${{ encryptionKeys.<name>.keyBase64 }}` - Key/salt as base64-encoded string
 
@@ -281,7 +283,7 @@ encryptionKeys:
   rsa-key:
     type: rsa
     bits: 2048
-  
+
   session-secret:
     type: symmetric
     bytes: 64
@@ -308,8 +310,8 @@ Declare email sending requirements. The datacenter is responsible for provisioni
 
 ```yaml
 smtp:
-  email: {}  # Empty object - datacenter provisions credentials
-  
+  email: {} # Empty object - datacenter provisions credentials
+
   # Or with optional description
   notifications:
     description: "For transactional emails"
@@ -317,8 +319,8 @@ smtp:
 
 **SMTP properties:**
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
+| Property      | Type   | Default  | Description                                       |
+| ------------- | ------ | -------- | ------------------------------------------------- |
 | `description` | string | optional | Human-readable description of the SMTP connection |
 
 **SMTP outputs available via expressions:**
@@ -574,31 +576,31 @@ routes:
 
 **Route Properties**
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `type` | string | required | Route type: `http` or `grpc` |
-| `internal` | boolean | `false` | If true, route is only accessible within the VPC (for admin panels, internal APIs) |
-| `rules` | RouteRule[] | required | Array of routing rules |
+| Property   | Type        | Default  | Description                                                                        |
+| ---------- | ----------- | -------- | ---------------------------------------------------------------------------------- |
+| `type`     | string      | required | Route type: `http` or `grpc`                                                       |
+| `internal` | boolean     | `false`  | If true, route is only accessible within the VPC (for admin panels, internal APIs) |
+| `rules`    | RouteRule[] | required | Array of routing rules                                                             |
 
 **Route Match Types**
 
-| Match Type | Description | Supported In |
-|------------|-------------|--------------|
-| `path` | URL path matching (PathPrefix, Exact, RegularExpression) | HTTP |
-| `headers` | HTTP header matching | HTTP, gRPC |
-| `queryParams` | Query parameter matching | HTTP |
-| `method` (HTTP) | HTTP method (GET, POST, etc.) | HTTP |
-| `method` (gRPC) | gRPC service/method matching | gRPC |
+| Match Type      | Description                                              | Supported In |
+| --------------- | -------------------------------------------------------- | ------------ |
+| `path`          | URL path matching (PathPrefix, Exact, RegularExpression) | HTTP         |
+| `headers`       | HTTP header matching                                     | HTTP, gRPC   |
+| `queryParams`   | Query parameter matching                                 | HTTP         |
+| `method` (HTTP) | HTTP method (GET, POST, etc.)                            | HTTP         |
+| `method` (gRPC) | gRPC service/method matching                             | gRPC         |
 
 **Route Filter Types**
 
-| Filter Type | Description |
-|-------------|-------------|
-| `RequestHeaderModifier` | Add, set, or remove request headers |
-| `ResponseHeaderModifier` | Add, set, or remove response headers |
-| `RequestRedirect` | Redirect requests to a different URL |
-| `URLRewrite` | Rewrite the request URL path or hostname |
-| `RequestMirror` | Mirror requests to another backend |
+| Filter Type              | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `RequestHeaderModifier`  | Add, set, or remove request headers      |
+| `ResponseHeaderModifier` | Add, set, or remove response headers     |
+| `RequestRedirect`        | Redirect requests to a different URL     |
+| `URLRewrite`             | Rewrite the request URL path or hostname |
+| `RequestMirror`          | Mirror requests to another backend       |
 
 **Route outputs:**
 
@@ -817,7 +819,7 @@ dependencies:
 
 ### 2. Datacenter File (`datacenter.dc`)
 
-The datacenter file defines infrastructure templates and rules for how application resources should be provisioned. It acts as the bridge between application requirements and actual cloud infrastructure. Datacenters are written in **arcctl's HCL-based configuration language**, inspired by Terraform and OpenTofu syntax, making it familiar to platform engineers and DevOps practitioners while providing arcctl-specific constructs for resource hooks and module orchestration.
+The datacenter file defines infrastructure templates and rules for how application resources should be provisioned. It acts as the bridge between application requirements and actual cloud infrastructure. Datacenters are written in **cldctl's HCL-based configuration language**, inspired by Terraform and OpenTofu syntax, making it familiar to platform engineers and DevOps practitioners while providing cldctl-specific constructs for resource hooks and module orchestration.
 
 #### Purpose
 
@@ -919,7 +921,7 @@ module "vpc" {
 - `inputs` - Map of values passed to the module
 - `when` - Conditional expression for when to invoke the module
 
-**Note:** When a datacenter is built using `arcctl build datacenter`, any `build` properties are compiled into `source` references pointing to the built module artifacts. The compiled datacenter can then be pushed to a registry and used without access to the original source code.
+**Note:** When a datacenter is built using `cldctl build datacenter`, any `build` properties are compiled into `source` references pointing to the built module artifacts. The compiled datacenter can then be pushed to a registry and used without access to the original source code.
 
 #### The Native Plugin
 
@@ -930,8 +932,9 @@ The `native` plugin provides a lightweight alternative to Pulumi and OpenTofu fo
 - **Simple operations** - Docker containers, processes, shell commands
 
 Unlike Pulumi or OpenTofu, the native plugin:
+
 - Executes commands directly without external tooling
-- Stores outputs in arcctl's state (enabling dependency wiring)
+- Stores outputs in cldctl's state (enabling dependency wiring)
 - Skips drift detection and state refresh (trusts stored state)
 - Has no initialization overhead
 
@@ -993,38 +996,38 @@ outputs:
 
 **Native Resource Types:**
 
-| Type | Description |
-|------|-------------|
-| `docker:container` | Run a Docker container |
-| `docker:network` | Create a Docker network |
-| `docker:volume` | Create a Docker volume |
-| `process` | Run a local process |
-| `exec` | Execute a one-time command |
+| Type               | Description                |
+| ------------------ | -------------------------- |
+| `docker:container` | Run a Docker container     |
+| `docker:network`   | Create a Docker network    |
+| `docker:volume`    | Create a Docker volume     |
+| `process`          | Run a local process        |
+| `exec`             | Execute a one-time command |
 
 ##### docker:container Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `image` | string | Docker image to run |
-| `name` | string | Container name |
-| `command` | list | Override container command |
-| `entrypoint` | list | Override container entrypoint |
-| `environment` | map | Environment variables |
-| `ports` | list | Port mappings with `container` and `host` (or `auto`) |
-| `volumes` | list | Volume mounts with `name`/`source` and `path` |
-| `network` | string | Docker network to join |
-| `healthcheck` | object | Health check configuration |
-| `restart` | string | Restart policy (`no`, `always`, `on-failure`) |
+| Property      | Type   | Description                                           |
+| ------------- | ------ | ----------------------------------------------------- |
+| `image`       | string | Docker image to run                                   |
+| `name`        | string | Container name                                        |
+| `command`     | list   | Override container command                            |
+| `entrypoint`  | list   | Override container entrypoint                         |
+| `environment` | map    | Environment variables                                 |
+| `ports`       | list   | Port mappings with `container` and `host` (or `auto`) |
+| `volumes`     | list   | Volume mounts with `name`/`source` and `path`         |
+| `network`     | string | Docker network to join                                |
+| `healthcheck` | object | Health check configuration                            |
+| `restart`     | string | Restart policy (`no`, `always`, `on-failure`)         |
 
 ##### process Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `command` | list | Command to execute |
-| `working_dir` | string | Working directory |
-| `environment` | map | Environment variables |
-| `readiness` | object | Readiness check (http, tcp, or exec) |
-| `graceful_stop` | object | Graceful shutdown configuration |
+| Property        | Type   | Description                          |
+| --------------- | ------ | ------------------------------------ |
+| `command`       | list   | Command to execute                   |
+| `working_dir`   | string | Working directory                    |
+| `environment`   | map    | Environment variables                |
+| `readiness`     | object | Readiness check (http, tcp, or exec) |
+| `graceful_stop` | object | Graceful shutdown configuration      |
 
 ##### Using Native Modules in Hooks
 
@@ -1032,7 +1035,7 @@ outputs:
 environment {
   database {
     when = element(split(":", node.inputs.type), 0) == "postgres"
-    
+
     module "postgres" {
       plugin = "native"
       build  = "./modules/docker-postgres"
@@ -1042,7 +1045,7 @@ environment {
         database = node.name
       }
     }
-    
+
     outputs = {
       host     = module.postgres.host
       port     = module.postgres.port
@@ -1050,7 +1053,7 @@ environment {
       url      = module.postgres.url
     }
   }
-  
+
   deployment {
     module "container" {
       plugin = "native"
@@ -1062,7 +1065,7 @@ environment {
         ports       = node.inputs.ports
       }
     }
-    
+
     outputs = {
       id = module.container.container_id
     }
@@ -1073,6 +1076,7 @@ environment {
 ##### Native Plugin Lifecycle
 
 **Apply:**
+
 1. Parse module definition
 2. Resolve input expressions
 3. Create/update resources directly (docker run, process start)
@@ -1080,6 +1084,7 @@ environment {
 5. Return outputs for dependency wiring
 
 **Destroy:**
+
 1. Read resource IDs from state
 2. Stop/remove resources directly (docker rm, process kill)
 3. Clean up state
@@ -1252,7 +1257,7 @@ environment {
 **Notes:**
 
 - The migration job runs as a one-time task (Kubernetes Job, ECS Task, etc.)
-- arcctl waits for the migration job to complete before starting dependent deployments
+- cldctl waits for the migration job to complete before starting dependent deployments
 - If the migration fails, the deployment is halted
 - The datacenter may implement retry logic or rollback strategies
 
@@ -1541,6 +1546,7 @@ environment {
 | `endpoint` | string | Internal endpoint for the function |
 
 **Notes:**
+
 - Datacenters may deploy functions to different platforms (Vercel, Lambda, Cloud Run, etc.)
 - Most providers only need `runtime` (e.g., nodejs:20, python:3.11); `framework` is optional for specialized providers
 - Infrastructure details like regions are configured in the environment/datacenter, not passed from the component
@@ -1812,12 +1818,12 @@ environment {
         #   - production: registry.io/production/web-app--api:abc123
         #   - preview-42: registry.io/preview-42/web-app--api:abc123
         image = "${variable.registry_url}/${environment.name}/${node.component}--${node.name}:${node.inputs.hash}"
-        
+
         # Registry authentication
         registry_url      = variable.registry_url
         registry_username = variable.registry_username
         registry_password = variable.registry_password
-        
+
         # Push after build
         push = true
       })
@@ -1876,11 +1882,11 @@ environment {
         #   - production: 123456789.dkr.ecr.us-east-1.amazonaws.com/production/web-app--api:abc123
         #   - preview-42: 123456789.dkr.ecr.us-east-1.amazonaws.com/preview-42/web-app--api:abc123
         image = "${variable.aws_account_id}.dkr.ecr.${variable.aws_region}.amazonaws.com/${environment.name}/${node.component}--${node.name}:${node.inputs.hash}"
-        
+
         # ECR-specific
         aws_region     = variable.aws_region
         aws_account_id = variable.aws_account_id
-        
+
         # Create repository if it doesn't exist (useful for preview environments)
         create_repository = true
       })
@@ -1895,18 +1901,18 @@ environment {
 
 **Inputs (available via `node.inputs`):**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `context` | string | Build context path (local filesystem path) |
-| `dockerfile` | string | Dockerfile path within context |
-| `target` | string | Build target (for multi-stage builds) |
-| `args` | map | Build arguments |
-| `hash` | string | Content hash of the build context (for cache-busting tags) |
+| Field        | Type   | Description                                                |
+| ------------ | ------ | ---------------------------------------------------------- |
+| `context`    | string | Build context path (local filesystem path)                 |
+| `dockerfile` | string | Dockerfile path within context                             |
+| `target`     | string | Build target (for multi-stage builds)                      |
+| `args`       | map    | Build arguments                                            |
+| `hash`       | string | Content hash of the build context (for cache-busting tags) |
 
 **Required Outputs:**
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field   | Type   | Description                                                        |
+| ------- | ------ | ------------------------------------------------------------------ |
 | `image` | string | Final image reference (must be pullable by the target environment) |
 
 **Notes:**
@@ -2224,16 +2230,16 @@ environment {
   dockerBuild {
     module "build_and_push" {
       build = "./modules/docker-build-ecr"
-      
+
       volume {
         host_path  = "/var/run/docker.sock"
         mount_path = "/var/run/docker.sock"
       }
-      
+
       inputs = merge(node.inputs, {
         # Tag for ECR so the EKS cluster can pull
         image = "${variable.aws_account_id}.dkr.ecr.${variable.aws_region}.amazonaws.com/${environment.name}/${node.component}--${node.name}:${node.inputs.hash}"
-        
+
         aws_region        = variable.aws_region
         aws_account_id    = variable.aws_account_id
         create_repository = true
@@ -2414,7 +2420,7 @@ components:
 
 ### Developer Workflow
 
-1. **Write**: Create an `architect.yml` file describing the application
+1. **Write**: Create an `cloud.component.yml` file describing the application
 2. **Build**: Build the component into a portable OCI artifact
 3. **Test**: Create ephemeral environments for testing
 4. **Deploy**: Deploy to shared environments (staging, production)
@@ -2473,48 +2479,48 @@ The datacenter framework allows platform engineers to:
 
 ### Overview
 
-arcctl provides CLI commands for building, tagging, and pushing components and datacenters as OCI-compliant artifacts. Both components and datacenters are bundled into OCI artifacts that can be stored in any OCI-compatible registry (Docker Hub, GitHub Container Registry, AWS ECR, etc.).
+cldctl provides CLI commands for building, tagging, and pushing components and datacenters as OCI-compliant artifacts. Both components and datacenters are bundled into OCI artifacts that can be stored in any OCI-compatible registry (Docker Hub, GitHub Container Registry, AWS ECR, etc.).
 
 ### Command Structure
 
-arcctl uses an intuitive action-first command structure:
+cldctl uses an intuitive action-first command structure:
 
 ```
-arcctl <action> <resource> [arguments] [flags]
+cldctl <action> <resource> [arguments] [flags]
 ```
 
-This pattern makes commands more natural to type (e.g., `arcctl create environment` instead of `arcctl create environment`).
+This pattern makes commands more natural to type (e.g., `cldctl create environment` instead of `cldctl create environment`).
 
 ### Command Aliases
 
-For convenience, arcctl supports shorthand aliases for commonly used commands:
+For convenience, cldctl supports shorthand aliases for commonly used commands:
 
-| Resource | Alias |
-|----------|-------|
-| `component` | `comp` |
-| `datacenter` | `dc` |
-| `environment` | `env` |
-| `list` | `ls` |
+| Resource      | Alias  |
+| ------------- | ------ |
+| `component`   | `comp` |
+| `datacenter`  | `dc`   |
+| `environment` | `env`  |
+| `list`        | `ls`   |
 
 **Examples:**
 
 ```bash
 # These are equivalent:
-arcctl build datacenter . -t ghcr.io/myorg/dc:v1.0.0
-arcctl build dc . -t ghcr.io/myorg/dc:v1.0.0
+cldctl build datacenter . -t ghcr.io/myorg/dc:v1.0.0
+cldctl build dc . -t ghcr.io/myorg/dc:v1.0.0
 
 # These are equivalent:
-arcctl list environment
-arcctl ls env
+cldctl list environment
+cldctl ls env
 
 # These are equivalent:
-arcctl create environment staging --if-not-exists
-arcctl create env staging --if-not-exists
+cldctl create environment staging --if-not-exists
+cldctl create env staging --if-not-exists
 ```
 
 ### Artifact Structure
 
-When building a component or datacenter, arcctl produces multiple OCI artifacts:
+When building a component or datacenter, cldctl produces multiple OCI artifacts:
 
 1. **Root Artifact**: The main component/datacenter manifest and configuration
 2. **Child Artifacts**: Supporting artifacts referenced by the root artifact
@@ -2525,33 +2531,33 @@ During the build process, source references (like `build:` blocks) are compiled 
 
 ### Build Commands
 
-#### `arcctl build component`
+#### `cldctl build component`
 
 Build a component and its container images into OCI artifacts.
 
 **Synopsis:**
 
 ```bash
-arcctl build component <path> -t <repo:tag> [options]
+cldctl build component <path> -t <repo:tag> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
-| `<path>` | Path to the component directory (containing `architect.yml`) |
+| Argument | Description                                                        |
+| -------- | ------------------------------------------------------------------ |
+| `<path>` | Path to the component directory (containing `cloud.component.yml`) |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `-t, --tag <repo:tag>` | Tag for the root component artifact (required) |
+| Option                           | Description                                                                  |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| `-t, --tag <repo:tag>`           | Tag for the root component artifact (required)                               |
 | `--artifact-tag <name=repo:tag>` | Override tag for a specific child artifact (can be specified multiple times) |
-| `-f, --file <path>` | Path to architect.yml if not in the default location |
-| `--platform <platform>` | Target platform for container builds (e.g., `linux/amd64`, `linux/arm64`) |
-| `--no-cache` | Disable build cache for container builds |
-| `--yes, -y` | Non-interactive mode: skip confirmation prompts (for CI/CD) |
-| `--dry-run` | Show what would be built without actually building |
+| `-f, --file <path>`              | Path to cloud.component.yml if not in the default location                   |
+| `--platform <platform>`          | Target platform for container builds (e.g., `linux/amd64`, `linux/arm64`)    |
+| `--no-cache`                     | Disable build cache for container builds                                     |
+| `--yes, -y`                      | Non-interactive mode: skip confirmation prompts (for CI/CD)                  |
+| `--dry-run`                      | Show what would be built without actually building                           |
 
 **Child Artifact Naming Convention:**
 
@@ -2562,6 +2568,7 @@ When building a component with tag `myregistry.io/myorg/myapp:v1.0.0`, child art
 ```
 
 For example:
+
 - Root: `myregistry.io/myorg/myapp:v1.0.0`
 - API deployment: `myregistry.io/myorg/myapp-deployment-api:v1.0.0`
 - Worker deployment: `myregistry.io/myorg/myapp-deployment-worker:v1.0.0`
@@ -2571,10 +2578,10 @@ For example:
 
 **Interactive Mode (default):**
 
-In interactive mode, arcctl displays all artifacts that will be created and prompts for confirmation:
+In interactive mode, cldctl displays all artifacts that will be created and prompts for confirmation:
 
 ```
-$ arcctl build component . -t myregistry.io/myorg/myapp:v1.0.0
+$ cldctl build component . -t myregistry.io/myorg/myapp:v1.0.0
 
 Building component: my-app
 
@@ -2591,15 +2598,15 @@ The following artifacts will be created:
       (migrations)
     cronjobs/cleanup     → myregistry.io/myorg/myapp-cronjob-cleanup:v1.0.0
 
-Proceed with build? [Y/n]: 
+Proceed with build? [Y/n]:
 ```
 
 **Non-Interactive Mode (CI/CD):**
 
-With `--yes` or `-y`, arcctl skips confirmation and logs the artifact names:
+With `--yes` or `-y`, cldctl skips confirmation and logs the artifact names:
 
 ```
-$ arcctl build component . -t myregistry.io/myorg/myapp:v1.0.0 --yes
+$ cldctl build component . -t myregistry.io/myorg/myapp:v1.0.0 --yes
 
 Building component: my-app
 [info] Root artifact: myregistry.io/myorg/myapp:v1.0.0
@@ -2620,12 +2627,12 @@ Use `--artifact-tag` to override specific child artifacts:
 
 ```bash
 # Override the API deployment image tag
-arcctl build component . \
+cldctl build component . \
   -t myregistry.io/myorg/myapp:v1.0.0 \
   --artifact-tag deployment/api=myregistry.io/myorg/custom-api:latest
 
 # Override multiple artifacts
-arcctl build component . \
+cldctl build component . \
   -t myregistry.io/myorg/myapp:v1.0.0 \
   --artifact-tag deployment/api=myregistry.io/myorg/api:v2.0.0 \
   --artifact-tag migration/main=myregistry.io/myorg/migrations:v1.5.0
@@ -2635,50 +2642,50 @@ arcctl build component . \
 
 ```bash
 # Basic build
-arcctl build component . -t ghcr.io/myorg/myapp:v1.0.0
+cldctl build component . -t ghcr.io/myorg/myapp:v1.0.0
 
 # Build with platform specification
-arcctl build component . -t ghcr.io/myorg/myapp:v1.0.0 --platform linux/amd64
+cldctl build component . -t ghcr.io/myorg/myapp:v1.0.0 --platform linux/amd64
 
 # CI/CD build (non-interactive)
-arcctl build component . -t ghcr.io/myorg/myapp:$CI_COMMIT_SHA --yes
+cldctl build component . -t ghcr.io/myorg/myapp:$CI_COMMIT_SHA --yes
 
 # Build from specific file
-arcctl build component ./services/api -f architect.production.yml -t ghcr.io/myorg/api:v1.0.0
+cldctl build component ./services/api -f cloud.component.production.yml -t ghcr.io/myorg/api:v1.0.0
 ```
 
 ### Tag Commands
 
-#### `arcctl tag component`
+#### `cldctl tag component`
 
 Create a new tag for an existing component artifact and all its child artifacts.
 
 **Synopsis:**
 
 ```bash
-arcctl tag component <source> <target> [options]
+cldctl tag component <source> <target> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument   | Description                         |
+| ---------- | ----------------------------------- |
 | `<source>` | Source component artifact reference |
-| `<target>` | Target tag for the component |
+| `<target>` | Target tag for the component        |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--artifact-tag <name=repo:tag>` | Override tag for a specific child artifact |
-| `--yes, -y` | Non-interactive mode: skip confirmation prompts |
+| Option                           | Description                                     |
+| -------------------------------- | ----------------------------------------------- |
+| `--artifact-tag <name=repo:tag>` | Override tag for a specific child artifact      |
+| `--yes, -y`                      | Non-interactive mode: skip confirmation prompts |
 
 **Behavior:**
 
-When tagging a component, arcctl re-tags both the root artifact and all child artifacts, maintaining the naming convention:
+When tagging a component, cldctl re-tags both the root artifact and all child artifacts, maintaining the naming convention:
 
 ```bash
-$ arcctl tag component myregistry.io/myorg/myapp:v1.0.0 myregistry.io/myorg/myapp:latest
+$ cldctl tag component myregistry.io/myorg/myapp:v1.0.0 myregistry.io/myorg/myapp:latest
 
 Tagging component artifacts:
 
@@ -2697,37 +2704,37 @@ Proceed? [Y/n]:
 
 ```bash
 # Tag a version as latest
-arcctl tag component ghcr.io/myorg/myapp:v1.0.0 ghcr.io/myorg/myapp:latest
+cldctl tag component ghcr.io/myorg/myapp:v1.0.0 ghcr.io/myorg/myapp:latest
 
 # Tag for promotion to production
-arcctl tag component ghcr.io/myorg/myapp:v1.0.0 ghcr.io/myorg/myapp:production
+cldctl tag component ghcr.io/myorg/myapp:v1.0.0 ghcr.io/myorg/myapp:production
 
 # CI/CD tagging (non-interactive)
-arcctl tag component ghcr.io/myorg/myapp:$CI_COMMIT_SHA ghcr.io/myorg/myapp:$CI_BRANCH_NAME --yes
+cldctl tag component ghcr.io/myorg/myapp:$CI_COMMIT_SHA ghcr.io/myorg/myapp:$CI_BRANCH_NAME --yes
 ```
 
 ### Push Commands
 
-#### `arcctl push component`
+#### `cldctl push component`
 
 Push a component artifact and all its child artifacts to an OCI registry.
 
 **Synopsis:**
 
 ```bash
-arcctl push component <repo:tag> [options]
+cldctl push component <repo:tag> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument     | Description                          |
+| ------------ | ------------------------------------ |
 | `<repo:tag>` | Component artifact reference to push |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
+| Option      | Description                                     |
+| ----------- | ----------------------------------------------- |
 | `--yes, -y` | Non-interactive mode: skip confirmation prompts |
 
 **Behavior:**
@@ -2735,7 +2742,7 @@ arcctl push component <repo:tag> [options]
 Pushes the root component artifact and all referenced child artifacts to the registry:
 
 ```bash
-$ arcctl push component myregistry.io/myorg/myapp:v1.0.0
+$ cldctl push component myregistry.io/myorg/myapp:v1.0.0
 
 Pushing component artifacts:
 
@@ -2762,56 +2769,56 @@ Proceed? [Y/n]:
 
 ```bash
 # Push to registry
-arcctl push component ghcr.io/myorg/myapp:v1.0.0
+cldctl push component ghcr.io/myorg/myapp:v1.0.0
 
 # CI/CD push (non-interactive)
-arcctl push component ghcr.io/myorg/myapp:$CI_COMMIT_SHA --yes
+cldctl push component ghcr.io/myorg/myapp:$CI_COMMIT_SHA --yes
 ```
 
 ### List Commands
 
-#### `arcctl list component`
+#### `cldctl list component`
 
 List all components deployed to an environment.
 
 **Synopsis:**
 
 ```bash
-arcctl list component --environment <name> [backend-options]
+cldctl list component --environment <name> [backend-options]
 ```
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `-e, --environment <name>` | Target environment name (required) |
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
-| `--output <format>` | Output format: `table` (default), `json`, `yaml` |
+| Option                         | Description                                      |
+| ------------------------------ | ------------------------------------------------ |
+| `-e, --environment <name>`     | Target environment name (required)               |
+| `--backend <type>`             | State backend type (default: `local`)            |
+| `--backend-config <key=value>` | Backend-specific configuration                   |
+| `--output <format>`            | Output format: `table` (default), `json`, `yaml` |
 
 **Example:**
 
 ```bash
 # List components in an environment
-arcctl list component --environment staging
+cldctl list component --environment staging
 
 # Using shorthand flag
-arcctl list component -e staging
+cldctl list component -e staging
 
 # With S3 backend
-arcctl list component -e production \
+cldctl list component -e production \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 
 # Output as JSON
-arcctl list component -e staging --output json
+cldctl list component -e staging --output json
 ```
 
 **Output:**
 
 ```
-$ arcctl list component -e staging
+$ cldctl list component -e staging
 
 Environment: staging
 Datacenter:  aws-production
@@ -2824,48 +2831,48 @@ worker         ghcr.io/myorg/worker:v1.2.0         v1.2.0    running   2
 
 ### Get Commands
 
-#### `arcctl get component`
+#### `cldctl get component`
 
 Get detailed information about a deployed component.
 
 **Synopsis:**
 
 ```bash
-arcctl get component <name> --environment <name> [backend-options]
+cldctl get component <name> --environment <name> [backend-options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument | Description                                     |
+| -------- | ----------------------------------------------- |
 | `<name>` | Component name (as deployed to the environment) |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `-e, --environment <name>` | Target environment name (required) |
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
-| `--output <format>` | Output format: `table` (default), `json`, `yaml` |
+| Option                         | Description                                      |
+| ------------------------------ | ------------------------------------------------ |
+| `-e, --environment <name>`     | Target environment name (required)               |
+| `--backend <type>`             | State backend type (default: `local`)            |
+| `--backend-config <key=value>` | Backend-specific configuration                   |
+| `--output <format>`            | Output format: `table` (default), `json`, `yaml` |
 
 **Example:**
 
 ```bash
 # Get component details
-arcctl get component web-app --environment staging
+cldctl get component web-app --environment staging
 
 # Using shorthand
-arcctl get component web-app -e staging
+cldctl get component web-app -e staging
 
 # Output as JSON for scripting
-arcctl get component web-app -e staging --output json
+cldctl get component web-app -e staging --output json
 ```
 
 **Output:**
 
 ```
-$ arcctl get component web-app -e staging
+$ cldctl get component web-app -e staging
 
 Component:   web-app
 Environment: staging
@@ -2890,60 +2897,62 @@ Resources:
 
 ### Deploy Commands
 
-#### `arcctl deploy component`
+#### `cldctl deploy component`
 
 Deploy a component to an environment.
 
 **Synopsis:**
 
 ```bash
-arcctl deploy component <source> --environment <name> [options]
+cldctl deploy component <source> --environment <name> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument | Description                                                                            |
+| -------- | -------------------------------------------------------------------------------------- |
 | `<name>` | Name for the component deployment (used to identify the component in this environment) |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `-e, --environment <name>` | Target environment name (required) |
-| `-c, --config <config-ref>` | Component configuration reference (required). Local path or OCI image |
-| `--var <key=value>` | Set a component variable (can be specified multiple times) |
-| `--var-file <path>` | Load variables from a `.dcvars` file |
-| `--auto-approve` | Skip interactive approval of the execution plan |
-| `--target <resource>` | Target a specific resource (can be specified multiple times) |
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
+| Option                         | Description                                                           |
+| ------------------------------ | --------------------------------------------------------------------- |
+| `-e, --environment <name>`     | Target environment name (required)                                    |
+| `-c, --config <config-ref>`    | Component configuration reference (required). Local path or OCI image |
+| `--var <key=value>`            | Set a component variable (can be specified multiple times)            |
+| `--var-file <path>`            | Load variables from a `.dcvars` file                                  |
+| `--auto-approve`               | Skip interactive approval of the execution plan                       |
+| `--target <resource>`          | Target a specific resource (can be specified multiple times)          |
+| `--backend <type>`             | State backend type (default: `local`)                                 |
+| `--backend-config <key=value>` | Backend-specific configuration                                        |
 
 **Config Reference Formats:**
 
 The `--config` flag accepts two formats:
 
 1. **OCI image reference**: A built component artifact in `repo:tag` format
+
    ```bash
-   arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging
+   cldctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging
    ```
+
    When deploying from an OCI image, the pre-built container images embedded in the artifact are used directly.
 
-2. **Local path**: Path to a directory containing `architect.yml` (for development)
+2. **Local path**: Path to a directory containing `cloud.component.yml` (for development)
    ```bash
-   arcctl deploy component ./services/web-app -e staging
+   cldctl deploy component ./services/web-app -e staging
    ```
-   When deploying from local source, arcctl invokes the datacenter's `dockerBuild` hook to build and push container images. The datacenter author controls where images are pushed (e.g., ECR, GCR, Docker Hub) so the target environment can pull them. See [Docker Build Hook](#docker-build-hook) for details.
+   When deploying from local source, cldctl invokes the datacenter's `dockerBuild` hook to build and push container images. The datacenter author controls where images are pushed (e.g., ECR, GCR, Docker Hub) so the target environment can pull them. See [Docker Build Hook](#docker-build-hook) for details.
 
 **Behavior:**
 
-1. **Resolve**: arcctl reads the datacenter and environment state
+1. **Resolve**: cldctl reads the datacenter and environment state
 2. **Plan**: Analyzes the component config and current state to determine changes
 3. **Approve**: In interactive mode, displays the execution plan and prompts for confirmation
 4. **Apply**: Deploys resources via datacenter hooks, updating component state as each completes
 
 ```
-$ arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging
+$ cldctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging
 
 Component:   web-app
 Environment: staging
@@ -2957,7 +2966,7 @@ Execution Plan:
 
   database "main" (postgres:^15)
     + create: RDS instance "staging-web-app-main"
-    
+
   database "cache" (redis)
     + create: ElastiCache cluster "staging-web-app-cache"
 
@@ -2966,10 +2975,10 @@ Execution Plan:
 
   deployment "api"
     + create: EKS deployment "staging-web-app-api"
-    
+
   service "api"
     + create: EKS service "staging-web-app-api"
-    
+
   route "main"
     + create: Ingress rule "staging-web-app-main"
 
@@ -2992,35 +3001,35 @@ Proceed with deployment? [Y/n]:
 
 ```bash
 # Deploy from OCI image
-arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging
+cldctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging
 
 # Deploy from local source (development)
-arcctl deploy component ./services/web-app -e staging
+cldctl deploy component ./services/web-app -e staging
 
 # Deploy with variables
-arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging \
+cldctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging \
   --var log_level=debug \
   --var-file ./vars/staging.dcvars
 
 # Deploy with auto-approval (CI/CD)
-arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging \
+cldctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging \
   --auto-approve
 
 # Deploy with S3 backend
-arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging \
+cldctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 
 # Deploy targeting a specific resource
-arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging \
+cldctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e staging \
   --target deployment.api
 
 # Deploy via environment variables
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
-arcctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e production --auto-approve
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
+cldctl deploy component ghcr.io/myorg/web-app:v1.5.0 -e production --auto-approve
 ```
 
 **Updating a Component:**
@@ -3029,7 +3038,7 @@ Running `deploy component` with the same name updates the existing deployment:
 
 ```bash
 # Update to a new version
-arcctl deploy component ghcr.io/myorg/web-app:v1.6.0 -e staging
+cldctl deploy component ghcr.io/myorg/web-app:v1.6.0 -e staging
 
 # The plan shows what changes
 Execution Plan:
@@ -3042,30 +3051,30 @@ Plan: 0 to create, 1 to update, 0 to destroy
 
 ### Destroy Commands
 
-#### `arcctl destroy component`
+#### `cldctl destroy component`
 
 Remove a component from an environment and destroy all its resources.
 
 **Synopsis:**
 
 ```bash
-arcctl destroy component <name> --environment <name> [options]
+cldctl destroy component <name> --environment <name> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument | Description               |
+| -------- | ------------------------- |
 | `<name>` | Component name to destroy |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `-e, --environment <name>` | Target environment name (required) |
-| `--auto-approve` | Skip interactive confirmation |
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
+| Option                         | Description                           |
+| ------------------------------ | ------------------------------------- |
+| `-e, --environment <name>`     | Target environment name (required)    |
+| `--auto-approve`               | Skip interactive confirmation         |
+| `--backend <type>`             | State backend type (default: `local`) |
+| `--backend-config <key=value>` | Backend-specific configuration        |
 
 **Behavior:**
 
@@ -3075,7 +3084,7 @@ arcctl destroy component <name> --environment <name> [options]
 4. Destroys all resources and removes component from environment state
 
 ```
-$ arcctl destroy component web-app -e staging
+$ cldctl destroy component web-app -e staging
 
 Component:   web-app
 Environment: staging
@@ -3112,51 +3121,51 @@ Type the component name to confirm: web-app
 
 ```bash
 # Interactive destroy
-arcctl destroy component web-app -e staging
+cldctl destroy component web-app -e staging
 
 # Auto-approve (CI/CD cleanup)
-arcctl destroy component web-app -e preview-123 --auto-approve
+cldctl destroy component web-app -e preview-123 --auto-approve
 
 # With S3 backend
-arcctl destroy component web-app -e staging \
+cldctl destroy component web-app -e staging \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 
 # Via environment variables
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
-arcctl destroy component web-app -e preview-123 --auto-approve
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
+cldctl destroy component web-app -e preview-123 --auto-approve
 ```
 
 ### Datacenter Build Commands
 
-#### `arcctl build datacenter`
+#### `cldctl build datacenter`
 
 Build a datacenter and its IaC modules into OCI artifacts.
 
 **Synopsis:**
 
 ```bash
-arcctl build datacenter <path> -t <repo:tag> [options]
+cldctl build datacenter <path> -t <repo:tag> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument | Description                                                   |
+| -------- | ------------------------------------------------------------- |
 | `<path>` | Path to the datacenter directory (containing `datacenter.dc`) |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `-t, --tag <repo:tag>` | Tag for the root datacenter artifact (required) |
+| Option                           | Description                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------- |
+| `-t, --tag <repo:tag>`           | Tag for the root datacenter artifact (required)                               |
 | `--artifact-tag <name=repo:tag>` | Override tag for a specific module artifact (can be specified multiple times) |
-| `-f, --file <path>` | Path to datacenter.dc if not in the default location |
-| `--yes, -y` | Non-interactive mode: skip confirmation prompts (for CI/CD) |
-| `--dry-run` | Show what would be built without actually building |
+| `-f, --file <path>`              | Path to datacenter.dc if not in the default location                          |
+| `--yes, -y`                      | Non-interactive mode: skip confirmation prompts (for CI/CD)                   |
+| `--dry-run`                      | Show what would be built without actually building                            |
 
 **Child Artifact Naming Convention:**
 
@@ -3167,6 +3176,7 @@ Datacenter modules are compiled into executable container images that bundle the
 ```
 
 For example:
+
 - Root: `myregistry.io/myorg/aws-prod:v1.0.0`
 - K8s cluster module: `myregistry.io/myorg/aws-prod-module-k8s:v1.0.0`
 - Namespace module: `myregistry.io/myorg/aws-prod-module-namespace:v1.0.0`
@@ -3176,15 +3186,16 @@ For example:
 **Module Image Structure:**
 
 Each module is built into a container image that:
+
 1. Contains the IaC templates (Pulumi program or OpenTofu module)
 2. Includes the appropriate runtime (Pulumi CLI, OpenTofu CLI)
-3. Exposes a standard interface for arcctl to invoke with inputs and receive outputs
+3. Exposes a standard interface for cldctl to invoke with inputs and receive outputs
 4. Is self-contained and executable without external dependencies (except cloud credentials)
 
 **Interactive Mode (default):**
 
 ```
-$ arcctl build datacenter . -t myregistry.io/myorg/aws-prod:v1.0.0
+$ cldctl build datacenter . -t myregistry.io/myorg/aws-prod:v1.0.0
 
 Building datacenter: aws-production
 
@@ -3208,7 +3219,7 @@ Proceed with build? [Y/n]:
 **Non-Interactive Mode (CI/CD):**
 
 ```
-$ arcctl build datacenter . -t myregistry.io/myorg/aws-prod:v1.0.0 --yes
+$ cldctl build datacenter . -t myregistry.io/myorg/aws-prod:v1.0.0 --yes
 
 Building datacenter: aws-production
 [info] Root artifact: myregistry.io/myorg/aws-prod:v1.0.0
@@ -3226,12 +3237,12 @@ Building datacenter: aws-production
 
 ```bash
 # Override a specific module image
-arcctl build datacenter . \
+cldctl build datacenter . \
   -t myregistry.io/myorg/aws-prod:v1.0.0 \
   --artifact-tag module/k8s=myregistry.io/myorg/shared-k8s-module:v2.0.0
 
 # Use shared modules from another registry
-arcctl build datacenter . \
+cldctl build datacenter . \
   -t myregistry.io/myorg/aws-prod:v1.0.0 \
   --artifact-tag module/postgres_cluster=myregistry.io/shared-postgres:latest \
   --artifact-tag module/redis=myregistry.io/shared-redis:latest
@@ -3241,196 +3252,197 @@ arcctl build datacenter . \
 
 ```bash
 # Basic build
-arcctl build datacenter . -t ghcr.io/myorg/aws-prod:v1.0.0
+cldctl build datacenter . -t ghcr.io/myorg/aws-prod:v1.0.0
 
 # CI/CD build (non-interactive) - using shorthand
-arcctl build dc . -t ghcr.io/myorg/aws-prod:$CI_COMMIT_SHA --yes
+cldctl build dc . -t ghcr.io/myorg/aws-prod:$CI_COMMIT_SHA --yes
 
 # Build from specific file
-arcctl build datacenter ./datacenters/aws -f datacenter.production.dc -t ghcr.io/myorg/aws-prod:v1.0.0
+cldctl build datacenter ./datacenters/aws -f datacenter.production.dc -t ghcr.io/myorg/aws-prod:v1.0.0
 ```
 
 ### Datacenter Tag Commands
 
-#### `arcctl tag datacenter`
+#### `cldctl tag datacenter`
 
 Create a new tag for an existing datacenter artifact and all its module artifacts.
 
 **Synopsis:**
 
 ```bash
-arcctl tag datacenter <source> <target> [options]
+cldctl tag datacenter <source> <target> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument   | Description                          |
+| ---------- | ------------------------------------ |
 | `<source>` | Source datacenter artifact reference |
-| `<target>` | Target tag for the datacenter |
+| `<target>` | Target tag for the datacenter        |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--artifact-tag <name=repo:tag>` | Override tag for a specific module artifact |
-| `--yes, -y` | Non-interactive mode: skip confirmation prompts |
+| Option                           | Description                                     |
+| -------------------------------- | ----------------------------------------------- |
+| `--artifact-tag <name=repo:tag>` | Override tag for a specific module artifact     |
+| `--yes, -y`                      | Non-interactive mode: skip confirmation prompts |
 
 **Example:**
 
 ```bash
 # Tag a version as latest
-arcctl tag datacenter ghcr.io/myorg/aws-prod:v1.0.0 ghcr.io/myorg/aws-prod:latest
+cldctl tag datacenter ghcr.io/myorg/aws-prod:v1.0.0 ghcr.io/myorg/aws-prod:latest
 
 # Tag for promotion
-arcctl tag datacenter ghcr.io/myorg/aws-prod:v1.0.0 ghcr.io/myorg/aws-prod:stable --yes
+cldctl tag datacenter ghcr.io/myorg/aws-prod:v1.0.0 ghcr.io/myorg/aws-prod:stable --yes
 ```
 
 ### Datacenter Push Commands
 
-#### `arcctl push datacenter`
+#### `cldctl push datacenter`
 
 Push a datacenter artifact and all its module artifacts to an OCI registry.
 
 **Synopsis:**
 
 ```bash
-arcctl push datacenter <repo:tag> [options]
+cldctl push datacenter <repo:tag> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument     | Description                           |
+| ------------ | ------------------------------------- |
 | `<repo:tag>` | Datacenter artifact reference to push |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
+| Option      | Description                                     |
+| ----------- | ----------------------------------------------- |
 | `--yes, -y` | Non-interactive mode: skip confirmation prompts |
 
 **Example:**
 
 ```bash
 # Push to registry
-arcctl push datacenter ghcr.io/myorg/aws-prod:v1.0.0
+cldctl push datacenter ghcr.io/myorg/aws-prod:v1.0.0
 
 # CI/CD push (non-interactive)
-arcctl push datacenter ghcr.io/myorg/aws-prod:$CI_COMMIT_SHA --yes
+cldctl push datacenter ghcr.io/myorg/aws-prod:$CI_COMMIT_SHA --yes
 ```
 
 ### Datacenter Deploy Commands
 
-#### `arcctl deploy datacenter`
+#### `cldctl deploy datacenter`
 
 Create a new datacenter or update an existing one by applying a datacenter configuration. This command provisions or updates the datacenter-level infrastructure (shared resources like Kubernetes clusters, VPCs, etc.) defined in the datacenter config.
 
 **Synopsis:**
 
 ```bash
-arcctl deploy datacenter <name> <config> [options]
+cldctl deploy datacenter <name> <config> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument | Description                                                                                |
+| -------- | ------------------------------------------------------------------------------------------ |
 | `<name>` | Name for the datacenter (used to identify the datacenter in state and subsequent commands) |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `-c, --config <config-ref>` | Datacenter configuration reference (required). Can be a local path or OCI image reference |
-| `--var <key=value>` | Set a datacenter variable (can be specified multiple times) |
-| `--var-file <path>` | Load variables from a `.dcvars` file (HCL syntax) |
-| `--auto-approve` | Skip interactive approval of the execution plan |
-| `--refresh-only` | Only refresh state, don't apply changes |
-| `--destroy` | Destroy the datacenter and all its resources |
-| `--target <module>` | Target a specific module for deployment (can be specified multiple times) |
-| `--backend <type>` | State backend type: `local` (default), `s3`, `gcs`, `azurerm` |
-| `--backend-config <key=value>` | Backend-specific configuration (can be specified multiple times) |
+| Option                         | Description                                                                               |
+| ------------------------------ | ----------------------------------------------------------------------------------------- |
+| `-c, --config <config-ref>`    | Datacenter configuration reference (required). Can be a local path or OCI image reference |
+| `--var <key=value>`            | Set a datacenter variable (can be specified multiple times)                               |
+| `--var-file <path>`            | Load variables from a `.dcvars` file (HCL syntax)                                         |
+| `--auto-approve`               | Skip interactive approval of the execution plan                                           |
+| `--refresh-only`               | Only refresh state, don't apply changes                                                   |
+| `--destroy`                    | Destroy the datacenter and all its resources                                              |
+| `--target <module>`            | Target a specific module for deployment (can be specified multiple times)                 |
+| `--backend <type>`             | State backend type: `local` (default), `s3`, `gcs`, `azurerm`                             |
+| `--backend-config <key=value>` | Backend-specific configuration (can be specified multiple times)                          |
 
 **State Backend Configuration:**
 
-State backend can be configured via command flags or environment variables, similar to Terraform. Environment variables use the pattern `ARCCTL_BACKEND_<BACKEND>_<KEY>`:
+State backend can be configured via command flags or environment variables, similar to Terraform. Environment variables use the pattern `CLDCTL_BACKEND_<BACKEND>_<KEY>`:
 
 ```bash
 # Local state (default) - stores in current working directory
-arcctl deploy datacenter my-dc ./dc
-# State written to: .arcctl/my-dc/
+cldctl deploy datacenter my-dc ./dc
+# State written to: .cldctl/my-dc/
 
 # Custom local state path via flag
-arcctl deploy datacenter my-dc ./dc \
+cldctl deploy datacenter my-dc ./dc \
   --backend local \
   --backend-config path=./custom/state/path
 
 # Custom local state path via env var
-export ARCCTL_BACKEND=local
-export ARCCTL_BACKEND_LOCAL_PATH=./custom/state/path
-arcctl deploy datacenter my-dc ./dc
+export CLDCTL_BACKEND=local
+export CLDCTL_BACKEND_LOCAL_PATH=./custom/state/path
+cldctl deploy datacenter my-dc ./dc
 
 # S3 backend via flags
-arcctl deploy datacenter my-dc ./dc \
+cldctl deploy datacenter my-dc ./dc \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1 \
   --backend-config key=datacenters/my-dc
 
 # S3 backend via environment variables
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
-export ARCCTL_BACKEND_S3_KEY=datacenters/my-dc
-arcctl deploy datacenter my-dc ./dc
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
+export CLDCTL_BACKEND_S3_KEY=datacenters/my-dc
+cldctl deploy datacenter my-dc ./dc
 ```
 
 **Environment Variable Pattern:**
 
-| Environment Variable | Description |
-|---------------------|-------------|
-| `ARCCTL_BACKEND` | Backend type (`local`, `s3`, `gcs`, `azurerm`) |
-| `ARCCTL_BACKEND_<BACKEND>_<KEY>` | Backend-specific config (e.g., `ARCCTL_BACKEND_S3_BUCKET`) |
+| Environment Variable             | Description                                                |
+| -------------------------------- | ---------------------------------------------------------- |
+| `CLDCTL_BACKEND`                 | Backend type (`local`, `s3`, `gcs`, `azurerm`)             |
+| `CLDCTL_BACKEND_<BACKEND>_<KEY>` | Backend-specific config (e.g., `CLDCTL_BACKEND_S3_BUCKET`) |
 
 **Backend Configuration Options:**
 
-| Backend | Config Key | Environment Variable | Description |
-|---------|-----------|---------------------|-------------|
-| `local` | `path` | `ARCCTL_BACKEND_LOCAL_PATH` | State directory path (default: `.arcctl/`) |
-| `s3` | `bucket` | `ARCCTL_BACKEND_S3_BUCKET` | S3 bucket name (required) |
-| `s3` | `region` | `ARCCTL_BACKEND_S3_REGION` | AWS region (required) |
-| `s3` | `key` | `ARCCTL_BACKEND_S3_KEY` | State file key/path prefix |
-| `s3` | `endpoint` | `ARCCTL_BACKEND_S3_ENDPOINT` | Custom S3 endpoint (for MinIO, R2, etc.) |
-| `s3` | `access_key` | `ARCCTL_BACKEND_S3_ACCESS_KEY` or `AWS_ACCESS_KEY_ID` | AWS access key |
-| `s3` | `secret_key` | `ARCCTL_BACKEND_S3_SECRET_KEY` or `AWS_SECRET_ACCESS_KEY` | AWS secret key |
-| `gcs` | `bucket` | `ARCCTL_BACKEND_GCS_BUCKET` | GCS bucket name (required) |
-| `gcs` | `prefix` | `ARCCTL_BACKEND_GCS_PREFIX` | State file prefix |
-| `azurerm` | `container_name` | `ARCCTL_BACKEND_AZURERM_CONTAINER_NAME` | Azure container name (required) |
-| `azurerm` | `storage_account` | `ARCCTL_BACKEND_AZURERM_STORAGE_ACCOUNT` | Azure storage account (required) |
+| Backend   | Config Key        | Environment Variable                                      | Description                                |
+| --------- | ----------------- | --------------------------------------------------------- | ------------------------------------------ |
+| `local`   | `path`            | `CLDCTL_BACKEND_LOCAL_PATH`                               | State directory path (default: `.cldctl/`) |
+| `s3`      | `bucket`          | `CLDCTL_BACKEND_S3_BUCKET`                                | S3 bucket name (required)                  |
+| `s3`      | `region`          | `CLDCTL_BACKEND_S3_REGION`                                | AWS region (required)                      |
+| `s3`      | `key`             | `CLDCTL_BACKEND_S3_KEY`                                   | State file key/path prefix                 |
+| `s3`      | `endpoint`        | `CLDCTL_BACKEND_S3_ENDPOINT`                              | Custom S3 endpoint (for MinIO, R2, etc.)   |
+| `s3`      | `access_key`      | `CLDCTL_BACKEND_S3_ACCESS_KEY` or `AWS_ACCESS_KEY_ID`     | AWS access key                             |
+| `s3`      | `secret_key`      | `CLDCTL_BACKEND_S3_SECRET_KEY` or `AWS_SECRET_ACCESS_KEY` | AWS secret key                             |
+| `gcs`     | `bucket`          | `CLDCTL_BACKEND_GCS_BUCKET`                               | GCS bucket name (required)                 |
+| `gcs`     | `prefix`          | `CLDCTL_BACKEND_GCS_PREFIX`                               | State file prefix                          |
+| `azurerm` | `container_name`  | `CLDCTL_BACKEND_AZURERM_CONTAINER_NAME`                   | Azure container name (required)            |
+| `azurerm` | `storage_account` | `CLDCTL_BACKEND_AZURERM_STORAGE_ACCOUNT`                  | Azure storage account (required)           |
 
 **Config Reference Formats:**
 
 The `--config` flag accepts two formats:
 
 1. **Local path**: Path to a directory containing `datacenter.dc`
+
    ```bash
-   arcctl deploy datacenter my-dc ./datacenters/aws-prod
+   cldctl deploy datacenter my-dc ./datacenters/aws-prod
    ```
 
 2. **OCI image reference**: A built datacenter artifact in `repo:tag` format
    ```bash
-   arcctl deploy datacenter my-dc ghcr.io/myorg/aws-prod:v1.0.0
+   cldctl deploy datacenter my-dc ghcr.io/myorg/aws-prod:v1.0.0
    ```
 
 **Behavior:**
 
-1. **Plan Phase**: arcctl analyzes the datacenter configuration and current state to determine what changes need to be made
+1. **Plan Phase**: cldctl analyzes the datacenter configuration and current state to determine what changes need to be made
 2. **Approval Phase**: In interactive mode, displays the execution plan and prompts for confirmation
 3. **Apply Phase**: Executes each datacenter-level module in dependency order, updating state as each completes
 
 ```
-$ arcctl deploy datacenter aws-production ghcr.io/myorg/aws-prod:v1.0.0
+$ cldctl deploy datacenter aws-production ghcr.io/myorg/aws-prod:v1.0.0
 
 Datacenter: aws-production
 Config: ghcr.io/myorg/aws-prod:v1.0.0
@@ -3498,11 +3510,11 @@ Variables are resolved in the following order (later sources override earlier):
 1. Default values in `datacenter.dc`
 2. Values from `--var-file`
 3. Values from `--var` flags
-4. Environment variables (prefixed with `ARCCTL_VAR_`)
+4. Environment variables (prefixed with `CLDCTL_VAR_`)
 
 ```bash
 # Using multiple variable sources
-arcctl deploy datacenter my-dc \
+cldctl deploy datacenter my-dc \
   --config ./datacenters/aws-prod \
   --var-file ./vars/production.dcvars \
   --var region=us-west-2 \
@@ -3513,31 +3525,31 @@ arcctl deploy datacenter my-dc \
 
 ```bash
 # Deploy from local config
-arcctl deploy datacenter my-datacenter ./datacenters/aws-prod
+cldctl deploy datacenter my-datacenter ./datacenters/aws-prod
 
 # Deploy from OCI artifact
-arcctl deploy datacenter my-datacenter ghcr.io/myorg/aws-prod:v1.0.0
+cldctl deploy datacenter my-datacenter ghcr.io/myorg/aws-prod:v1.0.0
 
 # Deploy with variables
-arcctl deploy datacenter my-datacenter \
+cldctl deploy datacenter my-datacenter \
   --config ghcr.io/myorg/aws-prod:v1.0.0 \
   --var region=us-east-1 \
   --var cluster_name=production
 
 # Deploy with auto-approval (CI/CD)
-arcctl deploy datacenter my-datacenter \
+cldctl deploy datacenter my-datacenter \
   --config ghcr.io/myorg/aws-prod:v1.0.0 \
   --var-file ./vars/production.dcvars \
   --auto-approve
 
 # Destroy a datacenter
-arcctl deploy datacenter my-datacenter \
+cldctl deploy datacenter my-datacenter \
   --config ghcr.io/myorg/aws-prod:v1.0.0 \
   --destroy \
   --auto-approve
 
 # Update a specific module only
-arcctl deploy datacenter my-datacenter \
+cldctl deploy datacenter my-datacenter \
   --config ghcr.io/myorg/aws-prod:v1.0.0 \
   --target module.k8s
 ```
@@ -3548,50 +3560,50 @@ Environments are deployment targets that live within a datacenter. Each environm
 
 ### Environment Commands
 
-#### `arcctl list environment`
+#### `cldctl list environment`
 
 List all environments in the datacenter.
 
 **Synopsis:**
 
 ```bash
-arcctl list environment [backend-options]
+cldctl list environment [backend-options]
 ```
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
-| `--output <format>` | Output format: `table` (default), `json`, `yaml` |
+| Option                         | Description                                      |
+| ------------------------------ | ------------------------------------------------ |
+| `--backend <type>`             | State backend type (default: `local`)            |
+| `--backend-config <key=value>` | Backend-specific configuration                   |
+| `--output <format>`            | Output format: `table` (default), `json`, `yaml` |
 
 **Example:**
 
 ```bash
 # List environments using local state
-arcctl list environment
+cldctl list environment
 
 # List environments using S3 backend
-arcctl list environment \
+cldctl list environment \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 
 # List environments via env vars
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
-arcctl list environment
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
+cldctl list environment
 
 # Output as JSON
-arcctl list environment --output json
+cldctl list environment --output json
 ```
 
 **Output:**
 
 ```
-$ arcctl list environment
+$ cldctl list environment
 
 Datacenter: aws-production
 
@@ -3601,50 +3613,50 @@ production    healthy   3            2026-01-10 09:00:00  2026-01-29 08:15:00
 preview-123   healthy   2            2026-01-29 11:00:00  2026-01-29 11:05:00
 ```
 
-#### `arcctl get environment`
+#### `cldctl get environment`
 
 Get detailed information about a specific environment.
 
 **Synopsis:**
 
 ```bash
-arcctl get environment <name> [backend-options]
+cldctl get environment <name> [backend-options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument | Description      |
+| -------- | ---------------- |
 | `<name>` | Environment name |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
-| `--output <format>` | Output format: `table` (default), `json`, `yaml` |
+| Option                         | Description                                      |
+| ------------------------------ | ------------------------------------------------ |
+| `--backend <type>`             | State backend type (default: `local`)            |
+| `--backend-config <key=value>` | Backend-specific configuration                   |
+| `--output <format>`            | Output format: `table` (default), `json`, `yaml` |
 
 **Example:**
 
 ```bash
 # Get environment details
-arcctl get environment staging
+cldctl get environment staging
 
 # Get as JSON for scripting
-arcctl get environment staging --output json
+cldctl get environment staging --output json
 
 # With S3 backend
-arcctl get environment staging \
+cldctl get environment staging \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 ```
 
 **Output:**
 
 ```
-$ arcctl get environment staging --datacenter aws-production
+$ cldctl get environment staging --datacenter aws-production
 
 Environment: staging
 Datacenter:  aws-production
@@ -3668,36 +3680,36 @@ Resources:
   route       web-app/main      https://staging.example.com
 ```
 
-#### `arcctl create environment`
+#### `cldctl create environment`
 
 Create a new environment in the datacenter.
 
 **Synopsis:**
 
 ```bash
-arcctl create environment <name> [options]
+cldctl create environment <name> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument | Description                                             |
+| -------- | ------------------------------------------------------- |
 | `<name>` | Environment name (must be unique within the datacenter) |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--if-not-exists` | Exit successfully if environment already exists (useful for CI/CD) |
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
+| Option                         | Description                                                        |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `--if-not-exists`              | Exit successfully if environment already exists (useful for CI/CD) |
+| `--backend <type>`             | State backend type (default: `local`)                              |
+| `--backend-config <key=value>` | Backend-specific configuration                                     |
 
 **Behavior:**
 
 Creates an empty environment entry in the datacenter state. The environment is ready to have components deployed to it after creation.
 
 ```
-$ arcctl create environment staging
+$ cldctl create environment staging
 
 Environment: staging
 Datacenter:  aws-production (from state backend)
@@ -3710,22 +3722,22 @@ Datacenter:  aws-production (from state backend)
 
 ```bash
 # Create a new environment
-arcctl create environment staging
+cldctl create environment staging
 
 # Create with S3 backend
-arcctl create environment staging \
+cldctl create environment staging \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 
 # CI/CD: Create if not exists (idempotent) - using shorthand
-arcctl create env preview-$PR_NUMBER --if-not-exists
+cldctl create env preview-$PR_NUMBER --if-not-exists
 
 # Via environment variables
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
-arcctl create env preview-123 --if-not-exists
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
+cldctl create env preview-123 --if-not-exists
 ```
 
 **CI/CD Usage:**
@@ -3736,7 +3748,7 @@ The `--if-not-exists` flag is particularly useful for preview environments in CI
 # GitHub Actions example
 - name: Create Preview Environment
   run: |
-    arcctl create environment preview-${{ github.event.pull_request.number }} \
+    cldctl create environment preview-${{ github.event.pull_request.number }} \
       --if-not-exists \
       --backend s3 \
       --backend-config bucket=${{ secrets.STATE_BUCKET }} \
@@ -3744,39 +3756,40 @@ The `--if-not-exists` flag is particularly useful for preview environments in CI
 ```
 
 When `--if-not-exists` is set and the environment already exists:
+
 - The command exits with code 0 (success)
 - A message is logged: `Environment "preview-123" already exists, skipping creation`
 
-#### `arcctl update environment`
+#### `cldctl update environment`
 
 Update an existing environment's properties.
 
 **Synopsis:**
 
 ```bash
-arcctl update environment <name> [options]
+cldctl update environment <name> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument | Description              |
+| -------- | ------------------------ |
 | `<name>` | Current environment name |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--name <new-name>` | Rename the environment |
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
+| Option                         | Description                           |
+| ------------------------------ | ------------------------------------- |
+| `--name <new-name>`            | Rename the environment                |
+| `--backend <type>`             | State backend type (default: `local`) |
+| `--backend-config <key=value>` | Backend-specific configuration        |
 
 **Behavior:**
 
 Updates environment metadata. Currently, the only editable property is the environment name.
 
 ```
-$ arcctl update environment staging --name production
+$ cldctl update environment staging --name production
 
 Environment: staging → production
 Datacenter:  aws-production (from state backend)
@@ -3789,13 +3802,13 @@ Datacenter:  aws-production (from state backend)
 
 ```bash
 # Rename an environment
-arcctl update environment staging --name production
+cldctl update environment staging --name production
 
 # Rename with S3 backend
-arcctl update environment staging \
+cldctl update environment staging \
   --name production \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 ```
 
@@ -3804,29 +3817,29 @@ arcctl update environment staging \
 - Renaming an environment updates all state references but does not affect deployed resources
 - Deployed components continue running; only the environment identifier changes
 
-#### `arcctl destroy environment`
+#### `cldctl destroy environment`
 
 Destroy an environment and all its resources.
 
 **Synopsis:**
 
 ```bash
-arcctl destroy environment <name> [options]
+cldctl destroy environment <name> [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument | Description                 |
+| -------- | --------------------------- |
 | `<name>` | Environment name to destroy |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--auto-approve` | Skip interactive confirmation |
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
+| Option                         | Description                           |
+| ------------------------------ | ------------------------------------- |
+| `--auto-approve`               | Skip interactive confirmation         |
+| `--backend <type>`             | State backend type (default: `local`) |
+| `--backend-config <key=value>` | Backend-specific configuration        |
 
 **Behavior:**
 
@@ -3836,7 +3849,7 @@ arcctl destroy environment <name> [options]
 4. Destroys all resources and removes environment state
 
 ```
-$ arcctl destroy environment preview-123
+$ cldctl destroy environment preview-123
 
 Environment: preview-123
 Datacenter:  aws-production (from state backend)
@@ -3873,39 +3886,40 @@ Type the environment name to confirm: preview-123
 
 ```bash
 # Interactive destroy (using local state backend)
-arcctl destroy environment preview-123
+cldctl destroy environment preview-123
 
 # Auto-approve (CI/CD cleanup) - using shorthand
-arcctl env destroy preview-123 --auto-approve
+cldctl env destroy preview-123 --auto-approve
 
 # With S3 backend
-arcctl destroy environment preview-123 \
+cldctl destroy environment preview-123 \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 
 # Via environment variables
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
-arcctl destroy environment preview-123 --auto-approve
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
+cldctl destroy environment preview-123 --auto-approve
 ```
 
 ### Environment State Management
 
 Each state backend is scoped to a single datacenter. This means you don't need to specify the datacenter name when running environment commands—the backend configuration implicitly identifies which datacenter you're working with.
 
-When you run environment commands, arcctl:
+When you run environment commands, cldctl:
 
 1. **Connects to the state backend** using the provided `--backend` and `--backend-config` options (or environment variables)
 2. **Reads the datacenter state** to get the datacenter name, shared resource outputs (cluster endpoints, etc.), and environment references
 3. **Reads/writes environment state** at the location managed by the datacenter state
 
 This design ensures:
+
 - One state backend = one datacenter (simple mental model)
 - All state (datacenter and environments) lives in a single backend location
 - The datacenter state serves as the "index" for all environments
-- Environment state files are automatically created, updated, and deleted by arcctl
+- Environment state files are automatically created, updated, and deleted by cldctl
 - No separate backend configuration is needed per-environment
 - No need to specify `--datacenter` on every command
 
@@ -3955,7 +3969,7 @@ The datacenter state file tracks all environments:
 
 ### Datacenter State Management
 
-arcctl manages state for datacenters and environments similarly to Terraform and Pulumi, tracking the mapping between configuration and real infrastructure resources.
+cldctl manages state for datacenters and environments similarly to Terraform and Pulumi, tracking the mapping between configuration and real infrastructure resources.
 
 #### State Structure
 
@@ -4035,7 +4049,7 @@ Each module's state file contains the native state format for the IaC plugin:
 - **Pulumi modules**: Contains Pulumi stack state (JSON format)
 - **OpenTofu modules**: Contains Terraform/OpenTofu state (JSON format)
 
-These state files are managed directly by the underlying IaC tool and encapsulated by arcctl.
+These state files are managed directly by the underlying IaC tool and encapsulated by cldctl.
 
 #### Environment State Isolation
 
@@ -4047,25 +4061,26 @@ Each environment has its own state files, separate from the datacenter and other
 
 ```bash
 # Concurrent operations are safe because state is isolated
-arcctl apply ./staging.yml &
-arcctl apply ./production.yml &
+cldctl apply ./staging.yml &
+cldctl apply ./production.yml &
 wait
 ```
 
 #### State Locking
 
-arcctl implements state locking to prevent concurrent modifications:
+cldctl implements state locking to prevent concurrent modifications:
 
 - **Datacenter-level lock**: Acquired when deploying datacenter-level modules
 - **Environment-level lock**: Acquired when deploying to a specific environment
 
 Locks are advisory and include:
+
 - Lock holder identity (user, hostname, or CI job ID)
 - Timestamp
 - Operation being performed
 
 ```
-$ arcctl deploy datacenter my-dc ./dc
+$ cldctl deploy datacenter my-dc ./dc
 
 Error: State is locked
 
@@ -4079,47 +4094,48 @@ Use --force-unlock to break the lock (use with caution).
 
 #### State Backends
 
-State backend is configured per-command via `--backend` and `--backend-config` flags or environment variables (similar to Terraform). Environment variables follow the pattern `ARCCTL_BACKEND_<BACKEND>_<KEY>`. If no backend is specified, state is stored locally in the current working directory.
+State backend is configured per-command via `--backend` and `--backend-config` flags or environment variables (similar to Terraform). Environment variables follow the pattern `CLDCTL_BACKEND_<BACKEND>_<KEY>`. If no backend is specified, state is stored locally in the current working directory.
 
 **Local State (default):**
 
 ```bash
-# State stored in .arcctl/<datacenter-name>/
-arcctl deploy datacenter my-dc ./dc
+# State stored in .cldctl/<datacenter-name>/
+cldctl deploy datacenter my-dc ./dc
 
 # Custom local path via flags
-arcctl deploy datacenter my-dc ./dc \
+cldctl deploy datacenter my-dc ./dc \
   --backend local \
-  --backend-config path=/var/lib/arcctl/state
+  --backend-config path=/var/lib/cldctl/state
 
 # Custom local path via env vars
-export ARCCTL_BACKEND=local
-export ARCCTL_BACKEND_LOCAL_PATH=/var/lib/arcctl/state
-arcctl deploy datacenter my-dc ./dc
+export CLDCTL_BACKEND=local
+export CLDCTL_BACKEND_LOCAL_PATH=/var/lib/cldctl/state
+cldctl deploy datacenter my-dc ./dc
 ```
 
 **Remote State via Flags:**
 
 ```bash
 # S3 backend
-arcctl deploy datacenter my-dc ./dc \
+cldctl deploy datacenter my-dc ./dc \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 ```
 
 **Remote State via Environment Variables:**
 
 ```bash
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
 
-arcctl deploy datacenter my-dc ./dc
+cldctl deploy datacenter my-dc ./dc
 ```
 
 Supported backends:
-- `local` - Local filesystem (default, stores in `.arcctl/`)
+
+- `local` - Local filesystem (default, stores in `.cldctl/`)
 - `s3` - S3-compatible storage (AWS S3, MinIO, DigitalOcean Spaces, Cloudflare R2)
 - `gcs` - Google Cloud Storage
 - `azurerm` - Azure Blob Storage
@@ -4130,7 +4146,7 @@ When a component or datacenter is built, source references (`build:` blocks) are
 
 #### Component: Source vs Compiled Form
 
-**Source Form (architect.yml - developer writes this):**
+**Source Form (cloud.component.yml - developer writes this):**
 
 ```yaml
 name: my-app
@@ -4225,14 +4241,14 @@ To support both source and compiled forms, the migrations schema accepts either 
 
 **Database Migrations Properties (updated):**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `migrations.build` | object | Build configuration for migration container (source form, mutually exclusive with `image`) |
-| `migrations.build.context` | string | Build context directory |
-| `migrations.build.dockerfile` | string | Path to Dockerfile within context (default: `"Dockerfile"`) |
-| `migrations.image` | string | Pre-built migration container image (compiled form, mutually exclusive with `build`) |
-| `migrations.command` | string[] | Command to run migrations (overrides container default) |
-| `migrations.environment` | map | Additional environment variables for migration container |
+| Property                      | Type     | Description                                                                                |
+| ----------------------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `migrations.build`            | object   | Build configuration for migration container (source form, mutually exclusive with `image`) |
+| `migrations.build.context`    | string   | Build context directory                                                                    |
+| `migrations.build.dockerfile` | string   | Path to Dockerfile within context (default: `"Dockerfile"`)                                |
+| `migrations.image`            | string   | Pre-built migration container image (compiled form, mutually exclusive with `build`)       |
+| `migrations.command`          | string[] | Command to run migrations (overrides container default)                                    |
+| `migrations.environment`      | map      | Additional environment variables for migration container                                   |
 
 **Example - Using pre-built migration image:**
 
@@ -4249,49 +4265,49 @@ databases:
 
 These commands provide a simplified workflow for creating and managing ephemeral environments, ideal for local development and testing.
 
-#### `arcctl up`
+#### `cldctl up`
 
 Create and run an ephemeral environment. By default, the command stays attached and destroys the environment on Ctrl+C.
 
 **Synopsis:**
 
 ```bash
-arcctl up [config-ref] [options]
+cldctl up [config-ref] [options]
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument       | Description                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
 | `[config-ref]` | Optional. Component image, local component path, or local environment path. Defaults to current directory |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `-d, --detach` | Detach after environment is ready (leave running in background) |
-| `-n, --name <name>` | Environment name (default: auto-generated from directory name + random suffix) |
-| `--var <key=value>` | Set a variable (can be specified multiple times) |
-| `--var-file <path>` | Load variables from a `.dcvars` file |
-| `--backend <type>` | State backend type (default: `local`) |
-| `--backend-config <key=value>` | Backend-specific configuration |
-| `--timeout <duration>` | Timeout for environment to become ready (default: `10m`) |
+| Option                         | Description                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------ |
+| `-d, --detach`                 | Detach after environment is ready (leave running in background)                |
+| `-n, --name <name>`            | Environment name (default: auto-generated from directory name + random suffix) |
+| `--var <key=value>`            | Set a variable (can be specified multiple times)                               |
+| `--var-file <path>`            | Load variables from a `.dcvars` file                                           |
+| `--backend <type>`             | State backend type (default: `local`)                                          |
+| `--backend-config <key=value>` | Backend-specific configuration                                                 |
+| `--timeout <duration>`         | Timeout for environment to become ready (default: `10m`)                       |
 
 **Config Detection:**
 
-When no `config-ref` is provided, arcctl searches the current directory for (in order):
+When no `config-ref` is provided, cldctl searches the current directory for (in order):
 
 1. `environment.yml` or `environment.yaml` - Environment configuration
-2. `architect.yml` or `architect.yaml` - Component configuration
+2. `cloud.component.yml` or `cloud.component.yaml` - Component configuration
 
-If a component config is found, arcctl creates a minimal environment with just that component.
+If a component config is found, cldctl creates a minimal environment with just that component.
 
 **Default Filenames:**
 
-| File | Purpose |
-|------|---------|
-| `environment.yml` | Environment configuration (multiple components) |
-| `architect.yml` | Component configuration (single component) |
+| File                  | Purpose                                         |
+| --------------------- | ----------------------------------------------- |
+| `environment.yml`     | Environment configuration (multiple components) |
+| `cloud.component.yml` | Component configuration (single component)      |
 
 **Behavior (Attached Mode - Default):**
 
@@ -4303,10 +4319,10 @@ If a component config is found, arcctl creates a minimal environment with just t
 6. **Cleanup on Exit**: Destroy environment when user presses Ctrl+C
 
 ```
-$ arcctl up
+$ cldctl up
 
 Detecting configuration...
-Found: ./architect.yml (component: web-app)
+Found: ./cloud.component.yml (component: web-app)
 
 Creating ephemeral environment: web-app-a1b2c3
 Datacenter: aws-production (from state backend)
@@ -4345,13 +4361,13 @@ Environment destroyed. Goodbye!
 
 **Behavior (Detached Mode - `-d`):**
 
-With `-d`, arcctl exits after the environment is ready, leaving it running:
+With `-d`, cldctl exits after the environment is ready, leaving it running:
 
 ```
-$ arcctl up -d
+$ cldctl up -d
 
 Detecting configuration...
-Found: ./architect.yml (component: web-app)
+Found: ./cloud.component.yml (component: web-app)
 
 Creating ephemeral environment: web-app-a1b2c3
 Datacenter: aws-production (from state backend)
@@ -4370,7 +4386,7 @@ Status:      running
 Routes:
   main → https://web-app-a1b2c3.dev.example.com
 
-Run 'arcctl env destroy web-app-a1b2c3' to destroy the environment.
+Run 'cldctl env destroy web-app-a1b2c3' to destroy the environment.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -4378,30 +4394,30 @@ Run 'arcctl env destroy web-app-a1b2c3' to destroy the environment.
 
 ```bash
 # Auto-detect config in current directory
-arcctl up
+cldctl up
 
 # Specify a component image
-arcctl up ghcr.io/myorg/web-app:v1.5.0
+cldctl up ghcr.io/myorg/web-app:v1.5.0
 
 # Specify a local component path
-arcctl up ./services/web-app
+cldctl up ./services/web-app
 
 # Specify an environment config
-arcctl up ./environments/dev.yml
+cldctl up ./environments/dev.yml
 
 # Run detached (background)
-arcctl up -d
+cldctl up -d
 
 # Custom environment name
-arcctl up --name my-test-env
+cldctl up --name my-test-env
 
 # With variables
-arcctl up --var log_level=debug --var feature_flag=true
+cldctl up --var log_level=debug --var feature_flag=true
 
 # With S3 backend (for shared/team environments)
-arcctl up -d \
+cldctl up -d \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1
 ```
 
@@ -4414,10 +4430,12 @@ By default, ephemeral environments are named using the pattern:
 ```
 
 Where:
+
 - `base-name` is derived from the directory name or component name
 - `random-suffix` is a 6-character alphanumeric string
 
 Examples:
+
 - `web-app-a1b2c3`
 - `my-project-x7y8z9`
 - `api-service-m3n4o5`
@@ -4425,16 +4443,16 @@ Examples:
 Custom names can be specified with `--name`:
 
 ```bash
-arcctl up --name my-feature-test
+cldctl up --name my-feature-test
 ```
 
 ### CI/CD Structured Output
 
-Traditional IaC tools hide their entire execution workflow inside a single `apply` command, making it difficult to see progress in CI systems. arcctl provides rich, structured output that integrates with CI system features for better visibility—without requiring multiple jobs or complex workflow generation.
+Traditional IaC tools hide their entire execution workflow inside a single `apply` command, making it difficult to see progress in CI systems. cldctl provides rich, structured output that integrates with CI system features for better visibility—without requiring multiple jobs or complex workflow generation.
 
 #### Design Philosophy
 
-Rather than trying to map infrastructure resources to CI jobs (which is impractical due to dynamic plans and CI system limitations), arcctl runs as a single CI job but outputs structured, CI-aware progress information that each platform can render optimally.
+Rather than trying to map infrastructure resources to CI jobs (which is impractical due to dynamic plans and CI system limitations), cldctl runs as a single CI job but outputs structured, CI-aware progress information that each platform can render optimally.
 
 **Why not separate CI jobs per resource?**
 
@@ -4444,17 +4462,17 @@ Rather than trying to map infrastructure resources to CI jobs (which is impracti
 
 #### CI Environment Auto-Detection
 
-arcctl automatically detects the CI environment and adjusts its output format accordingly:
+cldctl automatically detects the CI environment and adjusts its output format accordingly:
 
-| Environment Variable | Detected CI System |
-|---------------------|-------------------|
-| `GITHUB_ACTIONS=true` | GitHub Actions |
-| `GITLAB_CI=true` | GitLab CI |
-| `CIRCLECI=true` | CircleCI |
-| `TF_BUILD=true` | Azure Pipelines |
-| `BUILDKITE=true` | Buildkite |
-| `JENKINS_URL` set | Jenkins |
-| None detected | Plain terminal output |
+| Environment Variable  | Detected CI System    |
+| --------------------- | --------------------- |
+| `GITHUB_ACTIONS=true` | GitHub Actions        |
+| `GITLAB_CI=true`      | GitLab CI             |
+| `CIRCLECI=true`       | CircleCI              |
+| `TF_BUILD=true`       | Azure Pipelines       |
+| `BUILDKITE=true`      | Buildkite             |
+| `JENKINS_URL` set     | Jenkins               |
+| None detected         | Plain terminal output |
 
 Override auto-detection with `--ci <system>` or disable CI formatting with `--ci none`.
 
@@ -4462,15 +4480,15 @@ Override auto-detection with `--ci <system>` or disable CI formatting with `--ci
 
 **`--output` Flag Options:**
 
-| Format | Description |
-|--------|-------------|
-| `auto` | Auto-detect CI system and use native formatting (default) |
-| `json` | Machine-readable JSON for custom tooling |
-| `plain` | Plain text with no CI-specific formatting |
+| Format  | Description                                               |
+| ------- | --------------------------------------------------------- |
+| `auto`  | Auto-detect CI system and use native formatting (default) |
+| `json`  | Machine-readable JSON for custom tooling                  |
+| `plain` | Plain text with no CI-specific formatting                 |
 
 #### GitHub Actions Output
 
-arcctl uses GitHub Actions' native features for structured output:
+cldctl uses GitHub Actions' native features for structured output:
 
 - **Collapsible groups** (`::group::` / `::endgroup::`) for each wave and resource
 - **Job summaries** (written to `$GITHUB_STEP_SUMMARY`) with deployment graph
@@ -4518,9 +4536,9 @@ Wave 2:
 
 **Job Summary (Markdown):**
 
-arcctl writes a deployment summary to `$GITHUB_STEP_SUMMARY`:
+cldctl writes a deployment summary to `$GITHUB_STEP_SUMMARY`:
 
-```markdown
+````markdown
 ## 🚀 Deployment Summary
 
 **Datacenter:** aws-prod  
@@ -4536,21 +4554,23 @@ graph LR
     vpc --> rds[rds ✓]
     eks --> nginx[nginx ✓]
 ```
+````
 
 ### Resources
 
-| Resource | Action | Duration | Status |
-|----------|--------|----------|--------|
-| module.vpc | create | 45s | ✓ |
-| module.iam | create | 12s | ✓ |
-| module.eks | create | 8m 23s | ✓ |
-| module.rds | update | 2m 15s | ✓ |
-| module.nginx | create | 34s | ✓ |
+| Resource     | Action | Duration | Status |
+| ------------ | ------ | -------- | ------ |
+| module.vpc   | create | 45s      | ✓      |
+| module.iam   | create | 12s      | ✓      |
+| module.eks   | create | 8m 23s   | ✓      |
+| module.rds   | update | 2m 15s   | ✓      |
+| module.nginx | create | 34s      | ✓      |
+
 ```
 
 #### GitLab CI Output
 
-arcctl uses GitLab CI's collapsible sections and artifacts:
+cldctl uses GitLab CI's collapsible sections and artifacts:
 
 - **Collapsible sections** (`\e[0Ksection_start` / `section_end`) for waves
 - **Job artifacts** with deployment reports (JUnit XML for resource status)
@@ -4559,39 +4579,42 @@ arcctl uses GitLab CI's collapsible sections and artifacts:
 **Example Output:**
 
 ```
+
 section_start:1234567890:plan[collapsed=false]
 \r\e[0K📋 Execution Plan
 ┌─────────────────────────────────────────────────────────────┐
-│ Datacenter: aws-prod                                        │
-│ Changes:    +3 create, ~1 update, -0 destroy                │
+│ Datacenter: aws-prod │
+│ Changes: +3 create, ~1 update, -0 destroy │
 └─────────────────────────────────────────────────────────────┘
 section_end:1234567890:plan
 
 section_start:1234567891:wave_0[collapsed=false]
 \r\e[0K🌊 Wave 0 - Deploying 2 resources in parallel
-  ├─ module.vpc ........ ✓ created (45s)
-  └─ module.iam ........ ✓ created (12s)
+├─ module.vpc ........ ✓ created (45s)
+└─ module.iam ........ ✓ created (12s)
 section_end:1234567891:wave_0
 
 section_start:1234567892:wave_1[collapsed=true]
 \r\e[0K🌊 Wave 1 - Deploying 2 resources in parallel
-  ├─ module.eks ........ ✓ created (8m 23s)
-  └─ module.rds ........ ✓ updated (2m 15s)
+├─ module.eks ........ ✓ created (8m 23s)
+└─ module.rds ........ ✓ updated (2m 15s)
 section_end:1234567892:wave_1
+
 ```
 
 #### CircleCI Output
 
-CircleCI lacks native grouping, so arcctl uses clear visual separators and writes detailed artifacts:
+CircleCI lacks native grouping, so cldctl uses clear visual separators and writes detailed artifacts:
 
 **Example Output:**
 
 ```
+
 ════════════════════════════════════════════════════════════════
 📋 EXECUTION PLAN
 ════════════════════════════════════════════════════════════════
 Datacenter: aws-prod
-Changes:    +3 create, ~1 update, -0 destroy
+Changes: +3 create, ~1 update, -0 destroy
 
 Wave 0: module.vpc, module.iam
 Wave 1: module.eks, module.rds
@@ -4601,21 +4624,22 @@ Wave 2: module.nginx
 ────────────────────────────────────────────────────────────────
 🌊 WAVE 0 - Deploying 2 resources in parallel
 ────────────────────────────────────────────────────────────────
-  ├─ module.vpc ........ ✓ created (45s)
-  └─ module.iam ........ ✓ created (12s)
+├─ module.vpc ........ ✓ created (45s)
+└─ module.iam ........ ✓ created (12s)
 
 ────────────────────────────────────────────────────────────────
 🌊 WAVE 1 - Deploying 2 resources in parallel
 ────────────────────────────────────────────────────────────────
-  ├─ module.eks ........ ✓ created (8m 23s)
-  └─ module.rds ........ ✓ updated (2m 15s)
+├─ module.eks ........ ✓ created (8m 23s)
+└─ module.rds ........ ✓ updated (2m 15s)
+
 ```
 
-**Artifacts:** arcctl writes `deployment-report.json` and `deployment-report.xml` (JUnit format) for CircleCI's test results UI.
+**Artifacts:** cldctl writes `deployment-report.json` and `deployment-report.xml` (JUnit format) for CircleCI's test results UI.
 
 #### Azure Pipelines Output
 
-arcctl uses Azure Pipelines' logging commands:
+cldctl uses Azure Pipelines' logging commands:
 
 - **Collapsible groups** (`##[group]` / `##[endgroup]`)
 - **Task commands** (`##[section]`, `##vso[task.logissue]`)
@@ -4624,22 +4648,20 @@ arcctl uses Azure Pipelines' logging commands:
 **Example Output:**
 
 ```
+
 ##[group]📋 Execution Plan
 Datacenter: aws-prod
-Changes:    +3 create, ~1 update, -0 destroy
-##[endgroup]
+Changes: +3 create, ~1 update, -0 destroy ##[endgroup]
 
-##[group]🌊 Wave 0 - Deploying 2 resources in parallel
-##[section]Deploying module.vpc
-  module.vpc ........ ✓ created (45s)
-##[section]Deploying module.iam
-  module.iam ........ ✓ created (12s)
-##[endgroup]
+##[group]🌊 Wave 0 - Deploying 2 resources in parallel ##[section]Deploying module.vpc
+module.vpc ........ ✓ created (45s) ##[section]Deploying module.iam
+module.iam ........ ✓ created (12s) ##[endgroup]
+
 ```
 
 #### Buildkite Output
 
-arcctl uses Buildkite's annotation API and collapsible sections:
+cldctl uses Buildkite's annotation API and collapsible sections:
 
 - **Collapsible sections** (`---` and `+++` markers)
 - **Annotations** (via `buildkite-agent annotate`) for summary
@@ -4648,29 +4670,31 @@ arcctl uses Buildkite's annotation API and collapsible sections:
 **Example Output:**
 
 ```
+
 +++ 📋 Execution Plan
 Datacenter: aws-prod
-Changes:    +3 create, ~1 update, -0 destroy
+Changes: +3 create, ~1 update, -0 destroy
 
 --- 🌊 Wave 0
-  ├─ module.vpc ........ ✓ created (45s)
-  └─ module.iam ........ ✓ created (12s)
+├─ module.vpc ........ ✓ created (45s)
+└─ module.iam ........ ✓ created (12s)
 
 --- 🌊 Wave 1
-  ├─ module.eks ........ ✓ created (8m 23s)
-  └─ module.rds ........ ✓ updated (2m 15s)
+├─ module.eks ........ ✓ created (8m 23s)
+└─ module.rds ........ ✓ updated (2m 15s)
 
 +++ ✅ Deployment Complete
 3 created, 1 updated in 11m 09s
-```
+
+````
 
 #### JSON Output for Custom Tooling
 
 Use `--output json` for machine-readable output that can power custom dashboards, notifications, or integrations:
 
 ```bash
-arcctl dc deploy my-dc ./dc --output json
-```
+cldctl dc deploy my-dc ./dc --output json
+````
 
 **Output Structure:**
 
@@ -4688,30 +4712,84 @@ arcctl dc deploy my-dc ./dc --output json
       {
         "index": 0,
         "resources": [
-          {"id": "module.vpc", "name": "vpc", "type": "module", "action": "create", "dependencies": []},
-          {"id": "module.iam", "name": "iam", "type": "module", "action": "create", "dependencies": []}
+          {
+            "id": "module.vpc",
+            "name": "vpc",
+            "type": "module",
+            "action": "create",
+            "dependencies": []
+          },
+          {
+            "id": "module.iam",
+            "name": "iam",
+            "type": "module",
+            "action": "create",
+            "dependencies": []
+          }
         ]
       },
       {
         "index": 1,
         "resources": [
-          {"id": "module.eks", "name": "eks", "type": "module", "action": "create", "dependencies": ["module.vpc", "module.iam"]},
-          {"id": "module.rds", "name": "rds", "type": "module", "action": "update", "dependencies": ["module.vpc"]}
+          {
+            "id": "module.eks",
+            "name": "eks",
+            "type": "module",
+            "action": "create",
+            "dependencies": ["module.vpc", "module.iam"]
+          },
+          {
+            "id": "module.rds",
+            "name": "rds",
+            "type": "module",
+            "action": "update",
+            "dependencies": ["module.vpc"]
+          }
         ]
       }
     ],
-    "summary": {"create": 3, "update": 1, "destroy": 0, "total_waves": 3}
+    "summary": { "create": 3, "update": 1, "destroy": 0, "total_waves": 3 }
   },
   "execution": {
     "started_at": "2026-01-29T10:30:00Z",
     "completed_at": "2026-01-29T10:41:09Z",
     "duration_seconds": 669,
     "resources": [
-      {"id": "module.vpc", "action": "create", "status": "success", "duration_seconds": 45, "wave": 0},
-      {"id": "module.iam", "action": "create", "status": "success", "duration_seconds": 12, "wave": 0},
-      {"id": "module.eks", "action": "create", "status": "success", "duration_seconds": 503, "wave": 1},
-      {"id": "module.rds", "action": "update", "status": "success", "duration_seconds": 135, "wave": 1},
-      {"id": "module.nginx", "action": "create", "status": "success", "duration_seconds": 34, "wave": 2}
+      {
+        "id": "module.vpc",
+        "action": "create",
+        "status": "success",
+        "duration_seconds": 45,
+        "wave": 0
+      },
+      {
+        "id": "module.iam",
+        "action": "create",
+        "status": "success",
+        "duration_seconds": 12,
+        "wave": 0
+      },
+      {
+        "id": "module.eks",
+        "action": "create",
+        "status": "success",
+        "duration_seconds": 503,
+        "wave": 1
+      },
+      {
+        "id": "module.rds",
+        "action": "update",
+        "status": "success",
+        "duration_seconds": 135,
+        "wave": 1
+      },
+      {
+        "id": "module.nginx",
+        "action": "create",
+        "status": "success",
+        "duration_seconds": 34,
+        "wave": 2
+      }
     ]
   },
   "result": {
@@ -4730,13 +4808,14 @@ Use `--plan` to generate the execution plan without applying changes:
 
 ```bash
 # View plan in terminal
-arcctl dc deploy my-dc ./dc --plan
+cldctl dc deploy my-dc ./dc --plan
 
 # Export plan as JSON
-arcctl dc deploy my-dc ./dc --plan --output json > plan.json
+cldctl dc deploy my-dc ./dc --plan --output json > plan.json
 ```
 
 This is useful for:
+
 - **PR comments** - Show what would change before merging
 - **Approval workflows** - Review plan before applying
 - **Custom orchestration** - Parse plan and implement custom execution logic
@@ -4758,23 +4837,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup arcctl
-        uses: architect-io/setup-arcctl@v1
-      
+
+      - name: Setup cldctl
+        uses: davidthor/setup-cldctl@v1
+
       # On PRs, show plan only
       - name: Plan
         if: github.event_name == 'pull_request'
-        run: arcctl dc deploy my-dc ./dc --plan
-      
+        run: cldctl dc deploy my-dc ./dc --plan
+
       # On main, apply changes
       - name: Deploy
         if: github.ref == 'refs/heads/main'
-        run: arcctl dc deploy my-dc ./dc --auto-approve
+        run: cldctl dc deploy my-dc ./dc --auto-approve
         env:
-          ARCCTL_BACKEND: s3
-          ARCCTL_BACKEND_S3_BUCKET: ${{ secrets.STATE_BUCKET }}
-          ARCCTL_BACKEND_S3_REGION: us-east-1
+          CLDCTL_BACKEND: s3
+          CLDCTL_BACKEND_S3_BUCKET: ${{ secrets.STATE_BUCKET }}
+          CLDCTL_BACKEND_S3_REGION: us-east-1
 ```
 
 **GitLab CI with Environments:**
@@ -4787,14 +4866,14 @@ stages:
 plan:
   stage: plan
   script:
-    - arcctl dc deploy my-dc ./dc --plan
+    - cldctl dc deploy my-dc ./dc --plan
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 deploy:
   stage: deploy
   script:
-    - arcctl dc deploy my-dc ./dc --auto-approve
+    - cldctl dc deploy my-dc ./dc --auto-approve
   environment:
     name: production
   rules:
@@ -4808,7 +4887,7 @@ deploy:
 3. **Rich summaries** - Mermaid diagrams, tables, and timing in job summaries
 4. **Machine-readable** - JSON output for custom integrations
 5. **No workflow generation** - Plans are dynamic; output adapts automatically
-6. **Parallelization** - arcctl handles parallel execution within waves internally
+6. **Parallelization** - cldctl handles parallel execution within waves internally
 
 ### CI/CD Integration Examples
 
@@ -4820,43 +4899,43 @@ name: Build and Push Component
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Install arcctl
+
+      - name: Install cldctl
         run: |
-          curl -sSL https://get.arcctl.dev | sh
-      
+          curl -sSL https://get.cldctl.dev | sh
+
       - name: Build Component
         run: |
-          arcctl component build . \
+          cldctl component build . \
             -t ghcr.io/${{ github.repository }}:${{ github.ref_name }} \
             --yes
-      
+
       - name: Push Component
         run: |
-          arcctl component push ghcr.io/${{ github.repository }}:${{ github.ref_name }} --yes
-      
+          cldctl component push ghcr.io/${{ github.repository }}:${{ github.ref_name }} --yes
+
       - name: Tag as Latest
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          arcctl component tag \
+          cldctl component tag \
             ghcr.io/${{ github.repository }}:${{ github.ref_name }} \
             ghcr.io/${{ github.repository }}:latest \
             --yes
-          arcctl component push ghcr.io/${{ github.repository }}:latest --yes
+          cldctl component push ghcr.io/${{ github.repository }}:latest --yes
 ```
 
 #### GitLab CI
@@ -4864,22 +4943,22 @@ jobs:
 ```yaml
 build-component:
   stage: build
-  image: arcctl/cli:latest
+  image: cldctl/cli:latest
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - arcctl component build . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --yes
-    - arcctl component push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --yes
+    - cldctl component build . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --yes
+    - cldctl component push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --yes
   only:
     - main
     - tags
 
 tag-release:
   stage: release
-  image: arcctl/cli:latest
+  image: cldctl/cli:latest
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - arcctl component tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG --yes
-    - arcctl component push $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG --yes
+    - cldctl component tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG --yes
+    - cldctl component push $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG --yes
   only:
     - tags
 ```
@@ -4893,32 +4972,32 @@ on:
   push:
     branches: [main]
     paths:
-      - 'datacenters/**'
+      - "datacenters/**"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
       # State backend configuration via environment variables
-      ARCCTL_BACKEND: s3
-      ARCCTL_BACKEND_S3_BUCKET: ${{ secrets.STATE_BUCKET }}
-      ARCCTL_BACKEND_S3_REGION: us-east-1
+      CLDCTL_BACKEND: s3
+      CLDCTL_BACKEND_S3_BUCKET: ${{ secrets.STATE_BUCKET }}
+      CLDCTL_BACKEND_S3_REGION: us-east-1
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-      
-      - name: Install arcctl
-        run: curl -sSL https://get.arcctl.dev | sh
-      
+
+      - name: Install cldctl
+        run: curl -sSL https://get.cldctl.dev | sh
+
       - name: Deploy Datacenter
         run: |
-          arcctl deploy datacenter production \
+          cldctl deploy datacenter production \
             --config ./datacenters/aws-prod \
             --var-file ./vars/production.dcvars \
             --auto-approve
@@ -4928,7 +5007,7 @@ jobs:
 
 ## State Management
 
-arcctl uses persisted state to track infrastructure resources, similar to Terraform and Pulumi. State enables arcctl to map configuration to real resources, plan changes, and manage the full lifecycle of datacenters and environments.
+cldctl uses persisted state to track infrastructure resources, similar to Terraform and Pulumi. State enables cldctl to map configuration to real resources, plan changes, and manage the full lifecycle of datacenters and environments.
 
 For detailed state structure and CLI commands, see [Datacenter State Management](#datacenter-state-management) in the CLI Commands section.
 
@@ -4948,17 +5027,17 @@ State is organized to allow parallel operations:
 
 ### State Backends
 
-State backend is configured per-command via flags (`--backend`, `--backend-config`) or environment variables (`ARCCTL_BACKEND`, `ARCCTL_BACKEND_*`), similar to Terraform.
+State backend is configured per-command via flags (`--backend`, `--backend-config`) or environment variables (`CLDCTL_BACKEND`, `CLDCTL_BACKEND_*`), similar to Terraform.
 
 **Local State** (default):
 
-- State files stored in `.arcctl/` (current working directory)
+- State files stored in `.cldctl/` (current working directory)
 - Suitable for individual use and development
 - Path can be customized with `--backend-config path=<path>`
 
 **Remote State**:
 
-- Configured via `--backend` flag or `ARCCTL_BACKEND` environment variable
+- Configured via `--backend` flag or `CLDCTL_BACKEND` environment variable
 - Stored in cloud storage (S3, GCS, Azure)
 - Enables team collaboration
 - Required for CI/CD pipelines
@@ -4984,7 +5063,7 @@ Supported backends:
 
 ### Network Security
 
-- arcctl understands the relationship between resources
+- cldctl understands the relationship between resources
 - Datacenters can configure zero-trust networking
 - Only resources that should communicate can resolve each other
 
@@ -5034,11 +5113,11 @@ This is achieved because components don't contain infrastructure details—only 
 
 ### Supported Bucket Types
 
-| Type         | Description                                                      |
-| ------------ | ---------------------------------------------------------------- |
-| `s3`         | S3-compatible storage (AWS S3, MinIO, R2, DigitalOcean Spaces)   |
-| `gcs`        | Google Cloud Storage (planned)                                   |
-| `azure-blob` | Azure Blob Storage (planned)                                     |
+| Type         | Description                                                    |
+| ------------ | -------------------------------------------------------------- |
+| `s3`         | S3-compatible storage (AWS S3, MinIO, R2, DigitalOcean Spaces) |
+| `gcs`        | Google Cloud Storage (planned)                                 |
+| `azure-blob` | Azure Blob Storage (planned)                                   |
 
 (Extensible based on datacenter implementation)
 
@@ -5052,25 +5131,25 @@ This is achieved because components don't contain infrastructure details—only 
 
 ### HCL Expression Functions (Datacenter)
 
-| Function | Description              | Example                                       |
-| -------- | ------------------------ | --------------------------------------------- |
+| Function   | Description                   | Example                                          |
+| ---------- | ----------------------------- | ------------------------------------------------ |
 | `contains` | Check if array contains value | `contains(environment.nodes.*.type, "database")` |
-| `length` | Get array length         | `length(environment.resources.routes) > 0`    |
-| `merge`  | Merge two maps           | `merge(node.inputs, { namespace = "default" })` |
-| `coalesce` | Return first non-null value | `coalesce(node.inputs.port, 8080)` |
-| `format` | Format string            | `format("%s-%s", environment.name, node.name)` |
+| `length`   | Get array length              | `length(environment.resources.routes) > 0`       |
+| `merge`    | Merge two maps                | `merge(node.inputs, { namespace = "default" })`  |
+| `coalesce` | Return first non-null value   | `coalesce(node.inputs.port, 8080)`               |
+| `format`   | Format string                 | `format("%s-%s", environment.name, node.name)`   |
 
 ### Component Expression Syntax
 
 Components continue to use the `${{ }}` expression syntax for referencing values:
 
-| Function | Description              | Example                                       |
-| -------- | ------------------------ | --------------------------------------------- |
-| `where`  | Filter array by property | `${{ resources \| where "type" "postgres" }}` |
-| `length` | Get array length         | `${{ resources \| length }}`                  |
-| `join`   | Join array with delimiter | `${{ dependents.*.routes.*.url \| join "," }}` |
-| `first`  | Get first element of array | `${{ dependents.*.routes.*.url \| first }}` |
-| `map`    | Extract property from array | `${{ dependents.* \| map "name" }}` |
+| Function | Description                 | Example                                        |
+| -------- | --------------------------- | ---------------------------------------------- |
+| `where`  | Filter array by property    | `${{ resources \| where "type" "postgres" }}`  |
+| `length` | Get array length            | `${{ resources \| length }}`                   |
+| `join`   | Join array with delimiter   | `${{ dependents.*.routes.*.url \| join "," }}` |
+| `first`  | Get first element of array  | `${{ dependents.*.routes.*.url \| first }}`    |
+| `map`    | Extract property from array | `${{ dependents.* \| map "name" }}`            |
 
 **Wildcard Syntax:**
 
@@ -5092,28 +5171,28 @@ The `*` wildcard can be used to expand arrays in expressions:
 7. Should we support TCPRoute and UDPRoute types for non-HTTP workloads?
 8. How should cross-component route conflicts be detected and resolved? (e.g., two components claiming the same hostname/path)
 9. What OCI artifact format should be used for component/datacenter root artifacts? (e.g., custom media types, annotations, manifest structure)
-10. How should registry authentication be handled for `arcctl push component` and `arcctl push datacenter`? (e.g., Docker credential helpers, environment variables, config file)
+10. How should registry authentication be handled for `cldctl push component` and `cldctl push datacenter`? (e.g., Docker credential helpers, environment variables, config file)
 11. Should we support multi-platform builds for container child artifacts (e.g., linux/amd64 + linux/arm64)?
-12. How should state migration be handled when upgrading arcctl versions or changing state backends?
-13. Should we support state import for existing infrastructure not originally created by arcctl?
+12. How should state migration be handled when upgrading cldctl versions or changing state backends?
+13. Should we support state import for existing infrastructure not originally created by cldctl?
 14. How should sensitive values in state be encrypted? (e.g., at-rest encryption, integration with cloud KMS)
 
 ---
 
 ## Revision History
 
-| Version | Date       | Author | Changes                                              |
-| ------- | ---------- | ------ | ---------------------------------------------------- |
-| 0.13    | 2026-01-29 | -      | Redesigned CI/CD output: structured, CI-aware output instead of workflow generation |
-| 0.12    | 2026-01-29 | -      | Added arcctl up command for ephemeral environments |
-| 0.11    | 2026-01-29 | -      | Enhanced dockerBuild hook to support remote registry push for local source deployments |
+| Version | Date       | Author | Changes                                                                                  |
+| ------- | ---------- | ------ | ---------------------------------------------------------------------------------------- |
+| 0.13    | 2026-01-29 | -      | Redesigned CI/CD output: structured, CI-aware output instead of workflow generation      |
+| 0.12    | 2026-01-29 | -      | Added cldctl up command for ephemeral environments                                       |
+| 0.11    | 2026-01-29 | -      | Enhanced dockerBuild hook to support remote registry push for local source deployments   |
 | 0.10    | 2026-01-29 | -      | Added component deployment commands (list, get, deploy, destroy) with --environment flag |
-| 0.9     | 2026-01-29 | -      | Added environment CLI commands (list, get, create, update, destroy) |
-| 0.8     | 2026-01-29 | -      | Added datacenter deploy command and state management documentation |
-| 0.7     | 2026-01-29 | -      | Added CLI commands for build, tag, and push (components and datacenters) |
-| 0.6     | 2026-01-29 | -      | Added database migrations/seeding support with build context |
-| 0.5     | 2026-01-29 | -      | Added dependents expression syntax for upstream component references |
-| 0.4     | 2026-01-29 | -      | Added buckets resource type for blob storage (S3)   |
-| 0.3     | 2026-01-29 | -      | Replaced ingresses with Gateway API-style routes    |
-| 0.2     | 2026-01-29 | -      | Added functions resource type for serverless apps   |
-| 0.1     | 2026-01-29 | -      | Initial draft                                        |
+| 0.9     | 2026-01-29 | -      | Added environment CLI commands (list, get, create, update, destroy)                      |
+| 0.8     | 2026-01-29 | -      | Added datacenter deploy command and state management documentation                       |
+| 0.7     | 2026-01-29 | -      | Added CLI commands for build, tag, and push (components and datacenters)                 |
+| 0.6     | 2026-01-29 | -      | Added database migrations/seeding support with build context                             |
+| 0.5     | 2026-01-29 | -      | Added dependents expression syntax for upstream component references                     |
+| 0.4     | 2026-01-29 | -      | Added buckets resource type for blob storage (S3)                                        |
+| 0.3     | 2026-01-29 | -      | Replaced ingresses with Gateway API-style routes                                         |
+| 0.2     | 2026-01-29 | -      | Added functions resource type for serverless apps                                        |
+| 0.1     | 2026-01-29 | -      | Initial draft                                                                            |

@@ -24,7 +24,7 @@ resource "aws_apigatewayv2_domain_name" "this" {
 
   tags = {
     Name      = var.domain
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 

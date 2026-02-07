@@ -56,7 +56,7 @@ resource "digitalocean_droplet" "task" {
 
   user_data = local.user_data
 
-  tags = ["arcctl", "managed-by:arcctl", "task"]
+  tags = ["cldctl", "managed-by:cldctl", "task"]
 
   lifecycle {
     create_before_destroy = true

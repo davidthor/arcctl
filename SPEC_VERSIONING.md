@@ -1,12 +1,12 @@
 # Specification Versioning Guide
 
-This document describes the versioning strategy for component and datacenter specifications in arcctl.
+This document describes the versioning strategy for component and datacenter specifications in cldctl.
 
 ## Overview
 
-arcctl uses a versioned specification system that allows:
+cldctl uses a versioned specification system that allows:
 
-1. **Backward compatibility**: Old configuration files continue to work with new versions of arcctl
+1. **Backward compatibility**: Old configuration files continue to work with new versions of cldctl
 2. **Forward evolution**: The specification can evolve to support new features
 3. **Clear migration paths**: Users can upgrade configurations at their own pace
 4. **Internal stability**: Core logic works with a stable internal representation
@@ -25,13 +25,15 @@ Specifications use semantic versioning with the format `v<major>`:
 Configuration files can optionally declare their version:
 
 **Component (YAML):**
+
 ```yaml
-version: v1  # Optional, defaults to latest stable
+version: v1 # Optional, defaults to latest stable
 name: my-app
 # ...
 ```
 
 **Datacenter (HCL):**
+
 ```hcl
 version = "v1"  # Optional, defaults to latest stable
 
@@ -42,7 +44,7 @@ variable "region" {
 
 ### Version Detection
 
-When no version is specified, arcctl uses heuristics to detect the version:
+When no version is specified, cldctl uses heuristics to detect the version:
 
 1. Check for version-specific fields or syntax
 2. Fall back to the latest stable version
@@ -104,7 +106,7 @@ type InternalComponent struct {
     // Metadata
     Name        string
     Description string
-    
+
     // Resources
     Databases    []InternalDatabase
     Buckets      []InternalBucket
@@ -113,11 +115,11 @@ type InternalComponent struct {
     Services     []InternalService
     Routes       []InternalRoute
     Cronjobs     []InternalCronjob
-    
+
     // Configuration
     Variables    []InternalVariable
     Dependencies []InternalDependency
-    
+
     // Source information
     SourceVersion string  // Which schema version this came from
     SourcePath    string  // Original file path
@@ -136,10 +138,10 @@ type InternalDatabase struct {
 type InternalMigrations struct {
     // Source form (mutually exclusive with Image)
     Build *InternalBuild
-    
+
     // Compiled form (mutually exclusive with Build)
     Image string
-    
+
     // Common fields
     Command     []string
     Environment map[string]string
@@ -156,21 +158,21 @@ type InternalBuild struct {
 // InternalDeployment represents a deployment workload.
 type InternalDeployment struct {
     Name        string
-    
+
     // Image source (one of these is set)
     Image       string          // Pre-built image reference
     Build       *InternalBuild  // Build from source
-    
+
     // Container configuration
     Command     []string
     Entrypoint  []string
     Environment map[string]Expression  // Values may contain expressions
-    
+
     // Resource allocation
     CPU         string
     Memory      string
     Replicas    int
-    
+
     // Advanced configuration
     Volumes        []InternalVolume
     LivenessProbe  *InternalProbe
@@ -183,7 +185,7 @@ type InternalRoute struct {
     Type     string           // "http" or "grpc"
     Internal bool             // VPC-only access
     Rules    []InternalRouteRule
-    
+
     // Simplified form (alternative to Rules)
     Service  string           // Direct service reference
     Function string           // Direct function reference
@@ -218,13 +220,13 @@ package internal
 type InternalDatacenter struct {
     // Variables
     Variables []InternalVariable
-    
+
     // Datacenter-level modules
     Modules []InternalModule
-    
+
     // Environment configuration
     Environment InternalEnvironment
-    
+
     // Source information
     SourceVersion string
     SourcePath    string
@@ -233,16 +235,16 @@ type InternalDatacenter struct {
 // InternalModule represents an IaC module.
 type InternalModule struct {
     Name   string
-    
+
     // Source (one is set)
     Build  string  // Local path for source form
     Source string  // OCI reference for compiled form
-    
+
     // Configuration
     Plugin  string              // "pulumi", "opentofu", etc.
     Inputs  map[string]HCLExpr  // Input values (may be HCL expressions)
     When    HCLExpr             // Conditional expression
-    
+
     // Volume mounts
     Volumes []InternalVolumeMount
 }
@@ -295,7 +297,7 @@ type SchemaV1 struct {
     Version     string `yaml:"version,omitempty"`
     Name        string `yaml:"name"`
     Description string `yaml:"description,omitempty"`
-    
+
     Databases    map[string]DatabaseV1   `yaml:"databases,omitempty"`
     Buckets      map[string]BucketV1     `yaml:"buckets,omitempty"`
     Deployments  map[string]DeploymentV1 `yaml:"deployments,omitempty"`
@@ -303,7 +305,7 @@ type SchemaV1 struct {
     Services     map[string]ServiceV1    `yaml:"services,omitempty"`
     Routes       map[string]RouteV1      `yaml:"routes,omitempty"`
     Cronjobs     map[string]CronjobV1    `yaml:"cronjobs,omitempty"`
-    
+
     Variables    map[string]VariableV1   `yaml:"variables,omitempty"`
     Dependencies map[string]DependencyV1 `yaml:"dependencies,omitempty"`
 }
@@ -342,7 +344,7 @@ type RouteV1 struct {
     Type     string        `yaml:"type"`
     Internal bool          `yaml:"internal,omitempty"`
     Rules    []RouteRuleV1 `yaml:"rules,omitempty"`
-    
+
     // Simplified form
     Service  string `yaml:"service,omitempty"`
     Function string `yaml:"function,omitempty"`
@@ -360,8 +362,8 @@ package v1
 import (
     "fmt"
     "strings"
-    
-    "github.com/architect-io/arcctl/pkg/schema/component/internal"
+
+    "github.com/davidthor/arcctl/pkg/schema/component/internal"
 )
 
 // Transformer converts v1 schema to internal representation.
@@ -378,7 +380,7 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
         Description:   v1.Description,
         SourceVersion: "v1",
     }
-    
+
     // Transform databases
     for name, db := range v1.Databases {
         idb, err := t.transformDatabase(name, db)
@@ -387,13 +389,13 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
         }
         ic.Databases = append(ic.Databases, idb)
     }
-    
+
     // Transform buckets
     for name, b := range v1.Buckets {
         ib := t.transformBucket(name, b)
         ic.Buckets = append(ic.Buckets, ib)
     }
-    
+
     // Transform deployments
     for name, dep := range v1.Deployments {
         idep, err := t.transformDeployment(name, dep)
@@ -402,7 +404,7 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
         }
         ic.Deployments = append(ic.Deployments, idep)
     }
-    
+
     // Transform functions
     for name, fn := range v1.Functions {
         ifn, err := t.transformFunction(name, fn)
@@ -411,13 +413,13 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
         }
         ic.Functions = append(ic.Functions, ifn)
     }
-    
+
     // Transform services
     for name, svc := range v1.Services {
         isvc := t.transformService(name, svc)
         ic.Services = append(ic.Services, isvc)
     }
-    
+
     // Transform routes
     for name, rt := range v1.Routes {
         irt, err := t.transformRoute(name, rt)
@@ -426,7 +428,7 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
         }
         ic.Routes = append(ic.Routes, irt)
     }
-    
+
     // Transform cronjobs
     for name, cj := range v1.Cronjobs {
         icj, err := t.transformCronjob(name, cj)
@@ -435,19 +437,19 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
         }
         ic.Cronjobs = append(ic.Cronjobs, icj)
     }
-    
+
     // Transform variables
     for name, v := range v1.Variables {
         iv := t.transformVariable(name, v)
         ic.Variables = append(ic.Variables, iv)
     }
-    
+
     // Transform dependencies
     for name, d := range v1.Dependencies {
         id := t.transformDependency(name, d)
         ic.Dependencies = append(ic.Dependencies, id)
     }
-    
+
     return ic, nil
 }
 
@@ -456,20 +458,20 @@ func (t *Transformer) transformDatabase(name string, db DatabaseV1) (internal.In
     if err != nil {
         return internal.InternalDatabase{}, err
     }
-    
+
     idb := internal.InternalDatabase{
         Name:    name,
         Type:    dbType,
         Version: version,
     }
-    
+
     if db.Migrations != nil {
         idb.Migrations = &internal.InternalMigrations{
             Image:       db.Migrations.Image,
             Command:     db.Migrations.Command,
             Environment: db.Migrations.Environment,
         }
-        
+
         if db.Migrations.Build != nil {
             idb.Migrations.Build = &internal.InternalBuild{
                 Context:    db.Migrations.Build.Context,
@@ -477,7 +479,7 @@ func (t *Transformer) transformDatabase(name string, db DatabaseV1) (internal.In
             }
         }
     }
-    
+
     return idb, nil
 }
 
@@ -491,7 +493,7 @@ func (t *Transformer) transformDeployment(name string, dep DeploymentV1) (intern
         Memory:     dep.Memory,
         Replicas:   defaultInt(dep.Replicas, 1),
     }
-    
+
     if dep.Build != nil {
         idep.Build = &internal.InternalBuild{
             Context:    dep.Build.Context,
@@ -500,7 +502,7 @@ func (t *Transformer) transformDeployment(name string, dep DeploymentV1) (intern
             Args:       dep.Build.Args,
         }
     }
-    
+
     // Transform environment with expression detection
     idep.Environment = make(map[string]internal.Expression)
     for k, v := range dep.Environment {
@@ -509,7 +511,7 @@ func (t *Transformer) transformDeployment(name string, dep DeploymentV1) (intern
             IsTemplate: strings.Contains(v, "${{"),
         }
     }
-    
+
     // Transform volumes
     for _, vol := range dep.Volumes {
         idep.Volumes = append(idep.Volumes, internal.InternalVolume{
@@ -517,7 +519,7 @@ func (t *Transformer) transformDeployment(name string, dep DeploymentV1) (intern
             HostPath:  vol.HostPath,
         })
     }
-    
+
     // Transform probes
     if dep.LivenessProbe != nil {
         idep.LivenessProbe = t.transformProbe(dep.LivenessProbe)
@@ -525,7 +527,7 @@ func (t *Transformer) transformDeployment(name string, dep DeploymentV1) (intern
     if dep.ReadinessProbe != nil {
         idep.ReadinessProbe = t.transformProbe(dep.ReadinessProbe)
     }
-    
+
     return idep, nil
 }
 
@@ -569,10 +571,10 @@ type SchemaV2 struct {
     Version string `yaml:"version"`  // Now required in v2
     Name    string `yaml:"name"`
     // ...
-    
+
     // New in v2: Resource groups for organization
     ResourceGroups map[string]ResourceGroupV2 `yaml:"resourceGroups,omitempty"`
-    
+
     // Changed in v2: databases becomes compute.databases
     Compute ComputeV2 `yaml:"compute"`
 }
@@ -592,7 +594,7 @@ type ResourceGroupV2 struct {
 
 package v2
 
-import "github.com/architect-io/arcctl/pkg/schema/component/internal"
+import "github.com/davidthor/arcctl/pkg/schema/component/internal"
 
 type Transformer struct{}
 
@@ -601,7 +603,7 @@ func (t *Transformer) Transform(v2 *SchemaV2) (*internal.InternalComponent, erro
         Name:          v2.Name,
         SourceVersion: "v2",
     }
-    
+
     // Handle v2-specific transformations
     // Resource groups are flattened into the internal representation
     for _, group := range v2.ResourceGroups {
@@ -613,10 +615,10 @@ func (t *Transformer) Transform(v2 *SchemaV2) (*internal.InternalComponent, erro
             ic.Databases = append(ic.Databases, idb)
         }
     }
-    
+
     // Also handle top-level compute resources (if allowed in v2)
     // ...
-    
+
     return ic, nil
 }
 ```
@@ -634,19 +636,19 @@ func (l *versionDetectingLoader) detectVersion(data []byte) (string, error) {
     if err := yaml.Unmarshal(data, &versionOnly); err == nil && versionOnly.Version != "" {
         return versionOnly.Version, nil
     }
-    
+
     // Heuristic detection
     var probe struct {
         ResourceGroups interface{} `yaml:"resourceGroups"`
         Compute        interface{} `yaml:"compute"`
     }
     yaml.Unmarshal(data, &probe)
-    
+
     // v2 uses resourceGroups or compute blocks
     if probe.ResourceGroups != nil || probe.Compute != nil {
         return "v2", nil
     }
-    
+
     // Default to v1
     return "v1", nil
 }
@@ -680,13 +682,13 @@ Provide tooling to upgrade configurations:
 
 ```bash
 # Check current version and suggest upgrades
-arcctl component check-version ./architect.yml
+cldctl component check-version ./cloud.component.yml
 
 # Upgrade to latest version
-arcctl component upgrade ./architect.yml --to v2
+cldctl component upgrade ./cloud.component.yml --to v2
 
 # Preview upgrade without modifying file
-arcctl component upgrade ./architect.yml --to v2 --dry-run
+cldctl component upgrade ./cloud.component.yml --to v2 --dry-run
 ```
 
 ### Upgrade Implementation
@@ -701,49 +703,49 @@ func upgradeComponent(path, targetVersion string, dryRun bool) error {
     if err != nil {
         return err
     }
-    
+
     currentVersion := comp.SchemaVersion()
     if currentVersion == targetVersion {
         fmt.Printf("Component is already at version %s\n", targetVersion)
         return nil
     }
-    
+
     // Get the target version serializer
     serializer, err := getSerializer(targetVersion)
     if err != nil {
         return fmt.Errorf("unsupported target version: %s", targetVersion)
     }
-    
+
     // Serialize internal representation to target version
     output, warnings, err := serializer.Serialize(comp)
     if err != nil {
         return fmt.Errorf("upgrade failed: %w", err)
     }
-    
+
     // Print warnings about lossy conversions
     for _, w := range warnings {
         fmt.Fprintf(os.Stderr, "Warning: %s\n", w)
     }
-    
+
     if dryRun {
         fmt.Println(string(output))
         return nil
     }
-    
+
     // Backup original
     backupPath := path + ".bak"
     if err := copyFile(path, backupPath); err != nil {
         return fmt.Errorf("failed to create backup: %w", err)
     }
-    
+
     // Write upgraded file
     if err := os.WriteFile(path, output, 0644); err != nil {
         return fmt.Errorf("failed to write upgraded file: %w", err)
     }
-    
+
     fmt.Printf("Upgraded %s from %s to %s\n", path, currentVersion, targetVersion)
     fmt.Printf("Backup saved to %s\n", backupPath)
-    
+
     return nil
 }
 ```
@@ -754,7 +756,7 @@ func upgradeComponent(path, targetVersion string, dryRun bool) error {
 
 1. **Announce**: Deprecate version in release notes
 2. **Warn**: Emit warnings when deprecated version is used
-3. **Remove**: Remove support after 2 major arcctl releases
+3. **Remove**: Remove support after 2 major cldctl releases
 
 ### Deprecation Warnings
 
@@ -762,7 +764,7 @@ func upgradeComponent(path, targetVersion string, dryRun bool) error {
 // pkg/schema/component/loader.go
 
 var deprecatedVersions = map[string]string{
-    "v1": "v1 is deprecated and will be removed in arcctl 3.0. Run 'arcctl component upgrade' to migrate to v2.",
+    "v1": "v1 is deprecated and will be removed in cldctl 3.0. Run 'cldctl component upgrade' to migrate to v2.",
 }
 
 func (l *versionDetectingLoader) Load(path string) (Component, error) {
@@ -770,12 +772,12 @@ func (l *versionDetectingLoader) Load(path string) (Component, error) {
     if err != nil {
         return nil, err
     }
-    
+
     // Emit deprecation warning
     if warning, deprecated := deprecatedVersions[version]; deprecated {
         fmt.Fprintf(os.Stderr, "Warning: %s\n", warning)
     }
-    
+
     // Continue loading...
 }
 ```
@@ -807,14 +809,14 @@ Create a new major version when:
 // Good: Adding a new optional field
 type InternalDeployment struct {
     // Existing fields...
-    
-    // New in arcctl 2.1
+
+    // New in cldctl 2.1
     Sidecars []InternalSidecar  // Zero value is empty slice
 }
 
 // Bad: Renaming a field (breaks existing code)
 type InternalDeployment struct {
     // Renamed from LivenessProbe - DON'T DO THIS
-    HealthCheck *InternalProbe  
+    HealthCheck *InternalProbe
 }
 ```

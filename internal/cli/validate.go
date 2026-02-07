@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/errors"
-	"github.com/architect-io/arcctl/pkg/schema/component"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter"
-	"github.com/architect-io/arcctl/pkg/schema/environment"
+	"github.com/davidthor/arcctl/pkg/errors"
+	"github.com/davidthor/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter"
+	"github.com/davidthor/arcctl/pkg/schema/environment"
 	"github.com/spf13/cobra"
 )
 
@@ -37,18 +37,18 @@ func newValidateComponentCmd() *cobra.Command {
 		Long: `Validate a component configuration file without deploying.
 
 Examples:
-  arcctl validate component
-  arcctl validate component ./my-app
-  arcctl validate component -f custom-component.yml`,
+  cldctl validate component
+  cldctl validate component ./my-app
+  cldctl validate component -f custom-component.yml`,
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := "architect.yml"
+			path := "cloud.component.yml"
 			if len(args) > 0 {
 				if strings.HasSuffix(args[0], ".yml") || strings.HasSuffix(args[0], ".yaml") {
 					path = args[0]
 				} else {
-					path = filepath.Join(args[0], "architect.yml")
+					path = filepath.Join(args[0], "cloud.component.yml")
 				}
 			}
 			if file != "" {
@@ -65,14 +65,14 @@ Examples:
 		},
 	}
 
-	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to architect.yml if not in default location")
+	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to cloud.component.yml if not in default location")
 
 	return cmd
 }
 
 // formatValidationError extracts and displays validation error details
 func formatValidationError(err error) error {
-	// Try to extract arcctl error with details
+	// Try to extract cldctl error with details
 	var arcErr *errors.Error
 	if e, ok := err.(*errors.Error); ok {
 		arcErr = e
@@ -118,9 +118,9 @@ func newValidateDatacenterCmd() *cobra.Command {
 		Long: `Validate a datacenter configuration file without deploying.
 
 Examples:
-  arcctl validate datacenter
-  arcctl validate datacenter ./my-datacenter
-  arcctl validate datacenter -f custom-datacenter.hcl`,
+  cldctl validate datacenter
+  cldctl validate datacenter ./my-datacenter
+  cldctl validate datacenter -f custom-datacenter.hcl`,
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -174,9 +174,9 @@ func newValidateEnvironmentCmd() *cobra.Command {
 		Long: `Validate an environment configuration file without applying.
 
 Examples:
-  arcctl validate environment
-  arcctl validate environment ./envs/staging.yml
-  arcctl validate environment -f custom-environment.yml`,
+  cldctl validate environment
+  cldctl validate environment ./envs/staging.yml
+  cldctl validate environment -f custom-environment.yml`,
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

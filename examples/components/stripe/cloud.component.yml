@@ -1,0 +1,130 @@
+# Example: Stripe Payment Platform Configuration
+# A configuration passthrough component for centralizing Stripe payments across an environment.
+#
+# Stripe is a SaaS payment platform with no self-hosted option.
+# This component centralizes Stripe configuration so dependent applications can:
+#   - Access Stripe credentials via dependencies.<name>.outputs.<field>
+#   - Share consistent payment configuration across the environment
+#
+# Usage:
+#   1. Deploy this component once per environment
+#   2. Have your applications depend on it
+#   3. Access values via ${{ dependencies.stripe.outputs.publishable_key }}
+
+variables:
+  # Required: API keys from your Stripe dashboard
+  publishable_key:
+    description: "Stripe publishable key (pk_test_... or pk_live_...)"
+    required: true
+
+  secret_key:
+    description: "Stripe secret key (sk_test_... or sk_live_...)"
+    required: true
+    sensitive: true
+
+  # Webhook signing secrets - you may have multiple webhooks
+  webhook_secret:
+    description: "Primary webhook endpoint signing secret (whsec_...)"
+    required: false
+    sensitive: true
+
+  webhook_secret_connect:
+    description: "Connect webhook endpoint signing secret for connected accounts"
+    required: false
+    sensitive: true
+
+  # Optional: API configuration
+  api_version:
+    description: "Stripe API version to pin (e.g., 2024-12-18)"
+    required: false
+
+  # Optional: Stripe Connect settings
+  connect_client_id:
+    description: "OAuth client ID for Stripe Connect integrations"
+    required: false
+
+  # Optional: Customer portal settings
+  customer_portal_enabled:
+    description: "Whether Stripe Customer Portal is enabled"
+    default: "true"
+
+  # Optional: Payment method configuration
+  payment_methods:
+    description: "Comma-separated list of enabled payment methods (card,us_bank_account,etc.)"
+    default: "card"
+
+  # Optional: Currency settings
+  default_currency:
+    description: "Default currency for payments (ISO 4217 code)"
+    default: "usd"
+
+  # Optional: Test mode indicator
+  test_mode:
+    description: "Whether using test mode keys"
+    default: "false"
+
+  # Optional: Product-specific price IDs
+  credits_price_base:
+    description: "Stripe Price ID for base-tier credits (price_...)"
+    required: false
+
+  credits_price_20:
+    description: "Stripe Price ID for 20+ credits tier (price_...)"
+    required: false
+
+  credits_price_50:
+    description: "Stripe Price ID for 50+ credits tier (price_...)"
+    required: false
+
+# Outputs expose values to dependent components
+# Access via: ${{ dependencies.stripe.outputs.<name> }}
+outputs:
+  publishable_key:
+    description: "Stripe publishable key for frontend SDKs (Stripe.js)"
+    value: ${{ variables.publishable_key }}
+
+  secret_key:
+    description: "Stripe secret key for backend API calls"
+    value: ${{ variables.secret_key }}
+    sensitive: true
+
+  webhook_secret:
+    description: "Primary webhook signing secret"
+    value: ${{ variables.webhook_secret }}
+    sensitive: true
+
+  webhook_secret_connect:
+    description: "Connect webhook signing secret"
+    value: ${{ variables.webhook_secret_connect }}
+    sensitive: true
+
+  api_version:
+    description: "Stripe API version"
+    value: ${{ variables.api_version }}
+
+  connect_client_id:
+    description: "Stripe Connect OAuth client ID"
+    value: ${{ variables.connect_client_id }}
+
+  default_currency:
+    description: "Default currency for payments"
+    value: ${{ variables.default_currency }}
+
+  test_mode:
+    description: "Whether using test mode"
+    value: ${{ variables.test_mode }}
+
+  credits_price_base:
+    description: "Stripe Price ID for base-tier credits"
+    value: ${{ variables.credits_price_base }}
+
+  credits_price_20:
+    description: "Stripe Price ID for 20+ credits tier"
+    value: ${{ variables.credits_price_20 }}
+
+  credits_price_50:
+    description: "Stripe Price ID for 50+ credits tier"
+    value: ${{ variables.credits_price_50 }}
+
+# This component doesn't deploy any infrastructure.
+# It serves as a configuration hub for Stripe settings across your environment.

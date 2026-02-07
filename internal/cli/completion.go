@@ -15,18 +15,18 @@ func newCompletionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "completion [bash|zsh|fish|powershell]",
 		Short: "Generate shell completion scripts",
-		Long: `Generate shell completion scripts for arcctl.
+		Long: `Generate shell completion scripts for cldctl.
 
 To load completions:
 
 Bash:
-  $ source <(arcctl completion bash)
+  $ source <(cldctl completion bash)
 
   # To load completions for each session, execute once:
   # Linux:
-  $ arcctl completion bash > /etc/bash_completion.d/arcctl
+  $ cldctl completion bash > /etc/bash_completion.d/cldctl
   # macOS:
-  $ arcctl completion bash > $(brew --prefix)/etc/bash_completion.d/arcctl
+  $ cldctl completion bash > $(brew --prefix)/etc/bash_completion.d/cldctl
 
 Zsh:
   # If shell completion is not already enabled in your environment,
@@ -34,21 +34,21 @@ Zsh:
   $ echo "autoload -U compinit; compinit" >> ~/.zshrc
 
   # To load completions for each session, execute once:
-  $ arcctl completion zsh > "${fpath[1]}/_arcctl"
+  $ cldctl completion zsh > "${fpath[1]}/_cldctl"
 
   # You will need to start a new shell for this setup to take effect.
 
 Fish:
-  $ arcctl completion fish | source
+  $ cldctl completion fish | source
 
   # To load completions for each session, execute once:
-  $ arcctl completion fish > ~/.config/fish/completions/arcctl.fish
+  $ cldctl completion fish > ~/.config/fish/completions/cldctl.fish
 
 PowerShell:
-  PS> arcctl completion powershell | Out-String | Invoke-Expression
+  PS> cldctl completion powershell | Out-String | Invoke-Expression
 
   # To load completions for every new session, run:
-  PS> arcctl completion powershell > arcctl.ps1
+  PS> cldctl completion powershell > cldctl.ps1
   # and source this file from your PowerShell profile.
 `,
 		DisableFlagsInUseLine: true,
@@ -95,7 +95,7 @@ func completeComponentNames(cmd *cobra.Command, args []string, toComplete string
 	// In a real implementation, this would list components from the state or local files
 	components := []string{}
 
-	// Try to find local architect.yml files
+	// Try to find local cloud.component.yml files
 	if files, err := findComponentFiles("."); err == nil {
 		components = append(components, files...)
 	}
@@ -129,7 +129,7 @@ func completeEnvironmentNames(cmd *cobra.Command, args []string, toComplete stri
 	return environments, cobra.ShellCompDirectiveNoFileComp
 }
 
-// findComponentFiles finds architect.yml files in a directory.
+// findComponentFiles finds cloud.component.yml files in a directory.
 func findComponentFiles(dir string) ([]string, error) { //nolint:unused
 	var files []string
 	
@@ -139,7 +139,7 @@ func findComponentFiles(dir string) ([]string, error) { //nolint:unused
 	}
 	
 	for _, entry := range entries {
-		if entry.Name() == "architect.yml" || entry.Name() == "architect.yaml" {
+		if entry.Name() == "cloud.component.yml" || entry.Name() == "cloud.component.yaml" {
 			files = append(files, dir)
 		}
 		if entry.IsDir() {

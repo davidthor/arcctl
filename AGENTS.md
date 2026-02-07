@@ -1,12 +1,12 @@
-# AI Agent Instructions for arcctl
+# AI Agent Instructions for cldctl
 
-This file provides guidance for AI coding assistants working on the arcctl codebase.
+This file provides guidance for AI coding assistants working on the cldctl codebase.
 
 ## Project Overview
 
-arcctl is a Go CLI tool for deploying portable cloud-native applications. The architecture separates concerns between:
+cldctl is a Go CLI tool for deploying portable cloud-native applications. The architecture separates concerns between:
 
-1. **Components** (`architect.yml`) - Developer-focused application definitions
+1. **Components** (`cloud.component.yml`) - Developer-focused application definitions
 2. **Datacenters** (`datacenter.dc`) - Platform engineer infrastructure templates  
 3. **Environments** - Deployed instances combining components with datacenters
 
@@ -21,73 +21,73 @@ go mod tidy   # Clean up dependencies
 ```
 
 ### CLI Command Structure
-arcctl uses an action-first command structure: `arcctl <action> <resource> [args] [flags]`
+cldctl uses an action-first command structure: `cldctl <action> <resource> [args] [flags]`
 
 ```bash
 # Build commands (tag is optional; omit -t to identify by digest)
-arcctl build component ./my-app -t ghcr.io/myorg/app:v1
-arcctl build component ./my-app                           # digest-only
-arcctl build datacenter ./dc -t ghcr.io/myorg/dc:v1
-arcctl build datacenter ./dc                              # digest-only
+cldctl build component ./my-app -t ghcr.io/myorg/app:v1
+cldctl build component ./my-app                           # digest-only
+cldctl build datacenter ./dc -t ghcr.io/myorg/dc:v1
+cldctl build datacenter ./dc                              # digest-only
 
 # Deploy commands
-arcctl deploy component ./my-app -e production -d my-datacenter
-arcctl deploy component myorg/stripe:latest -d my-dc --var key=secret  # datacenter-level component (no -e)
-arcctl deploy datacenter my-dc ./datacenter
+cldctl deploy component ./my-app -e production -d my-datacenter
+cldctl deploy component myorg/stripe:latest -d my-dc --var key=secret  # datacenter-level component (no -e)
+cldctl deploy datacenter my-dc ./datacenter
 
 # Environment management
-arcctl create environment staging -d my-datacenter
-arcctl list environment -d my-datacenter
-arcctl update environment staging environment.yml -d my-datacenter
-arcctl destroy environment staging -d my-datacenter
+cldctl create environment staging -d my-datacenter
+cldctl list environment -d my-datacenter
+cldctl update environment staging environment.yml -d my-datacenter
+cldctl destroy environment staging -d my-datacenter
 
 # Resource management
-arcctl list component -e staging -d my-datacenter
-arcctl get component my-app -e production -d my-datacenter
-arcctl destroy component my-app -e staging -d my-datacenter
-arcctl destroy component shared-db -e staging -d my-datacenter --force  # Override dependency check
-arcctl destroy component myorg/stripe -d my-datacenter                  # Remove datacenter-level component (no -e)
+cldctl list component -e staging -d my-datacenter
+cldctl get component my-app -e production -d my-datacenter
+cldctl destroy component my-app -e staging -d my-datacenter
+cldctl destroy component shared-db -e staging -d my-datacenter --force  # Override dependency check
+cldctl destroy component myorg/stripe -d my-datacenter                  # Remove datacenter-level component (no -e)
 
 # CLI configuration
-arcctl config set default_datacenter my-datacenter  # Set default datacenter
-arcctl config get default_datacenter                 # Get default datacenter
-arcctl config list                                   # List all config values
+cldctl config set default_datacenter my-datacenter  # Set default datacenter
+cldctl config get default_datacenter                 # Get default datacenter
+cldctl config list                                   # List all config values
 
 # State migration (from old flat structure to new nested hierarchy)
-arcctl migrate state
+cldctl migrate state
 
 # Artifact management
-arcctl images                                              # List all cached artifacts
-arcctl images --type component                             # Filter by type
-arcctl tag component ghcr.io/myorg/app:v1 ghcr.io/myorg/app:latest
-arcctl push component ghcr.io/myorg/app:v1
-arcctl pull component ghcr.io/myorg/app:v1
-arcctl pull datacenter docker.io/davidthor/startup-datacenter:latest
+cldctl images                                              # List all cached artifacts
+cldctl images --type component                             # Filter by type
+cldctl tag component ghcr.io/myorg/app:v1 ghcr.io/myorg/app:latest
+cldctl push component ghcr.io/myorg/app:v1
+cldctl pull component ghcr.io/myorg/app:v1
+cldctl pull datacenter docker.io/davidthor/startup-datacenter:latest
 
 # Validation
-arcctl validate component ./my-app
-arcctl validate datacenter ./dc
-arcctl validate environment ./env.yml
+cldctl validate component ./my-app
+cldctl validate datacenter ./dc
+cldctl validate environment ./env.yml
 
 # Inspect deployed state
-arcctl inspect staging                               # Environment details
-arcctl inspect staging/my-app                        # Component details
-arcctl inspect staging/my-app/api                    # Resource details (inputs, env vars, outputs)
-arcctl inspect staging/my-app/deployment/api         # Disambiguate by type
-arcctl inspect staging/my-app/api -o json            # JSON output
+cldctl inspect staging                               # Environment details
+cldctl inspect staging/my-app                        # Component details
+cldctl inspect staging/my-app/api                    # Resource details (inputs, env vars, outputs)
+cldctl inspect staging/my-app/deployment/api         # Disambiguate by type
+cldctl inspect staging/my-app/api -o json            # JSON output
 
 # Inspect component topology (not deployed state)
-arcctl inspect component ./my-app                    # Visualize resource graph
-arcctl inspect component ./my-app --expand           # Include dependencies
+cldctl inspect component ./my-app                    # Visualize resource graph
+cldctl inspect component ./my-app --expand           # Include dependencies
 
 # Logs and observability
-arcctl logs -e staging -d my-datacenter           # All logs in the environment
-arcctl logs -e staging my-app                     # Logs from one component (uses default DC)
-arcctl logs -e staging my-app/deployment          # All deployments in a component
-arcctl logs -e staging my-app/deployment/api      # A specific deployment
-arcctl logs -e staging -f                         # Stream logs in real-time
-arcctl logs -e staging --since 5m                 # Logs from the last 5 minutes
-arcctl observability dashboard -e staging         # Open observability UI in browser
+cldctl logs -e staging -d my-datacenter           # All logs in the environment
+cldctl logs -e staging my-app                     # Logs from one component (uses default DC)
+cldctl logs -e staging my-app/deployment          # All deployments in a component
+cldctl logs -e staging my-app/deployment/api      # A specific deployment
+cldctl logs -e staging -f                         # Stream logs in real-time
+cldctl logs -e staging --since 5m                 # Logs from the last 5 minutes
+cldctl observability dashboard -e staging         # Open observability UI in browser
 ```
 
 Aliases: `comp` for `component`, `dc` for `datacenter`, `env` for `environment`, `ls` for `list`, `obs` for `observability`
@@ -96,23 +96,23 @@ Aliases: `comp` for `component`, `dc` for `datacenter`, `env` for `environment`,
 
 All environment-scoped commands require a datacenter to be specified. The datacenter is resolved in this order:
 1. `--datacenter / -d` flag on the command
-2. `ARCCTL_DATACENTER` environment variable
-3. `default_datacenter` in `~/.arcctl/config.yaml` (auto-set on `arcctl deploy datacenter`)
+2. `CLDCTL_DATACENTER` environment variable
+3. `default_datacenter` in `~/.cldctl/config.yaml` (auto-set on `cldctl deploy datacenter`)
 
 This means after deploying a datacenter once, subsequent commands can omit `-d`:
 ```bash
-arcctl deploy datacenter my-dc ./datacenter  # auto-sets default_datacenter
-arcctl create environment staging            # uses my-dc from config
-arcctl deploy component ./my-app -e staging  # uses my-dc from config
+cldctl deploy datacenter my-dc ./datacenter  # auto-sets default_datacenter
+cldctl create environment staging            # uses my-dc from config
+cldctl deploy component ./my-app -e staging  # uses my-dc from config
 ```
 
 ### Automatic Dependency Deployment
 
-When deploying a component that declares `dependencies` in its `architect.yml`, arcctl automatically resolves and deploys any dependency components not already present in the target environment. This applies to both `deploy component` and `up` commands.
+When deploying a component that declares `dependencies` in its `cloud.component.yml`, cldctl automatically resolves and deploys any dependency components not already present in the target environment. This applies to both `deploy component` and `up` commands.
 
 - Dependencies are resolved **transitively** (dependency of a dependency is also deployed).
 - Dependencies already deployed in the environment are **skipped** (not updated).
-- **Optional dependencies** (`optional: true`) are never auto-deployed. Their outputs are available if the dependency is already present in the environment, but arcctl does not pull or deploy them automatically.
+- **Optional dependencies** (`optional: true`) are never auto-deployed. Their outputs are available if the dependency is already present in the environment, but cldctl does not pull or deploy them automatically.
 - If a dependency has required variables without defaults:
   - **Interactive mode**: the user is prompted for values.
   - **CI / `--auto-approve`**: the command errors with a message listing the missing variables.
@@ -123,7 +123,7 @@ When deploying a component that declares `dependencies` in its `architect.yml`, 
 ### Key Directories
 | Path | Purpose |
 |------|---------|
-| `cmd/arcctl/` | CLI entry point |
+| `cmd/cldctl/` | CLI entry point |
 | `internal/cli/` | Cobra command implementations |
 | `pkg/schema/` | YAML/HCL config parsing with versioned schemas |
 | `pkg/state/backend/` | Pluggable state backends (local, s3, gcs, azurerm) |
@@ -135,7 +135,7 @@ When deploying a component that declares `dependencies` in its `architect.yml`, 
 | `examples/` | Example component configurations |
 | `official-templates/` | Official datacenter templates (local, startup, do-k8s, do-app-platform, do-vms, aws-ecs, aws-lambda, aws-k8s, aws-vms, gcp-cloud-run, gcp-k8s, gcp-vms) |
 
-## Component Authoring (architect.yml)
+## Component Authoring (cloud.component.yml)
 
 Components describe application requirements using YAML with `${{ }}` expressions.
 Component names are determined by the OCI tag at build time (e.g., `ghcr.io/org/my-app:v1`).
@@ -157,7 +157,7 @@ Use **deployments** for:
 ### Next.js Application (Recommended Pattern)
 
 ```yaml
-# architect.yml - Next.js apps should use functions
+# cloud.component.yml - Next.js apps should use functions
 # Routes can point directly to functions - no service wrapper needed
 databases:
   main:
@@ -182,7 +182,7 @@ routes:
 ### Traditional Deployment Pattern
 
 ```yaml
-# architect.yml - For long-running services with Docker builds
+# cloud.component.yml - For long-running services with Docker builds
 builds:
   api:
     context: ./api
@@ -202,18 +202,18 @@ services:
 ### Dev/Prod with Extends
 
 ```yaml
-# architect.yml (dev base - process-based, no Docker)
+# cloud.component.yml (dev base - process-based, no Docker)
 deployments:
   api:
     command: ["npm", "run", "dev"]
-    workingDirectory: ./backend  # optional, defaults to architect.yml dir
+    workingDirectory: ./backend  # optional, defaults to cloud.component.yml dir
     environment:
       DATABASE_URL: ${{ databases.main.url }}
 ```
 
 ```yaml
-# architect.prod.yml (production - extends dev, adds Docker build)
-extends: ./architect.yml
+# cloud.component.prod.yml (production - extends dev, adds Docker build)
+extends: ./cloud.component.yml
 
 builds:
   api:
@@ -412,7 +412,7 @@ component "myorg/stripe" {
 - Components are **not** deployed at the datacenter level -- they are deployed into individual environments when another component declares them as a dependency
 - Datacenter component variables take priority over interactive prompts but not over explicitly provided values (from environment config files or CLI flags)
 - Component declarations are stored as individual state files (`datacenters/<dc>/components/<name>.state.json`), separate from the datacenter template state, so re-deploying a datacenter template does not remove previously registered components
-- Components can also be managed via CLI: `arcctl deploy component <source> -d <dc>` (no `-e` flag) and `arcctl destroy component <name> -d <dc>`
+- Components can also be managed via CLI: `cldctl deploy component <source> -d <dc>` (no `-e` flag) and `cldctl destroy component <name> -d <dc>`
 
 ### Hook Types & Required Outputs
 | Hook | Required Outputs |

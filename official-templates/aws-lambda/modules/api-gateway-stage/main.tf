@@ -19,6 +19,6 @@ resource "aws_apigatewayv2_stage" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

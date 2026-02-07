@@ -57,21 +57,21 @@ A VM-centric datacenter for Google Cloud Platform where all workloads run on Com
 
 ```bash
 # Build and push
-arcctl dc build . -t ghcr.io/myorg/gcp-vms:v1
-arcctl dc push ghcr.io/myorg/gcp-vms:v1
+cldctl dc build . -t ghcr.io/myorg/gcp-vms:v1
+cldctl dc push ghcr.io/myorg/gcp-vms:v1
 
 # Deploy datacenter
-arcctl dc deploy gcp-vms-prod \
+cldctl dc deploy gcp-vms-prod \
   --config ghcr.io/myorg/gcp-vms:v1 \
   --var gcp_project=my-project \
-  --var registry=us-central1-docker.pkg.dev/my-project/arcctl \
+  --var registry=us-central1-docker.pkg.dev/my-project/cldctl \
   --var ssh_key="$(cat ~/.ssh/id_rsa.pub)" \
   --var domain=app.example.com \
   --var smtp_password=$SMTP_PASSWORD
 
 # Create environment and deploy
-arcctl env create staging --datacenter gcp-vms-prod
-arcctl deploy ghcr.io/myorg/my-app:v1 -e staging
+cldctl env create staging --datacenter gcp-vms-prod
+cldctl deploy ghcr.io/myorg/my-app:v1 -e staging
 ```
 
 ## Prerequisites

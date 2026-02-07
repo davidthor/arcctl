@@ -51,5 +51,5 @@ resource "digitalocean_database_cluster" "db" {
   # Place database in the VPC for private networking with Droplets
   private_network_uuid = var.vpc_uuid
 
-  tags = ["arcctl", "managed-by:arcctl"]
+  tags = ["cldctl", "managed-by:cldctl"]
 }

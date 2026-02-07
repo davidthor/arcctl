@@ -87,7 +87,7 @@ resource "helm_release" "grafana" {
 
   set {
     name  = "adminPassword"
-    value = "arcctl-admin"
+    value = "cldctl-admin"
   }
 
   set {

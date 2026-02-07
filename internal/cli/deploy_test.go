@@ -93,8 +93,8 @@ func TestDeriveComponentName(t *testing.T) {
 		{"./my-app", true, "my-app"},
 		{"./my-app/", true, "my-app"},
 		{"/home/user/projects/my-app", true, "my-app"},
-		{"./my-app/architect.yml", true, "my-app"},
-		{"./my-app/architect.yaml", true, "my-app"},
+		{"./my-app/cloud.component.yml", true, "my-app"},
+		{"./my-app/cloud.component.yaml", true, "my-app"},
 		{"my-component", true, "my-component"},
 
 		// OCI references

@@ -1,0 +1,11 @@
+# Production extension: adds Docker build and overrides command
+extends: ./cloud.component.yml
+
+builds:
+  api:
+    context: .
+
+deployments:
+  api:
+    image: ${{ builds.api.image }}
+    command: ["npm", "start"]

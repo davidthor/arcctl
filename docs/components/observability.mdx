@@ -136,23 +136,23 @@ service.namespace=my-app,deployment.environment=staging,service.type=deployment,
 
 ## Viewing Logs
 
-When observability is enabled and the datacenter's observability hook provides `query_type` and `query_endpoint` outputs, you can use `arcctl logs` to view and stream workload logs:
+When observability is enabled and the datacenter's observability hook provides `query_type` and `query_endpoint` outputs, you can use `cldctl logs` to view and stream workload logs:
 
 ```bash
 # All logs in the environment
-arcctl logs -e staging
+cldctl logs -e staging
 
 # Logs from one component
-arcctl logs -e staging my-app
+cldctl logs -e staging my-app
 
 # All deployment logs in a component
-arcctl logs -e staging my-app/deployment
+cldctl logs -e staging my-app/deployment
 
 # Stream a specific deployment's logs
-arcctl logs -e staging my-app/deployment/api -f
+cldctl logs -e staging my-app/deployment/api -f
 
 # Logs from the last 5 minutes
-arcctl logs -e staging --since 5m
+cldctl logs -e staging --since 5m
 ```
 
 <Note>
@@ -164,7 +164,7 @@ Container stdout is automatically forwarded to the OTel collector in the local D
 If the datacenter provides a `dashboard_url` output, open the monitoring UI with:
 
 ```bash
-arcctl observability dashboard -e staging
+cldctl observability dashboard -e staging
 ```
 
 In the local Docker datacenter, this opens Grafana where you can explore logs (Loki), traces (Tempo), and metrics (Prometheus).
@@ -172,7 +172,7 @@ In the local Docker datacenter, this opens Grafana where you can explore logs (L
 ## Complete Example
 
 ```yaml
-# architect.yml
+# cloud.component.yml
 
 databases:
   main:
@@ -218,5 +218,5 @@ routes:
 ## See Also
 
 - [Observability Hook](/datacenters/observability-hook) - Datacenter-side observability configuration
-- [`arcctl logs`](/cli/logs) - View and stream logs from the CLI
-- [`arcctl observability dashboard`](/cli/observability/dashboard) - Open the monitoring dashboard
+- [`cldctl logs`](/cli/logs) - View and stream logs from the CLI
+- [`cldctl observability dashboard`](/cli/observability/dashboard) - Open the monitoring dashboard

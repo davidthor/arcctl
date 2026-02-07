@@ -3,18 +3,18 @@ title: "get datacenter"
 description: "Get details of a deployed datacenter"
 ---
 
-# arcctl get datacenter
+# cldctl get datacenter
 
 Get detailed information about a datacenter.
 
 <Note>
-Use `arcctl get dc` as shorthand for `arcctl get datacenter`.
+Use `cldctl get dc` as shorthand for `cldctl get datacenter`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl get datacenter <name> [options]
+cldctl get datacenter <name> [options]
 ```
 
 ## Arguments
@@ -35,19 +35,19 @@ arcctl get datacenter <name> [options]
 
 ```bash
 # Get datacenter details
-arcctl get datacenter my-dc
+cldctl get datacenter my-dc
 
 # Using alias
-arcctl get dc my-dc
+cldctl get dc my-dc
 
 # Output as JSON
-arcctl get datacenter my-dc -o json
+cldctl get datacenter my-dc -o json
 ```
 
 ## Output
 
 ```
-$ arcctl get datacenter aws-production
+$ cldctl get datacenter aws-production
 
 Datacenter: aws-production
 Source:     ghcr.io/myorg/aws-dc:v1.0.0
@@ -71,5 +71,5 @@ Environments:
 
 ## See Also
 
-- [`arcctl list datacenter`](/cli/list/datacenter) - List datacenters
-- [`arcctl deploy datacenter`](/cli/deploy/datacenter) - Deploy a datacenter
+- [`cldctl list datacenter`](/cli/list/datacenter) - List datacenters
+- [`cldctl deploy datacenter`](/cli/deploy/datacenter) - Deploy a datacenter

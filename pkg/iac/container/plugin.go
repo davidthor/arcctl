@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/iac"
+	"github.com/davidthor/arcctl/pkg/iac"
 )
 
 func init() {
@@ -239,7 +239,7 @@ func (p *Plugin) executeModule(ctx context.Context, action string, opts iac.RunO
 	}
 
 	// Create work directory for this execution
-	workDir, err := os.MkdirTemp("", "arcctl-module-*")
+	workDir, err := os.MkdirTemp("", "cldctl-module-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create work dir: %w", err)
 	}
@@ -298,11 +298,11 @@ func isContainerImage(ref string) bool {
 func generateStackName(opts iac.RunOptions) string {
 	parts := []string{}
 
-	if env, ok := opts.Environment["ARCCTL_ENVIRONMENT"]; ok && env != "" {
+	if env, ok := opts.Environment["CLDCTL_ENVIRONMENT"]; ok && env != "" {
 		parts = append(parts, env)
 	}
 
-	if comp, ok := opts.Environment["ARCCTL_COMPONENT"]; ok && comp != "" {
+	if comp, ok := opts.Environment["CLDCTL_COMPONENT"]; ok && comp != "" {
 		parts = append(parts, comp)
 	}
 

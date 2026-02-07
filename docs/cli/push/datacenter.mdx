@@ -3,18 +3,18 @@ title: "push datacenter"
 description: "Push a datacenter artifact to an OCI registry"
 ---
 
-# arcctl push datacenter
+# cldctl push datacenter
 
 Push a datacenter artifact and all its module artifacts to an OCI registry.
 
 <Note>
-Use `arcctl push dc` as shorthand for `arcctl push datacenter`.
+Use `cldctl push dc` as shorthand for `cldctl push datacenter`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl push datacenter <repo:tag> [options]
+cldctl push datacenter <repo:tag> [options]
 ```
 
 ## Arguments
@@ -33,19 +33,19 @@ arcctl push datacenter <repo:tag> [options]
 
 ```bash
 # Push a datacenter
-arcctl push datacenter ghcr.io/myorg/dc:v1.0.0
+cldctl push datacenter ghcr.io/myorg/dc:v1.0.0
 
 # Using alias
-arcctl push dc ghcr.io/myorg/dc:v1.0.0
+cldctl push dc ghcr.io/myorg/dc:v1.0.0
 
 # Non-interactive
-arcctl push datacenter my-dc:latest -y
+cldctl push datacenter my-dc:latest -y
 ```
 
 ## Output
 
 ```
-$ arcctl push datacenter ghcr.io/myorg/dc:v1.0.0
+$ cldctl push datacenter ghcr.io/myorg/dc:v1.0.0
 
 Pushing datacenter artifact: ghcr.io/myorg/dc:v1.0.0
 
@@ -56,5 +56,5 @@ Proceed with push? [Y/n]:
 
 ## See Also
 
-- [`arcctl build datacenter`](/cli/build/datacenter) - Build a datacenter
-- [`arcctl deploy datacenter`](/cli/deploy/datacenter) - Deploy a datacenter
+- [`cldctl build datacenter`](/cli/build/datacenter) - Build a datacenter
+- [`cldctl deploy datacenter`](/cli/deploy/datacenter) - Deploy a datacenter

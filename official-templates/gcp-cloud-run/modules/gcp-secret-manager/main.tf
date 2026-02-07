@@ -16,7 +16,7 @@ resource "google_secret_manager_secret" "main" {
   }
 
   labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
   }
 }
 

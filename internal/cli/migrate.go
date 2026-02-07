@@ -8,8 +8,8 @@ import (
 	"io"
 	"path"
 
-	"github.com/architect-io/arcctl/pkg/state/backend"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/state/backend"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +17,7 @@ func newMigrateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "migrate",
 		Short: "Migration utilities",
-		Long:  `Commands for migrating arcctl state and configuration.`,
+		Long:  `Commands for migrating cldctl state and configuration.`,
 	}
 
 	cmd.AddCommand(newMigrateStateCmd())

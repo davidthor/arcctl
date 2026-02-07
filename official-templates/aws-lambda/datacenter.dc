@@ -53,7 +53,7 @@ module "api_gateway" {
   plugin = "opentofu"
   build  = "./modules/api-gateway"
   inputs = {
-    name            = "arcctl-gateway"
+    name            = "cldctl-gateway"
     region          = variable.aws_region
     certificate_arn = variable.certificate_arn
   }

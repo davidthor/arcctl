@@ -1,10 +1,10 @@
 # IaC Plugin Implementation Guide
 
-This document provides detailed guidance on implementing new Infrastructure-as-Code (IaC) plugins for arcctl.
+This document provides detailed guidance on implementing new Infrastructure-as-Code (IaC) plugins for cldctl.
 
 ## Overview
 
-IaC plugins enable arcctl to execute infrastructure modules written in different frameworks. Each plugin handles the translation between arcctl's execution model and the specific IaC tool's CLI and state format.
+IaC plugins enable cldctl to execute infrastructure modules written in different frameworks. Each plugin handles the translation between cldctl's execution model and the specific IaC tool's CLI and state format.
 
 ## Plugin Interface
 
@@ -24,16 +24,16 @@ import (
 type Plugin interface {
     // Name returns the plugin identifier (e.g., "pulumi", "opentofu")
     Name() string
-    
+
     // Preview generates a preview of changes without applying
     Preview(ctx context.Context, opts RunOptions) (*PreviewResult, error)
-    
+
     // Apply applies the module and returns outputs
     Apply(ctx context.Context, opts RunOptions) (*ApplyResult, error)
-    
+
     // Destroy destroys resources created by the module
     Destroy(ctx context.Context, opts RunOptions) error
-    
+
     // Refresh refreshes state without applying changes
     Refresh(ctx context.Context, opts RunOptions) (*RefreshResult, error)
 }
@@ -42,25 +42,25 @@ type Plugin interface {
 type RunOptions struct {
     // ModuleSource is the OCI image reference or local path to the module
     ModuleSource string
-    
+
     // Inputs are the values passed to the module
     Inputs map[string]interface{}
-    
+
     // StateReader provides existing state (nil for new deployments)
     StateReader io.Reader
-    
+
     // StateWriter receives the updated state after apply
     StateWriter io.Writer
-    
+
     // WorkDir is the working directory for execution
     WorkDir string
-    
+
     // Environment contains environment variables for the execution
     Environment map[string]string
-    
+
     // Volumes are volume mounts needed by the module (e.g., Docker socket)
     Volumes []VolumeMount
-    
+
     // Stdout/Stderr for command output
     Stdout io.Writer
     Stderr io.Writer
@@ -148,8 +148,8 @@ package myiac
 import (
     "context"
     "fmt"
-    
-    "github.com/architect-io/arcctl/pkg/iac"
+
+    "github.com/davidthor/arcctl/pkg/iac"
 )
 
 // Plugin implements the IaC plugin interface for MyIaC
@@ -183,8 +183,8 @@ import (
     "context"
     "os"
     "path/filepath"
-    
-    "github.com/architect-io/arcctl/pkg/oci"
+
+    "github.com/davidthor/arcctl/pkg/oci"
 )
 
 // prepareModule sets up the module for execution
@@ -198,22 +198,22 @@ func (p *Plugin) prepareModule(ctx context.Context, opts iac.RunOptions) (string
 
 func (p *Plugin) prepareFromOCI(ctx context.Context, ref string) (string, func(), error) {
     // Create temp directory
-    workDir, err := os.MkdirTemp("", "arcctl-myiac-*")
+    workDir, err := os.MkdirTemp("", "cldctl-myiac-*")
     if err != nil {
         return "", nil, fmt.Errorf("failed to create temp dir: %w", err)
     }
-    
+
     cleanup := func() {
         os.RemoveAll(workDir)
     }
-    
+
     // Pull OCI artifact
     client := oci.NewClient()
     if err := client.Pull(ctx, ref, workDir); err != nil {
         cleanup()
         return "", nil, fmt.Errorf("failed to pull module %s: %w", ref, err)
     }
-    
+
     return workDir, cleanup, nil
 }
 
@@ -222,7 +222,7 @@ func (p *Plugin) prepareFromLocal(ctx context.Context, path string) (string, fun
     if err != nil {
         return "", nil, fmt.Errorf("failed to resolve path: %w", err)
     }
-    
+
     // Verify directory exists
     info, err := os.Stat(absPath)
     if err != nil {
@@ -231,7 +231,7 @@ func (p *Plugin) prepareFromLocal(ctx context.Context, path string) (string, fun
     if !info.IsDir() {
         return "", nil, fmt.Errorf("module path is not a directory: %s", absPath)
     }
-    
+
     // No cleanup needed for local paths
     return absPath, func() {}, nil
 }
@@ -249,8 +249,8 @@ import (
     "context"
     "encoding/json"
     "os/exec"
-    
-    "github.com/architect-io/arcctl/pkg/iac"
+
+    "github.com/davidthor/arcctl/pkg/iac"
 )
 
 func (p *Plugin) Preview(ctx context.Context, opts iac.RunOptions) (*iac.PreviewResult, error) {
@@ -259,19 +259,19 @@ func (p *Plugin) Preview(ctx context.Context, opts iac.RunOptions) (*iac.Preview
         return nil, err
     }
     defer cleanup()
-    
+
     // Write inputs
     if err := p.writeInputs(workDir, opts.Inputs); err != nil {
         return nil, fmt.Errorf("failed to write inputs: %w", err)
     }
-    
+
     // Import existing state if provided
     if opts.StateReader != nil {
         if err := p.importState(ctx, workDir, opts.StateReader); err != nil {
             return nil, fmt.Errorf("failed to import state: %w", err)
         }
     }
-    
+
     // Run preview command
     var stdout, stderr bytes.Buffer
     cmd := exec.CommandContext(ctx, p.cliPath, "preview", "--json")
@@ -279,11 +279,11 @@ func (p *Plugin) Preview(ctx context.Context, opts iac.RunOptions) (*iac.Preview
     cmd.Env = p.buildEnvironment(opts.Environment)
     cmd.Stdout = &stdout
     cmd.Stderr = &stderr
-    
+
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("preview failed: %s\n%s", err, stderr.String())
     }
-    
+
     // Parse preview output
     return p.parsePreviewOutput(stdout.Bytes())
 }
@@ -299,15 +299,15 @@ func (p *Plugin) parsePreviewOutput(data []byte) (*iac.PreviewResult, error) {
             After  interface{} `json:"after"`
         } `json:"changes"`
     }
-    
+
     if err := json.Unmarshal(data, &raw); err != nil {
         return nil, fmt.Errorf("failed to parse preview output: %w", err)
     }
-    
+
     result := &iac.PreviewResult{
         Changes: make([]iac.ResourceChange, len(raw.Changes)),
     }
-    
+
     for i, c := range raw.Changes {
         action := p.mapAction(c.Action)
         result.Changes[i] = iac.ResourceChange{
@@ -317,7 +317,7 @@ func (p *Plugin) parsePreviewOutput(data []byte) (*iac.PreviewResult, error) {
             Before:       c.Before,
             After:        c.After,
         }
-        
+
         switch action {
         case iac.ActionCreate:
             result.Summary.Create++
@@ -329,7 +329,7 @@ func (p *Plugin) parsePreviewOutput(data []byte) (*iac.PreviewResult, error) {
             result.Summary.Replace++
         }
     }
-    
+
     return result, nil
 }
 ```
@@ -349,8 +349,8 @@ import (
     "os"
     "os/exec"
     "path/filepath"
-    
-    "github.com/architect-io/arcctl/pkg/iac"
+
+    "github.com/davidthor/arcctl/pkg/iac"
 )
 
 func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResult, error) {
@@ -359,42 +359,42 @@ func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResu
         return nil, err
     }
     defer cleanup()
-    
+
     // Write inputs
     if err := p.writeInputs(workDir, opts.Inputs); err != nil {
         return nil, fmt.Errorf("failed to write inputs: %w", err)
     }
-    
+
     // Import existing state
     if opts.StateReader != nil {
         if err := p.importState(ctx, workDir, opts.StateReader); err != nil {
             return nil, fmt.Errorf("failed to import state: %w", err)
         }
     }
-    
+
     // Run apply command
     cmd := exec.CommandContext(ctx, p.cliPath, "apply", "--auto-approve")
     cmd.Dir = workDir
     cmd.Env = p.buildEnvironment(opts.Environment)
     cmd.Stdout = opts.Stdout
     cmd.Stderr = opts.Stderr
-    
+
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("apply failed: %w", err)
     }
-    
+
     // Get outputs
     outputs, err := p.getOutputs(ctx, workDir)
     if err != nil {
         return nil, fmt.Errorf("failed to get outputs: %w", err)
     }
-    
+
     // Export state
     state, err := p.exportState(ctx, workDir)
     if err != nil {
         return nil, fmt.Errorf("failed to export state: %w", err)
     }
-    
+
     return &iac.ApplyResult{
         Outputs: outputs,
         State:   state,
@@ -404,13 +404,13 @@ func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResu
 func (p *Plugin) writeInputs(workDir string, inputs map[string]interface{}) error {
     // Write inputs in the format expected by the IaC tool
     // This varies by tool (e.g., terraform.tfvars, pulumi config, CDK context)
-    
+
     inputFile := filepath.Join(workDir, "inputs.json")
     data, err := json.MarshalIndent(inputs, "", "  ")
     if err != nil {
         return err
     }
-    
+
     return os.WriteFile(inputFile, data, 0644)
 }
 
@@ -419,20 +419,20 @@ func (p *Plugin) getOutputs(ctx context.Context, workDir string) (map[string]iac
     cmd := exec.CommandContext(ctx, p.cliPath, "output", "--json")
     cmd.Dir = workDir
     cmd.Stdout = &stdout
-    
+
     if err := cmd.Run(); err != nil {
         return nil, err
     }
-    
+
     var raw map[string]struct {
         Value     interface{} `json:"value"`
         Sensitive bool        `json:"sensitive"`
     }
-    
+
     if err := json.Unmarshal(stdout.Bytes(), &raw); err != nil {
         return nil, err
     }
-    
+
     outputs := make(map[string]iac.OutputValue)
     for name, o := range raw {
         outputs[name] = iac.OutputValue{
@@ -440,19 +440,19 @@ func (p *Plugin) getOutputs(ctx context.Context, workDir string) (map[string]iac
             Sensitive: o.Sensitive,
         }
     }
-    
+
     return outputs, nil
 }
 
 func (p *Plugin) importState(ctx context.Context, workDir string, reader io.Reader) error {
     // Write state to the location expected by the IaC tool
     stateFile := filepath.Join(workDir, "state.json") // Adjust for tool
-    
+
     data, err := io.ReadAll(reader)
     if err != nil {
         return err
     }
-    
+
     return os.WriteFile(stateFile, data, 0644)
 }
 
@@ -473,8 +473,8 @@ package myiac
 import (
     "context"
     "os/exec"
-    
-    "github.com/architect-io/arcctl/pkg/iac"
+
+    "github.com/davidthor/arcctl/pkg/iac"
 )
 
 func (p *Plugin) Destroy(ctx context.Context, opts iac.RunOptions) error {
@@ -483,7 +483,7 @@ func (p *Plugin) Destroy(ctx context.Context, opts iac.RunOptions) error {
         return err
     }
     defer cleanup()
-    
+
     // Import existing state
     if opts.StateReader != nil {
         if err := p.importState(ctx, workDir, opts.StateReader); err != nil {
@@ -492,18 +492,18 @@ func (p *Plugin) Destroy(ctx context.Context, opts iac.RunOptions) error {
     } else {
         return fmt.Errorf("state required for destroy operation")
     }
-    
+
     // Run destroy command
     cmd := exec.CommandContext(ctx, p.cliPath, "destroy", "--auto-approve")
     cmd.Dir = workDir
     cmd.Env = p.buildEnvironment(opts.Environment)
     cmd.Stdout = opts.Stdout
     cmd.Stderr = opts.Stderr
-    
+
     if err := cmd.Run(); err != nil {
         return fmt.Errorf("destroy failed: %w", err)
     }
-    
+
     return nil
 }
 ```
@@ -518,8 +518,8 @@ package myiac
 import (
     "context"
     "os/exec"
-    
-    "github.com/architect-io/arcctl/pkg/iac"
+
+    "github.com/davidthor/arcctl/pkg/iac"
 )
 
 func (p *Plugin) Refresh(ctx context.Context, opts iac.RunOptions) (*iac.RefreshResult, error) {
@@ -528,34 +528,34 @@ func (p *Plugin) Refresh(ctx context.Context, opts iac.RunOptions) (*iac.Refresh
         return nil, err
     }
     defer cleanup()
-    
+
     // Import existing state
     if opts.StateReader != nil {
         if err := p.importState(ctx, workDir, opts.StateReader); err != nil {
             return nil, fmt.Errorf("failed to import state: %w", err)
         }
     }
-    
+
     // Run refresh command
     cmd := exec.CommandContext(ctx, p.cliPath, "refresh")
     cmd.Dir = workDir
     cmd.Env = p.buildEnvironment(opts.Environment)
     cmd.Stdout = opts.Stdout
     cmd.Stderr = opts.Stderr
-    
+
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("refresh failed: %w", err)
     }
-    
+
     // Export refreshed state
     state, err := p.exportState(ctx, workDir)
     if err != nil {
         return nil, err
     }
-    
+
     // Compare states to detect drift (optional)
     // ...
-    
+
     return &iac.RefreshResult{
         State: state,
     }, nil
@@ -568,7 +568,7 @@ func (p *Plugin) Refresh(ctx context.Context, opts iac.RunOptions) (*iac.Refresh
 // pkg/iac/registry.go
 
 import (
-    "github.com/architect-io/arcctl/pkg/iac/myiac"
+    "github.com/davidthor/arcctl/pkg/iac/myiac"
 )
 
 func init() {
@@ -597,15 +597,15 @@ Plugins receive environment variables through `RunOptions.Environment`. Handle t
 ```go
 func (p *Plugin) buildEnvironment(extra map[string]string) []string {
     env := os.Environ()
-    
+
     // Add plugin-specific variables
     env = append(env, "MYIAC_NON_INTERACTIVE=true")
-    
+
     // Add user-provided variables
     for k, v := range extra {
         env = append(env, fmt.Sprintf("%s=%s", k, v))
     }
-    
+
     return env
 }
 ```
@@ -628,7 +628,7 @@ func (p *Plugin) applyInContainer(ctx context.Context, opts iac.RunOptions) (*ia
         "run", "--rm",
         "-v", fmt.Sprintf("%s:/workspace", opts.WorkDir),
     }
-    
+
     // Add volume mounts
     for _, v := range opts.Volumes {
         mode := "rw"
@@ -637,9 +637,9 @@ func (p *Plugin) applyInContainer(ctx context.Context, opts iac.RunOptions) (*ia
         }
         args = append(args, "-v", fmt.Sprintf("%s:%s:%s", v.HostPath, v.MountPath, mode))
     }
-    
+
     args = append(args, p.containerImage, "apply", "--auto-approve")
-    
+
     cmd := exec.CommandContext(ctx, "docker", args...)
     // ...
 }
@@ -651,8 +651,8 @@ func (p *Plugin) applyInContainer(ctx context.Context, opts iac.RunOptions) (*ia
 
 Each IaC tool has its own state format. The plugin is responsible for:
 
-1. **Importing state**: Converting arcctl's stored state to the tool's format
-2. **Exporting state**: Converting the tool's state for arcctl storage
+1. **Importing state**: Converting cldctl's stored state to the tool's format
+2. **Exporting state**: Converting the tool's state for cldctl storage
 3. **State versioning**: Handling state format changes across tool versions
 
 ```go
@@ -676,16 +676,16 @@ type TofuState struct {
 
 ### State Locking
 
-arcctl handles state locking at the backend level, but plugins should handle in-process locking:
+cldctl handles state locking at the backend level, but plugins should handle in-process locking:
 
 ```go
 func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResult, error) {
     // The state backend already holds a lock
     // But ensure we don't run concurrent applies in-process
-    
+
     p.mu.Lock()
     defer p.mu.Unlock()
-    
+
     // ...
 }
 ```
@@ -712,13 +712,13 @@ func (e *ApplyError) Error() string {
 
 func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResult, error) {
     // ...
-    
+
     if err := cmd.Run(); err != nil {
         exitCode := 1
         if exitErr, ok := err.(*exec.ExitError); ok {
             exitCode = exitErr.ExitCode()
         }
-        
+
         return nil, &ApplyError{
             Phase:    "apply",
             Message:  err.Error(),
@@ -726,7 +726,7 @@ func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResu
             ExitCode: exitCode,
         }
     }
-    
+
     // ...
 }
 ```
@@ -738,12 +738,12 @@ Handle cases where apply partially succeeds:
 ```go
 func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResult, error) {
     // ...
-    
+
     err := cmd.Run()
-    
+
     // Even on error, try to export state (may have partial changes)
     state, stateErr := p.exportState(ctx, workDir)
-    
+
     if err != nil {
         // Return both the error and any state that was created
         return &iac.ApplyResult{
@@ -751,7 +751,7 @@ func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResu
             PartialError: err,
         }, nil
     }
-    
+
     // ...
 }
 ```
@@ -771,14 +771,14 @@ func TestPlugin_Apply(t *testing.T) {
             exit:   0,
         },
     })
-    
+
     p := &Plugin{cliPath: mockCLI}
-    
+
     result, err := p.Apply(context.Background(), iac.RunOptions{
         ModuleSource: "testdata/simple-module",
         Inputs:       map[string]interface{}{"name": "test"},
     })
-    
+
     require.NoError(t, err)
     assert.Equal(t, "https://example.com", result.Outputs["url"].Value)
 }
@@ -795,17 +795,17 @@ func TestPlugin_Apply_Integration(t *testing.T) {
     if _, err := exec.LookPath("myiac"); err != nil {
         t.Skip("myiac CLI not installed")
     }
-    
+
     p := NewPlugin()
-    
+
     result, err := p.Apply(context.Background(), iac.RunOptions{
         ModuleSource: "testdata/null-resource",
         Inputs:       map[string]interface{}{},
     })
-    
+
     require.NoError(t, err)
     assert.NotNil(t, result.State)
-    
+
     // Cleanup
     p.Destroy(context.Background(), iac.RunOptions{
         ModuleSource: "testdata/null-resource",
@@ -818,10 +818,10 @@ func TestPlugin_Apply_Integration(t *testing.T) {
 
 Study these implementations for reference:
 
-| Plugin | Location | Notes |
-|--------|----------|-------|
-| Pulumi | `pkg/iac/pulumi/` | Handles Pulumi stacks, config, and JSON state |
-| OpenTofu | `pkg/iac/opentofu/` | Terraform-compatible, handles providers |
+| Plugin   | Location            | Notes                                         |
+| -------- | ------------------- | --------------------------------------------- |
+| Pulumi   | `pkg/iac/pulumi/`   | Handles Pulumi stacks, config, and JSON state |
+| OpenTofu | `pkg/iac/opentofu/` | Terraform-compatible, handles providers       |
 
 ## Module Container Format
 
@@ -841,15 +841,15 @@ Metadata format:
 
 ```json
 {
-    "plugin": "opentofu",
-    "version": "1.0.0",
-    "inputs": {
-        "name": {"type": "string", "required": true},
-        "region": {"type": "string", "default": "us-east-1"}
-    },
-    "outputs": {
-        "url": {"type": "string"},
-        "id": {"type": "string"}
-    }
+  "plugin": "opentofu",
+  "version": "1.0.0",
+  "inputs": {
+    "name": { "type": "string", "required": true },
+    "region": { "type": "string", "default": "us-east-1" }
+  },
+  "outputs": {
+    "url": { "type": "string" },
+    "id": { "type": "string" }
+  }
 }
 ```

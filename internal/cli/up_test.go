@@ -56,7 +56,7 @@ func TestUpCmd_DatacenterFlag(t *testing.T) {
 	}
 
 	// Datacenter is no longer marked as required because it can be
-	// resolved from the ARCCTL_DATACENTER env var or default_datacenter config
+	// resolved from the CLDCTL_DATACENTER env var or default_datacenter config
 	annotations := dcFlag.Annotations
 	if _, ok := annotations["cobra_annotation_bash_completion_one_required_flag"]; ok {
 		t.Error("--datacenter should NOT be marked as required (resolved via flag, env var, or config)")
@@ -92,7 +92,7 @@ func TestUpCmd_LongDescription(t *testing.T) {
 
 	expectedPhrases := []string{
 		"local development",
-		"architect.yml",
+		"cloud.component.yml",
 		"provisions all required resources",
 		"file changes",
 	}

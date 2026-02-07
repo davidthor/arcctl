@@ -3,7 +3,7 @@ package component
 import (
 	"encoding/json"
 
-	"github.com/architect-io/arcctl/pkg/schema/component/internal"
+	"github.com/davidthor/arcctl/pkg/schema/component/internal"
 	"gopkg.in/yaml.v3"
 )
 

@@ -3,18 +3,18 @@ title: "push component"
 description: "Push a component artifact to an OCI registry"
 ---
 
-# arcctl push component
+# cldctl push component
 
 Push a component artifact and all its child artifacts to an OCI registry.
 
 <Note>
-Use `arcctl push comp` as shorthand for `arcctl push component`.
+Use `cldctl push comp` as shorthand for `cldctl push component`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl push component <repo:tag> [options]
+cldctl push component <repo:tag> [options]
 ```
 
 ## Arguments
@@ -33,19 +33,19 @@ arcctl push component <repo:tag> [options]
 
 ```bash
 # Push a component
-arcctl push component ghcr.io/myorg/myapp:v1.0.0
+cldctl push component ghcr.io/myorg/myapp:v1.0.0
 
 # Using alias
-arcctl push comp ghcr.io/myorg/myapp:v1.0.0
+cldctl push comp ghcr.io/myorg/myapp:v1.0.0
 
 # Non-interactive
-arcctl push component myapp:latest -y
+cldctl push component myapp:latest -y
 ```
 
 ## Output
 
 ```
-$ arcctl push component ghcr.io/myorg/myapp:v1.0.0
+$ cldctl push component ghcr.io/myorg/myapp:v1.0.0
 
 Pushing component artifact: ghcr.io/myorg/myapp:v1.0.0
 
@@ -56,5 +56,5 @@ Proceed with push? [Y/n]:
 
 ## See Also
 
-- [`arcctl build component`](/cli/build/component) - Build a component
-- [`arcctl pull component`](/cli/pull/component) - Pull a component
+- [`cldctl build component`](/cli/build/component) - Build a component
+- [`cldctl pull component`](/cli/pull/component) - Pull a component

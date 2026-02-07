@@ -3,18 +3,18 @@ title: "validate datacenter"
 description: "Validate a datacenter configuration"
 ---
 
-# arcctl validate datacenter
+# cldctl validate datacenter
 
 Validate a datacenter configuration file without deploying.
 
 <Note>
-Use `arcctl validate dc` as shorthand for `arcctl validate datacenter`.
+Use `cldctl validate dc` as shorthand for `cldctl validate datacenter`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl validate datacenter [path] [options]
+cldctl validate datacenter [path] [options]
 ```
 
 ## Arguments
@@ -33,22 +33,22 @@ arcctl validate datacenter [path] [options]
 
 ```bash
 # Validate current directory
-arcctl validate datacenter
+cldctl validate datacenter
 
 # Using alias
-arcctl validate dc
+cldctl validate dc
 
 # Validate specific directory
-arcctl validate datacenter ./my-datacenter
+cldctl validate datacenter ./my-datacenter
 
 # Validate specific file
-arcctl validate datacenter -f custom-datacenter.hcl
+cldctl validate datacenter -f custom-datacenter.hcl
 ```
 
 ## Output
 
 ```
-$ arcctl validate datacenter ./my-datacenter
+$ cldctl validate datacenter ./my-datacenter
 
 Datacenter configuration is valid!
 ```
@@ -56,7 +56,7 @@ Datacenter configuration is valid!
 **On validation error:**
 
 ```
-$ arcctl validate datacenter ./invalid-dc
+$ cldctl validate datacenter ./invalid-dc
 
 Error: validation failed: [PARSE_ERROR] Invalid HCL syntax at line 15:
   unexpected token "{"
@@ -64,5 +64,5 @@ Error: validation failed: [PARSE_ERROR] Invalid HCL syntax at line 15:
 
 ## See Also
 
-- [`arcctl build datacenter`](/cli/build/datacenter) - Build a datacenter
-- [`arcctl deploy datacenter`](/cli/deploy/datacenter) - Deploy a datacenter
+- [`cldctl build datacenter`](/cli/build/datacenter) - Build a datacenter
+- [`cldctl deploy datacenter`](/cli/deploy/datacenter) - Deploy a datacenter

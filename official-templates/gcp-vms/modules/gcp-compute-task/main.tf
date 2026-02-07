@@ -57,7 +57,7 @@ resource "google_compute_instance" "main" {
   }
 
   metadata = {
-    ssh-keys = var.ssh_key != "" ? "arcctl:${var.ssh_key}" : null
+    ssh-keys = var.ssh_key != "" ? "cldctl:${var.ssh_key}" : null
   }
 
   metadata_startup_script = local.startup_script
@@ -67,7 +67,7 @@ resource "google_compute_instance" "main" {
   }
 
   labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
     task       = "true"
   }
 

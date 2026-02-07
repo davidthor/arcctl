@@ -9,12 +9,12 @@ terraform {
 
 resource "aws_secretsmanager_secret" "this" {
   name                    = var.name
-  description             = "Secret managed by arcctl: ${var.name}"
+  description             = "Secret managed by cldctl: ${var.name}"
   recovery_window_in_days = 0
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 

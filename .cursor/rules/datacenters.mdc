@@ -1,5 +1,5 @@
 ---
-description: Guidelines for authoring arcctl datacenter configurations (datacenter.dc/hcl)
+description: Guidelines for authoring cldctl datacenter configurations (datacenter.dc/hcl)
 globs: "**/*.dc,**/datacenter.hcl,**/datacenters/**/*.dc,**/datacenters/**/*.hcl"
 alwaysApply: false
 ---

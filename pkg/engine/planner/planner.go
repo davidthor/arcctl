@@ -4,8 +4,8 @@ package planner
 import (
 	"fmt"
 
-	"github.com/architect-io/arcctl/pkg/graph"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/graph"
+	"github.com/davidthor/arcctl/pkg/state/types"
 )
 
 // Action represents the type of operation to perform.

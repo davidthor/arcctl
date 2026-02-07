@@ -166,7 +166,7 @@ After deployment:
 
 ## Upgrading
 
-To upgrade Formbricks, update the image tag in `architect.yml`:
+To upgrade Formbricks, update the image tag in `cloud.component.yml`:
 
 ```yaml
 deployments:

@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/architect-io/arcctl/pkg/iac/container"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter"
+	"github.com/davidthor/arcctl/pkg/iac/container"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter"
 )
 
 // moduleInfo holds information about a module for building.

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Clerk + PostgreSQL Integration Test",
-  description: "Integration test for arcctl with Clerk auth and PostgreSQL",
+  description: "Integration test for cldctl with Clerk auth and PostgreSQL",
 };
 
 export default function RootLayout({

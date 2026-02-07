@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"gopkg.in/yaml.v3"
 )
 

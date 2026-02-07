@@ -3,18 +3,18 @@ title: "get environment"
 description: "Get details of an environment"
 ---
 
-# arcctl get environment
+# cldctl get environment
 
 Get detailed information about an environment.
 
 <Note>
-Use `arcctl get env` as shorthand for `arcctl get environment`.
+Use `cldctl get env` as shorthand for `cldctl get environment`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl get environment <name> [options]
+cldctl get environment <name> [options]
 ```
 
 ## Arguments
@@ -27,7 +27,7 @@ arcctl get environment <name> [options]
 
 | Option | Description |
 |--------|-------------|
-| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `ARCCTL_DATACENTER` env var, or CLI config default) |
+| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `CLDCTL_DATACENTER` env var, or CLI config default) |
 | `-o, --output <format>` | Output format: `table`, `json`, `yaml` |
 | `--backend <type>` | State backend type |
 | `--backend-config <key=value>` | Backend configuration |
@@ -36,19 +36,19 @@ arcctl get environment <name> [options]
 
 ```bash
 # Get environment details
-arcctl get environment staging
+cldctl get environment staging
 
 # Using alias
-arcctl get env staging
+cldctl get env staging
 
 # Output as JSON
-arcctl get environment staging -o json
+cldctl get environment staging -o json
 ```
 
 ## Output
 
 ```
-$ arcctl get environment staging
+$ cldctl get environment staging
 
 Environment: staging
 Datacenter:  aws-production
@@ -68,5 +68,5 @@ URLs:
 
 ## See Also
 
-- [`arcctl list environment`](/cli/list/environment) - List environments
-- [`arcctl create environment`](/cli/create/environment) - Create an environment
+- [`cldctl list environment`](/cli/list/environment) - List environments
+- [`cldctl create environment`](/cli/create/environment) - Create an environment

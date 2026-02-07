@@ -37,7 +37,7 @@ resource "aws_security_group" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 
   lifecycle {

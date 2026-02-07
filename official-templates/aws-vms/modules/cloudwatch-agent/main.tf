@@ -18,7 +18,7 @@ data "aws_region" "current" {}
 
 # SSM Parameter for OTel collector config
 resource "aws_ssm_parameter" "otel_config" {
-  name  = "/arcctl/${var.name}/otel-config"
+  name  = "/cldctl/${var.name}/otel-config"
   type  = "String"
   value = yamlencode({
     receivers = {
@@ -54,6 +54,6 @@ resource "aws_ssm_parameter" "otel_config" {
 
   tags = {
     Name      = "${var.name}-otel-config"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

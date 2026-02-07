@@ -111,7 +111,7 @@ func DefaultRegistryPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
-	return filepath.Join(homeDir, ".arcctl", "registry", "artifacts.json"), nil
+	return filepath.Join(homeDir, ".cldctl", "registry", "artifacts.json"), nil
 }
 
 // DefaultCachePath returns the default base path for the artifact cache.
@@ -120,7 +120,7 @@ func DefaultCachePath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
-	return filepath.Join(homeDir, ".arcctl", "cache", "artifacts"), nil
+	return filepath.Join(homeDir, ".cldctl", "cache", "artifacts"), nil
 }
 
 // CacheKey converts an OCI-style reference into a filesystem-safe key.

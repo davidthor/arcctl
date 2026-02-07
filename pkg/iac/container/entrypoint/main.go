@@ -1,6 +1,6 @@
-// Package main implements the arcctl module entrypoint.
+// Package main implements the cldctl module entrypoint.
 // This program runs inside containerized IaC modules and translates
-// between arcctl's JSON interface and the IaC tool's native interface.
+// between cldctl's JSON interface and the IaC tool's native interface.
 package main
 
 import (
@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-// ModuleRequest represents the input from arcctl.
+// ModuleRequest represents the input from cldctl.
 type ModuleRequest struct {
 	Action      string                 `json:"action"`
 	Inputs      map[string]interface{} `json:"inputs"`
@@ -30,7 +30,7 @@ type BackendConfig struct {
 	Config map[string]string `json:"config"`
 }
 
-// ModuleResponse represents the output to arcctl.
+// ModuleResponse represents the output to cldctl.
 type ModuleResponse struct {
 	Success bool                   `json:"success"`
 	Action  string                 `json:"action"`

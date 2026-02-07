@@ -13,7 +13,7 @@ func TestCreateStateManagerWithConfig_Defaults(t *testing.T) {
 	// Clear any env vars that might interfere
 	os.Unsetenv(EnvStateBackend)
 
-	// Test with no CLI flags - should use local backend with ~/.arcctl/state
+	// Test with no CLI flags - should use local backend with ~/.cldctl/state
 	mgr, err := createStateManagerWithConfig("", nil)
 	require.NoError(t, err)
 	assert.NotNil(t, mgr)

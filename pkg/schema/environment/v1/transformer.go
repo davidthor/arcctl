@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/architect-io/arcctl/pkg/schema/environment/internal"
+	"github.com/davidthor/arcctl/pkg/schema/environment/internal"
 )
 
 // Transformer converts v1 schema to internal representation.

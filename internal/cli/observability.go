@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 )
 
@@ -39,8 +39,8 @@ For the local Docker datacenter this opens Grafana; other datacenters
 may provide CloudWatch, SigNoz, or any other observability UI.
 
 Examples:
-  arcctl observability dashboard -e staging
-  arcctl obs dashboard -e production`,
+  cldctl observability dashboard -e staging
+  cldctl obs dashboard -e production`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

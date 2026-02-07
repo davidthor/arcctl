@@ -1,4 +1,4 @@
-module github.com/architect-io/arcctl
+module github.com/davidthor/arcctl
 
 go 1.24.0
 

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/state/types"
 )
 
 func TestFindObservabilityQueryConfig_Found(t *testing.T) {

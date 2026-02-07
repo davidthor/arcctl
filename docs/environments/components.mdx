@@ -50,7 +50,7 @@ components:
     source: ./services/my-app
 ```
 
-When using a local path (starting with `./`, `../`, or `/`), arcctl invokes the datacenter's `dockerBuild` hook to build images.
+When using a local path (starting with `./`, `../`, or `/`), cldctl invokes the datacenter's `dockerBuild` hook to build images.
 
 ## Variables
 
@@ -66,7 +66,7 @@ components:
       feature_flags: "new-ui,dark-mode"
 ```
 
-Variables defined in the component's `architect.yml` are resolved with these values at deployment time.
+Variables defined in the component's `cloud.component.yml` are resolved with these values at deployment time.
 
 ## Environment Variable Overrides
 

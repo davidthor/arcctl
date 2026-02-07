@@ -23,10 +23,10 @@ resource "digitalocean_kubernetes_cluster" "cluster" {
     min_nodes  = var.node_pool.min_nodes
     max_nodes  = var.node_pool.max_nodes
 
-    tags = ["arcctl", var.name]
+    tags = ["cldctl", var.name]
   }
 
-  tags = ["arcctl", "managed-by:arcctl"]
+  tags = ["cldctl", "managed-by:cldctl"]
 }
 
 data "digitalocean_kubernetes_versions" "current" {

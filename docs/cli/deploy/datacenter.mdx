@@ -3,18 +3,18 @@ title: "deploy datacenter"
 description: "Deploy or update a datacenter"
 ---
 
-# arcctl deploy datacenter
+# cldctl deploy datacenter
 
 Deploy or update a datacenter.
 
 <Note>
-Use `arcctl deploy dc` as shorthand for `arcctl deploy datacenter`.
+Use `cldctl deploy dc` as shorthand for `cldctl deploy datacenter`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl deploy datacenter <name> <config> [options]
+cldctl deploy datacenter <name> <config> [options]
 ```
 
 ## Arguments
@@ -38,28 +38,28 @@ arcctl deploy datacenter <name> <config> [options]
 
 ```bash
 # Deploy from OCI image
-arcctl deploy datacenter prod-dc ghcr.io/myorg/dc:v1.0.0
+cldctl deploy datacenter prod-dc ghcr.io/myorg/dc:v1.0.0
 
 # Using alias
-arcctl deploy dc prod-dc ghcr.io/myorg/dc:v1.0.0
+cldctl deploy dc prod-dc ghcr.io/myorg/dc:v1.0.0
 
 # Deploy from local path
-arcctl deploy datacenter my-dc ./datacenter
+cldctl deploy datacenter my-dc ./datacenter
 
 # Deploy with variables
-arcctl deploy datacenter prod-dc ghcr.io/myorg/dc:v1.0.0 \
+cldctl deploy datacenter prod-dc ghcr.io/myorg/dc:v1.0.0 \
   --var region=us-east-1 \
   --var cluster_name=production
 
 # Deploy with auto-approval (CI/CD)
-arcctl deploy datacenter prod-dc ghcr.io/myorg/dc:v1.0.0 \
+cldctl deploy datacenter prod-dc ghcr.io/myorg/dc:v1.0.0 \
   --auto-approve
 ```
 
 ## Execution Plan Output
 
 ```
-$ arcctl deploy dc prod-dc ./datacenter
+$ cldctl deploy dc prod-dc ./datacenter
 
 Datacenter: prod-dc
 Source:     ./datacenter
@@ -79,6 +79,6 @@ Proceed? [Y/n]:
 
 ## See Also
 
-- [`arcctl destroy datacenter`](/cli/destroy/datacenter) - Destroy a datacenter
-- [`arcctl list datacenter`](/cli/list/datacenter) - List deployed datacenters
-- [`arcctl get datacenter`](/cli/get/datacenter) - Get datacenter details
+- [`cldctl destroy datacenter`](/cli/destroy/datacenter) - Destroy a datacenter
+- [`cldctl list datacenter`](/cli/list/datacenter) - List deployed datacenters
+- [`cldctl get datacenter`](/cli/get/datacenter) - Get datacenter details

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/state/backend"
+	"github.com/davidthor/arcctl/pkg/state/backend"
 )
 
 // mockAzureBlobServer simulates Azure Blob Storage API for testing.
@@ -195,9 +195,9 @@ func TestBackend_fullPath(t *testing.T) {
 		},
 		{
 			name:     "nested path with prefix",
-			prefix:   "arcctl",
+			prefix:   "cldctl",
 			path:     "environments/prod/state.json",
-			expected: "arcctl/environments/prod/state.json",
+			expected: "cldctl/environments/prod/state.json",
 		},
 	}
 

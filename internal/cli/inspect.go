@@ -7,10 +7,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/errors"
-	"github.com/architect-io/arcctl/pkg/graph"
-	"github.com/architect-io/arcctl/pkg/resolver"
-	"github.com/architect-io/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/errors"
+	"github.com/davidthor/arcctl/pkg/graph"
+	"github.com/davidthor/arcctl/pkg/resolver"
+	"github.com/davidthor/arcctl/pkg/schema/component"
 	"github.com/spf13/cobra"
 )
 
@@ -27,31 +27,31 @@ func newInspectCmd() *cobra.Command {
 		Short: "Inspect deployed state or visualize component topology",
 		Long: `Inspect deployed resources by providing a slash-separated path:
 
-  arcctl inspect <environment>                           Show environment details
-  arcctl inspect <environment>/<component>               Show component details
-  arcctl inspect <environment>/<component>/<resource>    Show resource details
+  cldctl inspect <environment>                           Show environment details
+  cldctl inspect <environment>/<component>               Show component details
+  cldctl inspect <environment>/<component>/<resource>    Show resource details
 
 Resources can be qualified with type if the name is ambiguous:
-  arcctl inspect staging/my-app/deployment/api
+  cldctl inspect staging/my-app/deployment/api
 
 To visualize a component's topology instead, use:
-  arcctl inspect component ./my-app
+  cldctl inspect component ./my-app
 
 Examples:
   # Inspect an environment
-  arcctl inspect staging
+  cldctl inspect staging
 
   # Inspect a component within an environment
-  arcctl inspect staging/my-app
+  cldctl inspect staging/my-app
 
   # Inspect a specific resource to see its environment variables
-  arcctl inspect staging/my-app/api
+  cldctl inspect staging/my-app/api
 
   # Disambiguate resources with the same name across types
-  arcctl inspect staging/my-app/deployment/api
+  cldctl inspect staging/my-app/deployment/api
 
   # Output as JSON or YAML
-  arcctl inspect staging/my-app/api -o json`,
+  cldctl inspect staging/my-app/api -o json`,
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -164,14 +164,14 @@ and the dependency edges between them.
 
 Examples:
   # Inspect a local component
-  arcctl inspect component ./my-app
-  arcctl inspect component -f architect.yml
+  cldctl inspect component ./my-app
+  cldctl inspect component -f cloud.component.yml
 
   # Inspect an OCI component image
-  arcctl inspect component ghcr.io/myorg/app:v1
+  cldctl inspect component ghcr.io/myorg/app:v1
 
   # Expand to include dependency component nodes
-  arcctl inspect component ./my-app --expand`,
+  cldctl inspect component ./my-app --expand`,
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -226,7 +226,7 @@ Examples:
 	}
 
 	cmd.Flags().BoolVar(&expand, "expand", false, "Expand dependency components to show their nodes")
-	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to architect.yml if not in default location")
+	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to cloud.component.yml if not in default location")
 
 	return cmd
 }
@@ -243,7 +243,7 @@ func formatLoadError(err error) error {
 
 // formatErrorWithDetails extracts and displays validation error details
 func formatErrorWithDetails(err error, prefix string) error {
-	// Try to extract arcctl error with details
+	// Try to extract cldctl error with details
 	var arcErr *errors.Error
 	if e, ok := err.(*errors.Error); ok {
 		arcErr = e

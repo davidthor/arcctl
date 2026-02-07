@@ -9,7 +9,7 @@ node_modules/
 dist/
 build/
 bin/
-/arcctl
+/cldctl
 .next/
 out/
 .mintlify/

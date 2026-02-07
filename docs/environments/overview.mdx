@@ -1,6 +1,6 @@
 ---
 title: "Environments Overview"
-description: "Collaboration-focused deployment configurations in arcctl"
+description: "Collaboration-focused deployment configurations in cldctl"
 ---
 
 # Environments
@@ -69,13 +69,13 @@ components:
 ## How Environments Work
 
 1. **Define the environment** - Create an `environment.yml` file specifying components and configuration
-2. **Create the environment** - Use `arcctl env create` to initialize
-3. **Apply updates** - Use `arcctl env update <name> <config-file>` to deploy/update all components
+2. **Create the environment** - Use `cldctl env create` to initialize
+3. **Apply updates** - Use `cldctl env update <name> <config-file>` to deploy/update all components
 4. **Manage lifecycle** - Update, scale, and destroy as needed
 
 ```mermaid
 flowchart LR
-    A[environment.yml] --> B[arcctl env update]
+    A[environment.yml] --> B[cldctl env update]
     B --> C[Datacenter]
     C --> D[Cloud Resources]
     D --> E[Running Application]
@@ -90,7 +90,7 @@ You can deploy components in two ways:
 Deploy multiple components with shared configuration:
 
 ```bash
-arcctl env update staging staging.yml
+cldctl env update staging staging.yml
 ```
 
 ### Individual Component Deploy
@@ -98,7 +98,7 @@ arcctl env update staging staging.yml
 Deploy a single component directly:
 
 ```bash
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 The environment file approach is recommended for:

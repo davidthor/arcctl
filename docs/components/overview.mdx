@@ -1,16 +1,16 @@
 ---
 title: "Components Overview"
-description: "Developer-focused application bundles in arcctl"
+description: "Developer-focused application bundles in cldctl"
 ---
 
 # Components
 
-Components are developer-focused application bundles defined in an `architect.yml` file. They describe what your application needs without specifying how infrastructure should be provisioned.
+Components are developer-focused application bundles defined in an `cloud.component.yml` file. They describe what your application needs without specifying how infrastructure should be provisioned.
 
 ## File Structure
 
 ```yaml
-# architect.yml
+# cloud.component.yml
 # Component name is determined by the OCI tag at build time
 # README.md (if present) is bundled into the artifact for registry documentation
 
@@ -87,7 +87,7 @@ observability:
     team: backend
 ```
 
-When enabled, use `arcctl logs` to view workload logs and `arcctl observability dashboard` to open the monitoring UI. See the [full observability docs](/components/observability) for details.
+When enabled, use `cldctl logs` to view workload logs and `cldctl observability dashboard` to open the monitoring UI. See the [full observability docs](/components/observability) for details.
 
 ## Expression System
 
@@ -107,7 +107,7 @@ deployments:
 ## Complete Example
 
 ```yaml
-# my-app/architect.yml
+# my-app/cloud.component.yml
 
 variables:
   log_level:

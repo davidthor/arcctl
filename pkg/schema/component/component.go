@@ -2,11 +2,11 @@
 package component
 
 import (
-	"github.com/architect-io/arcctl/pkg/schema/component/internal"
+	"github.com/davidthor/arcctl/pkg/schema/component/internal"
 )
 
 // Component represents a parsed and validated component configuration.
-// This is the public interface used throughout arcctl.
+// This is the public interface used throughout cldctl.
 type Component interface {
 	// Metadata
 	Readme() string // README content loaded from README.md if present

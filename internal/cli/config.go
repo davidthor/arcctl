@@ -14,14 +14,14 @@ const (
 	ConfigKeyDefaultDatacenter = "default_datacenter"
 
 	// EnvDefaultDatacenter is the environment variable for the default datacenter.
-	EnvDefaultDatacenter = "ARCCTL_DATACENTER"
+	EnvDefaultDatacenter = "CLDCTL_DATACENTER"
 )
 
 func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage CLI configuration",
-		Long:  `Get and set arcctl CLI configuration values stored in ~/.arcctl/config.yaml.`,
+		Long:  `Get and set cldctl CLI configuration values stored in ~/.cldctl/config.yaml.`,
 	}
 
 	cmd.AddCommand(newConfigSetCmd())
@@ -35,13 +35,13 @@ func newConfigSetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set <key> <value>",
 		Short: "Set a configuration value",
-		Long: `Set a configuration value in ~/.arcctl/config.yaml.
+		Long: `Set a configuration value in ~/.cldctl/config.yaml.
 
 Available keys:
   default-datacenter    The datacenter used when --datacenter/-d is not specified.
 
 Examples:
-  arcctl config set default-datacenter my-dc`,
+  cldctl config set default-datacenter my-dc`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
@@ -74,10 +74,10 @@ func newConfigGetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a configuration value",
-		Long: `Get a configuration value from ~/.arcctl/config.yaml.
+		Long: `Get a configuration value from ~/.cldctl/config.yaml.
 
 Examples:
-  arcctl config get default-datacenter`,
+  cldctl config get default-datacenter`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
@@ -100,7 +100,7 @@ func newConfigListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all configuration values",
-		Long:  `List all configuration values from ~/.arcctl/config.yaml.`,
+		Long:  `List all configuration values from ~/.cldctl/config.yaml.`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dc := viper.GetString(ConfigKeyDefaultDatacenter)
@@ -123,8 +123,8 @@ func newConfigListCmd() *cobra.Command {
 //
 // Precedence (highest to lowest):
 //  1. --datacenter/-d flag (explicit)
-//  2. ARCCTL_DATACENTER environment variable
-//  3. default_datacenter from ~/.arcctl/config.yaml
+//  2. CLDCTL_DATACENTER environment variable
+//  3. default_datacenter from ~/.cldctl/config.yaml
 //  4. Error if none set
 func resolveDatacenter(flagValue string) (string, error) {
 	// 1. Explicit flag
@@ -147,8 +147,8 @@ func resolveDatacenter(flagValue string) (string, error) {
 		"no datacenter specified\n\n" +
 			"Specify a datacenter using one of:\n" +
 			"  --datacenter/-d flag\n" +
-			"  ARCCTL_DATACENTER environment variable\n" +
-			"  arcctl config set default-datacenter <name>\n\n" +
+			"  CLDCTL_DATACENTER environment variable\n" +
+			"  cldctl config set default-datacenter <name>\n\n" +
 			"Deploying a datacenter automatically sets the default.",
 	)
 }
@@ -167,7 +167,7 @@ func writeConfig() error {
 		if err != nil {
 			return fmt.Errorf("failed to get home directory: %w", err)
 		}
-		configDir := filepath.Join(home, ".arcctl")
+		configDir := filepath.Join(home, ".cldctl")
 		if err := os.MkdirAll(configDir, 0755); err != nil {
 			return fmt.Errorf("failed to create config directory: %w", err)
 		}

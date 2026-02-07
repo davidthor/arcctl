@@ -13,7 +13,7 @@ resource "google_compute_network" "main" {
   auto_create_subnetworks = false
 
   labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
   }
 }
 

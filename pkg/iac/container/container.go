@@ -63,7 +63,7 @@ type ModuleResponse struct {
 	// Outputs from the module (after apply)
 	Outputs map[string]OutputValue `json:"outputs,omitempty"`
 
-	// State to persist (opaque to arcctl)
+	// State to persist (opaque to cldctl)
 	State map[string]interface{} `json:"state,omitempty"`
 
 	// Changes describes what changed (for preview)
@@ -137,7 +137,7 @@ type ExecuteOptions struct {
 func (e *Executor) Execute(ctx context.Context, opts ExecuteOptions) (*ModuleResponse, error) {
 	// Create work directory if needed
 	if opts.WorkDir == "" {
-		tmpDir, err := os.MkdirTemp("", "arcctl-module-*")
+		tmpDir, err := os.MkdirTemp("", "cldctl-module-*")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create temp dir: %w", err)
 		}
@@ -180,7 +180,7 @@ func (e *Executor) Execute(ctx context.Context, opts ExecuteOptions) (*ModuleRes
 	containerConfig := &container.Config{
 		Image: opts.Image,
 		Env:   env,
-		Cmd:   []string{"/arcctl-entrypoint", "--input", "/workspace/input.json", "--output", "/workspace/output.json"},
+		Cmd:   []string{"/cldctl-entrypoint", "--input", "/workspace/input.json", "--output", "/workspace/output.json"},
 	}
 
 	hostConfig := &container.HostConfig{

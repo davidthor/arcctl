@@ -3,18 +3,18 @@ title: "update environment"
 description: "Update an environment configuration"
 ---
 
-# arcctl update environment
+# cldctl update environment
 
 Update environment configuration.
 
 <Note>
-Use `arcctl update env` as shorthand for `arcctl update environment`.
+Use `cldctl update env` as shorthand for `cldctl update environment`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl update environment <name> [config-file] [options]
+cldctl update environment <name> [config-file] [options]
 ```
 
 ## Arguments
@@ -28,7 +28,7 @@ arcctl update environment <name> [config-file] [options]
 
 | Option | Description |
 |--------|-------------|
-| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `ARCCTL_DATACENTER` env var, or CLI config default) |
+| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `CLDCTL_DATACENTER` env var, or CLI config default) |
 | `--var <key=value>` | Override an environment variable (repeatable) |
 | `--var-file <path>` | Load variable overrides from a file (KEY=value format) |
 | `--auto-approve` | Skip confirmation prompt (when using config file) |
@@ -54,30 +54,30 @@ This means the environment file can be safely checked into version control witho
 
 ```bash
 # Apply configuration file
-arcctl update environment staging environment.yml
+cldctl update environment staging environment.yml
 
 # Using alias
-arcctl update env staging environment.yml
+cldctl update env staging environment.yml
 
 # Specify datacenter explicitly
-arcctl update environment staging environment.yml -d my-datacenter
+cldctl update environment staging environment.yml -d my-datacenter
 
 # Override environment variables
-arcctl update environment staging environment.yml \
+cldctl update environment staging environment.yml \
   --var posthog_debug=true
 
 # Load variable overrides from a file
-arcctl update environment staging environment.yml \
+cldctl update environment staging environment.yml \
   --var-file ./secrets.env
 
 # Apply with auto-approval (CI/CD)
-arcctl update environment staging ./envs/staging.yml --auto-approve
+cldctl update environment staging ./envs/staging.yml --auto-approve
 ```
 
 ## Output
 
 ```
-$ arcctl update env staging environment.yml
+$ cldctl update env staging environment.yml
 
 Environment: staging
 Datacenter:  aws-production
@@ -101,5 +101,5 @@ Proceed with update? [Y/n]:
 
 ## See Also
 
-- [`arcctl create environment`](/cli/create/environment) - Create an environment
-- [`arcctl destroy environment`](/cli/destroy/environment) - Destroy an environment
+- [`cldctl create environment`](/cli/create/environment) - Create an environment
+- [`cldctl destroy environment`](/cli/destroy/environment) - Destroy an environment

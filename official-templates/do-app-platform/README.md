@@ -48,15 +48,15 @@ Deploy portable cloud-native applications to DigitalOcean App Platform — a ful
 
 ```bash
 # Build and push the datacenter
-arcctl build datacenter ./do-app-platform -t ghcr.io/myorg/do-app-platform:v1
-arcctl push datacenter ghcr.io/myorg/do-app-platform:v1
+cldctl build datacenter ./do-app-platform -t ghcr.io/myorg/do-app-platform:v1
+cldctl push datacenter ghcr.io/myorg/do-app-platform:v1
 
 # Deploy the datacenter
-arcctl deploy datacenter do-paas ghcr.io/myorg/do-app-platform:v1 \
+cldctl deploy datacenter do-paas ghcr.io/myorg/do-app-platform:v1 \
   --var do_token=$DO_TOKEN \
   --var domain=app.example.com
 
 # Create an environment and deploy a component
-arcctl create environment staging -d do-paas
-arcctl deploy component ghcr.io/myorg/my-app:v1 -e staging
+cldctl create environment staging -d do-paas
+cldctl deploy component ghcr.io/myorg/my-app:v1 -e staging
 ```

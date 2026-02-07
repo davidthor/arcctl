@@ -37,7 +37,7 @@ resource "aws_iam_role" "execution" {
 
   tags = {
     Name      = "${local.name}-execution"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -63,7 +63,7 @@ resource "aws_iam_role" "task" {
 
   tags = {
     Name      = "${local.name}-task"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -168,7 +168,7 @@ resource "aws_ecs_task_definition" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -187,7 +187,7 @@ resource "aws_ecs_service" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -198,7 +198,7 @@ resource "aws_service_discovery_private_dns_namespace" "otel" {
 
   tags = {
     Name      = "${local.name}-otel"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -220,6 +220,6 @@ resource "aws_service_discovery_service" "otel" {
 
   tags = {
     Name      = "${local.name}-collector"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

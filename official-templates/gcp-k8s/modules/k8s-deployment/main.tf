@@ -25,7 +25,7 @@ resource "kubernetes_deployment_v1" "main" {
 
     labels = {
       app        = var.name
-      managed-by = "arcctl"
+      managed-by = "cldctl"
     }
   }
 
@@ -42,7 +42,7 @@ resource "kubernetes_deployment_v1" "main" {
       metadata {
         labels = {
           app        = var.name
-          managed-by = "arcctl"
+          managed-by = "cldctl"
         }
       }
 

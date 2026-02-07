@@ -1,10 +1,10 @@
 # errors
 
-Structured error types for arcctl with error codes, wrapping, and metadata support.
+Structured error types for cldctl with error codes, wrapping, and metadata support.
 
 ## Overview
 
-The `errors` package provides a comprehensive error handling system for arcctl that supports:
+The `errors` package provides a comprehensive error handling system for cldctl that supports:
 
 - Error codes for categorization
 - Error wrapping with cause chains
@@ -151,7 +151,7 @@ err = err.WithDetail("component", "my-api")
 ### Basic Error Handling
 
 ```go
-import "github.com/architect-io/arcctl/pkg/errors"
+import "github.com/davidthor/arcctl/pkg/errors"
 
 func loadComponent(path string) (*Component, error) {
     data, err := os.ReadFile(path)
@@ -161,12 +161,12 @@ func loadComponent(path string) (*Component, error) {
         }
         return nil, errors.Wrap(errors.ErrCodeParse, "failed to read component", err)
     }
-    
+
     comp, err := parse(data)
     if err != nil {
         return nil, errors.ParseError(path, err)
     }
-    
+
     return comp, nil
 }
 ```
@@ -231,7 +231,7 @@ The `Error` type fully implements Go's error interface and supports the standard
 ```go
 import (
     "errors"
-    arcerrors "github.com/architect-io/arcctl/pkg/errors"
+    arcerrors "github.com/davidthor/arcctl/pkg/errors"
 )
 
 // Use errors.Is for type checking

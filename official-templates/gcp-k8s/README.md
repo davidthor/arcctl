@@ -59,21 +59,21 @@ A Kubernetes datacenter for Google Cloud Platform using GKE for container worklo
 
 ```bash
 # Build and push
-arcctl dc build . -t ghcr.io/myorg/gcp-k8s:v1
-arcctl dc push ghcr.io/myorg/gcp-k8s:v1
+cldctl dc build . -t ghcr.io/myorg/gcp-k8s:v1
+cldctl dc push ghcr.io/myorg/gcp-k8s:v1
 
 # Deploy datacenter
-arcctl dc deploy gcp-k8s-prod \
+cldctl dc deploy gcp-k8s-prod \
   --config ghcr.io/myorg/gcp-k8s:v1 \
   --var gcp_project=my-project \
   --var cluster_name=prod-cluster \
-  --var registry=us-central1-docker.pkg.dev/my-project/arcctl \
+  --var registry=us-central1-docker.pkg.dev/my-project/cldctl \
   --var domain=app.example.com \
   --var smtp_password=$SMTP_PASSWORD
 
 # Create environment and deploy
-arcctl env create staging --datacenter gcp-k8s-prod
-arcctl deploy ghcr.io/myorg/my-app:v1 -e staging
+cldctl env create staging --datacenter gcp-k8s-prod
+cldctl deploy ghcr.io/myorg/my-app:v1 -e staging
 ```
 
 ## Prerequisites

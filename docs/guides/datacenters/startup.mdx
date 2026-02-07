@@ -8,7 +8,7 @@ description: "Managed serverless datacenter for startups using Vercel, Neon, Ups
 This guide shows how to build a datacenter for startups and small teams using fully managed services. It's designed for teams that want to ship fast without managing infrastructure, with built-in support for production, staging, and preview environments.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/startup/`](https://github.com/architect-io/arcctl/tree/main/official-templates/startup)
+This is an officially maintained datacenter template. Source: [`official-templates/startup/`](https://github.com/davidthor/arcctl/tree/main/official-templates/startup)
 </Info>
 
 ## Overview
@@ -454,11 +454,11 @@ dockerBuild {
 
 ```bash
 # Build and push the datacenter template
-arcctl dc build . -t ghcr.io/myorg/startup-dc:v1.0.0
-arcctl dc push ghcr.io/myorg/startup-dc:v1.0.0
+cldctl dc build . -t ghcr.io/myorg/startup-dc:v1.0.0
+cldctl dc push ghcr.io/myorg/startup-dc:v1.0.0
 
 # Deploy a single datacenter for all environments
-arcctl dc deploy startup \
+cldctl dc deploy startup \
   --config ghcr.io/myorg/startup-dc:v1.0.0 \
   --var vercel_token=$VERCEL_TOKEN \
   --var vercel_project_name=my-app \
@@ -474,23 +474,23 @@ arcctl dc deploy startup \
 
 ```bash
 # Production (uses Neon main branch, Vercel production target)
-arcctl env create production --datacenter startup
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e production
+cldctl env create production --datacenter startup
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e production
 
 # Staging (Neon branches from main, Vercel preview target)
-arcctl env create staging --datacenter startup
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl env create staging --datacenter startup
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 
 # Preview for PR #42 (Neon branches from staging, Vercel preview target)
-arcctl env create preview-42 --datacenter startup
-arcctl deploy ghcr.io/myorg/my-app:pr-42 -e preview-42
+cldctl env create preview-42 --datacenter startup
+cldctl deploy ghcr.io/myorg/my-app:pr-42 -e preview-42
 ```
 
 ### Preview Cleanup
 
 ```bash
 # When a PR is merged, tear down its preview environment
-arcctl destroy environment preview-42
+cldctl destroy environment preview-42
 ```
 
 The Neon branch and Vercel alias are removed. The shared Neon project and Vercel project remain intact.

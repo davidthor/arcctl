@@ -1,8 +1,8 @@
-// Package loki provides a Loki-based log query adapter for arcctl.
+// Package loki provides a Loki-based log query adapter for cldctl.
 //
 // It is imported as a side effect to register the "loki" query type:
 //
-//	import _ "github.com/architect-io/arcctl/pkg/logs/loki"
+//	import _ "github.com/davidthor/arcctl/pkg/logs/loki"
 package loki
 
 import (
@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/logs"
+	"github.com/davidthor/arcctl/pkg/logs"
 	"github.com/gorilla/websocket"
 )
 
@@ -227,7 +227,7 @@ func buildLogQL(opts logs.QueryOptions) string {
 	}
 
 	if len(selectors) == 0 {
-		return `{job="arcctl"}`
+		return `{job="cldctl"}`
 	}
 	return fmt.Sprintf(`{%s}`, strings.Join(selectors, ", "))
 }

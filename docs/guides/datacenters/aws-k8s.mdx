@@ -8,7 +8,7 @@ description: "Deploy to Amazon EKS with RDS, S3, SES, and OTel observability"
 This guide shows how to build a datacenter that deploys components to Amazon EKS with managed AWS services for databases, storage, email, encryption, and observability.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/aws-k8s/`](https://github.com/architect-io/arcctl/tree/main/official-templates/aws-k8s)
+This is an officially maintained datacenter template. Source: [`official-templates/aws-k8s/`](https://github.com/davidthor/arcctl/tree/main/official-templates/aws-k8s)
 </Info>
 
 ## Overview
@@ -485,11 +485,11 @@ observability {
 
 ```bash
 # Build the datacenter
-arcctl dc build . -t ghcr.io/myorg/aws-k8s-dc:v1.0.0
-arcctl dc push ghcr.io/myorg/aws-k8s-dc:v1.0.0
+cldctl dc build . -t ghcr.io/myorg/aws-k8s-dc:v1.0.0
+cldctl dc push ghcr.io/myorg/aws-k8s-dc:v1.0.0
 
 # Deploy with variables
-arcctl dc deploy aws-k8s-prod \
+cldctl dc deploy aws-k8s-prod \
   --config ghcr.io/myorg/aws-k8s-dc:v1.0.0 \
   --var cluster_name=prod-eks \
   --var vpc_id=vpc-12345 \
@@ -501,8 +501,8 @@ arcctl dc deploy aws-k8s-prod \
   --var ses_smtp_password=$SES_PASSWORD
 
 # Create environment and deploy
-arcctl env create staging --datacenter aws-k8s-prod
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl env create staging --datacenter aws-k8s-prod
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 ## Prerequisites

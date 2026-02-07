@@ -33,7 +33,7 @@ resource "google_storage_bucket" "main" {
   }
 
   labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
   }
 
   dynamic "cors" {

@@ -5,7 +5,7 @@ description: "Configure remote state storage for team collaboration"
 
 # State Backends
 
-State backends persist arcctl state, including datacenter configurations, environment metadata, and infrastructure states. For team collaboration, use a remote backend to share state across machines.
+State backends persist cldctl state, including datacenter configurations, environment metadata, and infrastructure states. For team collaboration, use a remote backend to share state across machines.
 
 ## Supported Backends
 
@@ -23,11 +23,11 @@ State backends persist arcctl state, including datacenter configurations, enviro
 Default backend for development:
 
 ```bash
-# Uses default path (~/.arcctl/state/)
-arcctl deploy ./my-app -e staging
+# Uses default path (~/.cldctl/state/)
+cldctl deploy ./my-app -e staging
 
 # Custom path
-arcctl deploy ./my-app -e staging \
+cldctl deploy ./my-app -e staging \
   --backend local \
   --backend-config path=/custom/state/path
 ```
@@ -37,12 +37,12 @@ arcctl deploy ./my-app -e staging \
 For AWS-based teams with DynamoDB locking:
 
 ```bash
-arcctl deploy ./my-app -e staging \
+cldctl deploy ./my-app -e staging \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1 \
-  --backend-config key=arcctl \
-  --backend-config dynamodb_table=arcctl-locks
+  --backend-config key=cldctl \
+  --backend-config dynamodb_table=cldctl-locks
 ```
 
 **Configuration options:**
@@ -60,10 +60,10 @@ arcctl deploy ./my-app -e staging \
 For GCP-based teams:
 
 ```bash
-arcctl deploy ./my-app -e staging \
+cldctl deploy ./my-app -e staging \
   --backend gcs \
-  --backend-config bucket=my-arcctl-state \
-  --backend-config prefix=arcctl
+  --backend-config bucket=my-cldctl-state \
+  --backend-config prefix=cldctl
 ```
 
 **Configuration options:**
@@ -79,11 +79,11 @@ arcctl deploy ./my-app -e staging \
 For Azure-based teams:
 
 ```bash
-arcctl deploy ./my-app -e staging \
+cldctl deploy ./my-app -e staging \
   --backend azurerm \
   --backend-config storage_account_name=myaccount \
-  --backend-config container_name=arcctl-state \
-  --backend-config key=arcctl
+  --backend-config container_name=cldctl-state \
+  --backend-config key=cldctl
 ```
 
 **Configuration options:**
@@ -100,20 +100,20 @@ Backend configuration can be set via environment variables:
 
 ```bash
 # S3 Backend
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
-export ARCCTL_BACKEND_S3_KEY=arcctl
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
+export CLDCTL_BACKEND_S3_KEY=cldctl
 
 # GCS Backend
-export ARCCTL_BACKEND=gcs
-export ARCCTL_BACKEND_GCS_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_GCS_PREFIX=arcctl
+export CLDCTL_BACKEND=gcs
+export CLDCTL_BACKEND_GCS_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_GCS_PREFIX=cldctl
 
 # Azure Backend
-export ARCCTL_BACKEND=azurerm
-export ARCCTL_BACKEND_AZURERM_STORAGE_ACCOUNT_NAME=myaccount
-export ARCCTL_BACKEND_AZURERM_CONTAINER_NAME=arcctl-state
+export CLDCTL_BACKEND=azurerm
+export CLDCTL_BACKEND_AZURERM_STORAGE_ACCOUNT_NAME=myaccount
+export CLDCTL_BACKEND_AZURERM_CONTAINER_NAME=cldctl-state
 ```
 
 ## State Path Structure
@@ -139,7 +139,7 @@ Backends store state in a hierarchical structure:
 
 ## State Locking
 
-arcctl uses state locking to prevent concurrent modifications. If a lock is held, arcctl shows the lock information:
+cldctl uses state locking to prevent concurrent modifications. If a lock is held, cldctl shows the lock information:
 
 ```
 Error: State is locked
@@ -157,7 +157,7 @@ Use --force-unlock to break the lock (use with caution).
 In emergencies, force unlock a stuck state:
 
 ```bash
-arcctl env unlock staging --force
+cldctl env unlock staging --force
 ```
 
 <Warning>
@@ -179,12 +179,12 @@ Only use force unlock when you're certain no other operation is running. Breakin
 # GitHub Actions example
 - name: Deploy to staging
   env:
-    ARCCTL_BACKEND: s3
-    ARCCTL_BACKEND_S3_BUCKET: ${{ secrets.STATE_BUCKET }}
-    ARCCTL_BACKEND_S3_REGION: us-east-1
-    ARCCTL_BACKEND_S3_DYNAMODB_TABLE: arcctl-locks
+    CLDCTL_BACKEND: s3
+    CLDCTL_BACKEND_S3_BUCKET: ${{ secrets.STATE_BUCKET }}
+    CLDCTL_BACKEND_S3_REGION: us-east-1
+    CLDCTL_BACKEND_S3_DYNAMODB_TABLE: cldctl-locks
   run: |
-    arcctl deploy ghcr.io/myorg/my-app:${{ github.sha }} -e staging --auto-approve
+    cldctl deploy ghcr.io/myorg/my-app:${{ github.sha }} -e staging --auto-approve
 ```
 
 ## Next Steps

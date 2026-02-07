@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/architect-io/arcctl/pkg/errors"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter/internal"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter/v1"
+	"github.com/davidthor/arcctl/pkg/errors"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter/internal"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter/v1"
 )
 
 // versionDetectingLoader implements the Loader interface.

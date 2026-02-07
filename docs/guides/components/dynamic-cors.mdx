@@ -120,7 +120,7 @@ ${{ dependents.*.services.*.url | join "," }}
 1. **Frontend declares dependency:**
 
 ```yaml
-# frontend-app/architect.yml
+# frontend-app/cloud.component.yml
 name: frontend-app
 
 dependencies:
@@ -148,12 +148,12 @@ CORS_ORIGINS=https://frontend-app.staging.example.com
 When multiple frontends depend on the API:
 
 ```yaml
-# frontend-app/architect.yml
+# frontend-app/cloud.component.yml
 dependencies:
   api:
     component: ghcr.io/myorg/api-with-cors:v1.0.0
 
-# admin-app/architect.yml  
+# admin-app/cloud.component.yml  
 dependencies:
   api:
     component: ghcr.io/myorg/api-with-cors:v1.0.0
@@ -196,14 +196,14 @@ Deploy the API first, then deploy frontends that depend on it:
 
 ```bash
 # Deploy API
-arcctl deploy ghcr.io/myorg/api-with-cors:v1.0.0 -e staging \
+cldctl deploy ghcr.io/myorg/api-with-cors:v1.0.0 -e staging \
   --var jwt_secret=$JWT_SECRET
 
 # Deploy frontend (automatically links to API)
-arcctl deploy ghcr.io/myorg/frontend-app:v1.0.0 -e staging
+cldctl deploy ghcr.io/myorg/frontend-app:v1.0.0 -e staging
 ```
 
-When the frontend deploys, arcctl:
+When the frontend deploys, cldctl:
 1. Detects the dependency on api-with-cors
 2. Updates the API with the frontend's route URLs
 3. The API receives the new CORS_ORIGINS value

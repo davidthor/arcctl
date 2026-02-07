@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/registry"
+	"github.com/davidthor/arcctl/pkg/registry"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -48,8 +48,8 @@ Without the --environment flag, lists all locally built or pulled components
 With the --environment flag, lists all components deployed to that environment.
 
 Examples:
-  arcctl list component                    # List local components
-  arcctl list component -e production      # List deployed components`,
+  cldctl list component                    # List local components
+  cldctl list component -e production      # List deployed components`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
@@ -157,8 +157,8 @@ func listLocalComponents(outputFormat string) error {
 		if len(entries) == 0 {
 			fmt.Println("No local components found.")
 			fmt.Println()
-			fmt.Println("Build a component:  arcctl build component -t <repo:tag> <path>")
-			fmt.Println("Pull a component:   arcctl pull component <repo:tag>")
+			fmt.Println("Build a component:  cldctl build component -t <repo:tag> <path>")
+			fmt.Println("Pull a component:   cldctl pull component <repo:tag>")
 			return nil
 		}
 
@@ -191,8 +191,8 @@ func newListDatacenterCmd() *cobra.Command {
 		Long: `List all deployed datacenters.
 
 Examples:
-  arcctl list datacenter
-  arcctl list datacenter -o json`,
+  cldctl list datacenter
+  cldctl list datacenter -o json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
@@ -301,13 +301,13 @@ func newListEnvironmentCmd() *cobra.Command {
 		Short:   "List environments",
 		Long: `List environments for a datacenter.
 
-The datacenter is resolved from --datacenter/-d flag, ARCCTL_DATACENTER
+The datacenter is resolved from --datacenter/-d flag, CLDCTL_DATACENTER
 environment variable, or the default datacenter set in config.
 
 Examples:
-  arcctl list environment
-  arcctl list environment -d my-datacenter
-  arcctl list environment -o json`,
+  cldctl list environment
+  cldctl list environment -d my-datacenter
+  cldctl list environment -o json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

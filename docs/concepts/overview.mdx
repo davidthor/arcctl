@@ -1,11 +1,11 @@
 ---
 title: "Core Concepts"
-description: "Understanding arcctl's component, datacenter, and environment model"
+description: "Understanding cldctl's component, datacenter, and environment model"
 ---
 
 # Core Concepts
 
-arcctl uses three complementary configuration types to achieve portable, self-service cloud deployments. Understanding how these work together is key to using arcctl effectively.
+cldctl uses three complementary configuration types to achieve portable, self-service cloud deployments. Understanding how these work together is key to using cldctl effectively.
 
 ## The Three Pillars
 
@@ -37,7 +37,7 @@ A component declares:
 - **Dependencies** - References to other components
 
 ```yaml
-# architect.yml - Developer writes this
+# cloud.component.yml - Developer writes this
 builds:
   api:
     context: ./api
@@ -131,16 +131,16 @@ components:
 
 ## How They Work Together
 
-When you deploy a component, arcctl orchestrates the interaction:
+When you deploy a component, cldctl orchestrates the interaction:
 
 ```mermaid
 sequenceDiagram
     participant D as Developer
-    participant A as arcctl
+    participant A as cldctl
     participant DC as Datacenter
     participant C as Cloud
 
-    D->>A: arcctl component deploy
+    D->>A: cldctl component deploy
     A->>A: Parse component requirements
     A->>DC: Match resources to hooks
     DC->>C: Execute IaC modules
@@ -186,7 +186,7 @@ Expressions use the syntax `${{ resource_type.name.property }}` and are evaluate
 
 ## Automatic Dependency Deployment
 
-When you deploy a component, arcctl recursively resolves its dependency tree. Any dependency not already present in the target environment is pulled and deployed automatically. This means a single `arcctl deploy` or `arcctl up` command brings up an entire multi-service application -- including transitive dependencies -- without manual orchestration.
+When you deploy a component, cldctl recursively resolves its dependency tree. Any dependency not already present in the target environment is pulled and deployed automatically. This means a single `cldctl deploy` or `cldctl up` command brings up an entire multi-service application -- including transitive dependencies -- without manual orchestration.
 
 This is the capability that makes ephemeral environments practical: one command from zero to a running preview environment.
 
@@ -196,7 +196,7 @@ This is the capability that makes ephemeral environments practical: one command 
 
 ## State Management
 
-arcctl maintains state to track:
+cldctl maintains state to track:
 - Deployed environments and their components
 - Resource states and outputs
 - IaC module states (Pulumi/OpenTofu)

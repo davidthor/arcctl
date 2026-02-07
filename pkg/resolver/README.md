@@ -1,6 +1,6 @@
 # resolver
 
-Component resolution for arcctl. Resolves component references from local filesystem, OCI registries, and Git repositories. Handles dependency resolution and topological sorting.
+Component resolution for cldctl. Resolves component references from local filesystem, OCI registries, and Git repositories. Handles dependency resolution and topological sorting.
 
 ## Overview
 
@@ -86,7 +86,7 @@ type DependencyGraph struct {
 ### Creating a Resolver
 
 ```go
-import "github.com/architect-io/arcctl/pkg/resolver"
+import "github.com/davidthor/arcctl/pkg/resolver"
 
 // Create with default options
 r := resolver.NewResolver(resolver.Options{
@@ -142,7 +142,7 @@ refType := resolver.DetectReferenceType("git::https://github.com/org/repo.git//p
 ### Creating a Dependency Resolver
 
 ```go
-import "github.com/architect-io/arcctl/pkg/resolver"
+import "github.com/davidthor/arcctl/pkg/resolver"
 
 r := resolver.NewResolver(resolver.Options{
     AllowLocal:  true,
@@ -207,7 +207,7 @@ if graph.HasCircularDependencies() {
 
 ### Local References (CLI only)
 
-Local references are supported for CLI commands (e.g., `arcctl up ./my-component`) but are **not allowed** in component dependency specifications. For dependencies, use OCI or Git references instead.
+Local references are supported for CLI commands (e.g., `cldctl up ./my-component`) but are **not allowed** in component dependency specifications. For dependencies, use OCI or Git references instead.
 
 ```
 ./components/api
@@ -237,7 +237,7 @@ git::git@github.com:org/repo.git//component?ref=feature-branch
 
 Remote components are cached locally to avoid repeated downloads:
 
-- Default cache directory: `~/.arcctl/cache/components`
+- Default cache directory: `~/.cldctl/cache/components`
 - OCI artifacts are extracted to cache
 - Git repositories are cloned to cache
 - Cache is keyed by reference and version/digest
@@ -248,24 +248,24 @@ Remote components are cached locally to avoid repeated downloads:
 import (
     "context"
     "fmt"
-    "github.com/architect-io/arcctl/pkg/resolver"
-    "github.com/architect-io/arcctl/pkg/oci"
+    "github.com/davidthor/arcctl/pkg/resolver"
+    "github.com/davidthor/arcctl/pkg/oci"
 )
 
 func main() {
     ctx := context.Background()
-    
+
     // Create resolver
     r := resolver.NewResolver(resolver.Options{
-        CacheDir:    "~/.arcctl/cache/components",
+        CacheDir:    "~/.cldctl/cache/components",
         AllowLocal:  true,
         AllowRemote: true,
         OCIClient:   oci.NewClient(),
     })
-    
+
     // Create dependency resolver
     depResolver := resolver.NewDependencyResolver(r)
-    
+
     // Resolve component with dependencies
     graph, err := depResolver.Resolve(ctx, "./my-app", map[string]string{
         "env": "prod",
@@ -273,14 +273,14 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    
+
     // Print deployment order
     fmt.Println("Deployment order:")
     for i, name := range graph.GetDeploymentOrder() {
         dep, _ := graph.GetDependency(name)
         fmt.Printf("  %d. %s (%s)\n", i+1, name, dep.Component.Type)
     }
-    
+
     // Access loaded components
     for name, dep := range graph.All {
         comp := dep.LoadedComponent

@@ -1,0 +1,46 @@
+# Example: Next.js application with PostgreSQL and S3 storage
+# A typical full-stack Next.js app with database and file uploads
+#
+# Note: Routes can point directly to functions - no service wrapper needed.
+
+variables:
+  log_level:
+    description: "Application log level"
+    default: "info"
+  
+  upload_max_size:
+    description: "Maximum file upload size in MB"
+    default: "10"
+
+databases:
+  main:
+    type: postgres:^16
+
+buckets:
+  uploads:
+    type: s3
+    versioning: true
+    public: false
+
+functions:
+  web:
+    src:
+      path: .
+      framework: nextjs
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      S3_ENDPOINT: ${{ buckets.uploads.endpoint }}
+      S3_BUCKET: ${{ buckets.uploads.bucket }}
+      S3_REGION: ${{ buckets.uploads.region }}
+      S3_ACCESS_KEY_ID: ${{ buckets.uploads.accessKeyId }}
+      S3_SECRET_ACCESS_KEY: ${{ buckets.uploads.secretAccessKey }}
+      UPLOAD_MAX_SIZE_MB: ${{ variables.upload_max_size }}
+      LOG_LEVEL: ${{ variables.log_level }}
+    memory: "1024Mi"
+    timeout: 30
+
+# Routes can point directly to functions
+routes:
+  main:
+    type: http
+    function: web

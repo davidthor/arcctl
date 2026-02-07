@@ -27,7 +27,7 @@ resource "google_dns_managed_zone" "internal" {
   }
 
   labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
   }
 }
 

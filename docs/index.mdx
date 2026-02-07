@@ -1,11 +1,11 @@
 ---
 title: "Introduction"
-description: "Deploy cloud-native applications anywhere with arcctl"
+description: "Deploy cloud-native applications anywhere with cldctl"
 ---
 
-# arcctl
+# cldctl
 
-arcctl is a command-line tool designed to help developers create and deploy cloud-native applications in a portable fashion—**write once, deploy anywhere**.
+cldctl is a command-line tool designed to help developers create and deploy cloud-native applications in a portable fashion—**write once, deploy anywhere**.
 
 The tool bridges the gap between application development and infrastructure management by separating concerns into three distinct configuration paradigms:
 
@@ -32,27 +32,27 @@ Modern cloud-native development requires developers to juggle multiple concerns:
 
 ## The Solution
 
-arcctl provides **true self-service**: developers can create environments and deploy applications without infrastructure knowledge, while platform engineers maintain control over how infrastructure behaves.
+cldctl provides **true self-service**: developers can create environments and deploy applications without infrastructure knowledge, while platform engineers maintain control over how infrastructure behaves.
 
 ### How It Works
 
 ```mermaid
 graph LR
-    A[Component<br/>architect.yml] --> C[arcctl]
+    A[Component<br/>cloud.component.yml] --> C[cldctl]
     B[Datacenter<br/>datacenter.hcl] --> C
     C --> D[Environment]
     D --> E[Cloud Resources]
 ```
 
-1. **Developers** write `architect.yml` files describing their application's needs (databases, deployments, routes)
+1. **Developers** write `cloud.component.yml` files describing their application's needs (databases, deployments, routes)
 2. **Platform engineers** write `datacenter.hcl` files defining how those needs are fulfilled (AWS RDS, Kubernetes, etc.)
-3. **arcctl** matches component requirements to datacenter hooks, orchestrating deployments across any infrastructure
+3. **cldctl** matches component requirements to datacenter hooks, orchestrating deployments across any infrastructure
 
 ### The Contract
 
 Components and datacenters communicate through a **resource contract**. When a component is deployed:
 
-1. arcctl extracts all cloud resources from the component (databases, services, deployments, etc.)
+1. cldctl extracts all cloud resources from the component (databases, services, deployments, etc.)
 2. Each resource is matched against hooks defined in the datacenter
 3. The datacenter fulfills each resource request using its configured IaC modules
 4. Output values (URLs, credentials, etc.) are passed back to dependent resources
@@ -83,7 +83,7 @@ This contract allows components to be **portable across any datacenter** that im
 
 Here's a simple web application with a database:
 
-```yaml architect.yml
+```yaml cloud.component.yml
 builds:
   api:
     context: ./api
@@ -113,17 +113,17 @@ Deploy it to any environment:
 
 ```bash
 # Quick start for development
-arcctl up
+cldctl up
 
 # Deploy to staging
-arcctl deploy ./my-app -e staging
+cldctl deploy ./my-app -e staging
 ```
 
 ## Next Steps
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Get started with arcctl in 5 minutes
+    Get started with cldctl in 5 minutes
   </Card>
   <Card title="Core Concepts" icon="book" href="/concepts/overview">
     Deep dive into components, datacenters, and environments

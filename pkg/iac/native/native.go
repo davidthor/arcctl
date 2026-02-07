@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/iac"
+	"github.com/davidthor/arcctl/pkg/iac"
 )
 
 func init() {
@@ -453,14 +453,14 @@ func (p *Plugin) applyDockerBuild(ctx context.Context, name string, props map[st
 	}
 
 	// Stream build output in debug mode
-	if os.Getenv("ARCCTL_DEBUG") != "" {
+	if os.Getenv("CLDCTL_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] Building image: context=%s, dockerfile=%s, tags=%v\n", buildContext, dockerfile, tags)
 		opts.Stderr = os.Stderr
 	}
 
 	// Add timeout for builds (10 minutes default, configurable via env)
 	buildTimeout := 10 * time.Minute
-	if timeoutStr := os.Getenv("ARCCTL_BUILD_TIMEOUT"); timeoutStr != "" {
+	if timeoutStr := os.Getenv("CLDCTL_BUILD_TIMEOUT"); timeoutStr != "" {
 		if d, err := time.ParseDuration(timeoutStr); err == nil {
 			buildTimeout = d
 		}
@@ -474,13 +474,13 @@ func (p *Plugin) applyDockerBuild(ctx context.Context, name string, props map[st
 		if buildCtx.Err() == context.DeadlineExceeded {
 			return nil, fmt.Errorf("build timed out after %v", buildTimeout)
 		}
-		if os.Getenv("ARCCTL_DEBUG") != "" {
+		if os.Getenv("CLDCTL_DEBUG") != "" {
 			fmt.Fprintf(os.Stderr, "[debug] Build failed: %v\n", err)
 		}
 		return nil, err
 	}
 
-	if os.Getenv("ARCCTL_DEBUG") != "" {
+	if os.Getenv("CLDCTL_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] Build succeeded: imageID=%s\n", buildResult.ImageID)
 	}
 

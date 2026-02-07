@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/architect-io/arcctl/pkg/iac"
+	"github.com/davidthor/arcctl/pkg/iac"
 )
 
 func TestPlugin_Name(t *testing.T) {

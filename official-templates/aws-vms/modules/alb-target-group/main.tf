@@ -28,7 +28,7 @@ resource "aws_lb_target_group" "this" {
 
   tags = {
     Name      = "${var.name}-tg"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 
   lifecycle {

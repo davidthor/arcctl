@@ -185,7 +185,7 @@ environment {
   # Task hook - run one-time tasks as local processes
   # ---------------------------------------------------------------------------
   # Vercel has no native one-off task execution. Tasks (e.g., database
-  # migrations) run as local processes on the machine executing arcctl.
+  # migrations) run as local processes on the machine executing cldctl.
   # This works because Neon/Upstash endpoints are publicly accessible --
   # no VPC or private networking is required.
   task {

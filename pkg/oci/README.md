@@ -1,6 +1,6 @@
 # oci
 
-OCI artifact management for arcctl. Handles building, pushing, and pulling artifacts to/from OCI registries.
+OCI artifact management for cldctl. Handles building, pushing, and pulling artifacts to/from OCI registries.
 
 ## Overview
 
@@ -100,7 +100,7 @@ type ModuleConfig struct {
 ### Creating a Client
 
 ```go
-import "github.com/architect-io/arcctl/pkg/oci"
+import "github.com/davidthor/arcctl/pkg/oci"
 
 // Create a client with default keychain authentication
 client := oci.NewClient()
@@ -185,7 +185,7 @@ if exists {
 
 ```go
 // Tag an existing artifact with a new reference
-err := client.Tag(ctx, 
+err := client.Tag(ctx,
     "ghcr.io/myorg/my-component:v1.0.0",
     "ghcr.io/myorg/my-component:latest",
 )
@@ -196,18 +196,18 @@ if err != nil {
 
 ## Media Types
 
-Custom media types for arcctl artifacts:
+Custom media types for cldctl artifacts:
 
 ```go
 const (
     // Component artifacts
     MediaTypeComponentConfig = "application/vnd.architect.component.config.v1+json"
     MediaTypeComponentLayer  = "application/vnd.architect.component.layer.v1.tar+gzip"
-    
+
     // Datacenter artifacts
     MediaTypeDatacenterConfig = "application/vnd.architect.datacenter.config.v1+json"
     MediaTypeDatacenterLayer  = "application/vnd.architect.datacenter.layer.v1.tar+gzip"
-    
+
     // Module artifacts
     MediaTypeModuleConfig = "application/vnd.architect.module.config.v1+json"
     MediaTypeModuleLayer  = "application/vnd.architect.module.layer.v1.tar+gzip"
@@ -228,15 +228,15 @@ The client uses the default keychain for authentication, which supports:
 ```go
 import (
     "context"
-    "github.com/architect-io/arcctl/pkg/oci"
+    "github.com/davidthor/arcctl/pkg/oci"
 )
 
 func main() {
     ctx := context.Background()
     client := oci.NewClient()
-    
+
     // Build artifact
-    artifact, err := client.BuildFromDirectory(ctx, "./my-component", 
+    artifact, err := client.BuildFromDirectory(ctx, "./my-component",
         oci.ArtifactTypeComponent,
         oci.ComponentConfig{
             SchemaVersion: "v1",
@@ -247,23 +247,23 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    
+
     // Push to registry
     artifact.Reference = "ghcr.io/myorg/api:v1.0.0"
     err = client.Push(ctx, artifact)
     if err != nil {
         log.Fatal(err)
     }
-    
+
     // Tag as latest
-    err = client.Tag(ctx, 
+    err = client.Tag(ctx,
         "ghcr.io/myorg/api:v1.0.0",
         "ghcr.io/myorg/api:latest",
     )
     if err != nil {
         log.Fatal(err)
     }
-    
+
     // Pull to another location
     err = client.Pull(ctx, "ghcr.io/myorg/api:v1.0.0", "./downloaded")
     if err != nil {

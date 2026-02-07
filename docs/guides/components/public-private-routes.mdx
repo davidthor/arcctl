@@ -147,7 +147,7 @@ functions:
 
 ```
 nextjs-with-admin/
-├── architect.yml
+├── cloud.component.yml
 ├── storefront/
 │   ├── Dockerfile
 │   ├── app/
@@ -207,10 +207,10 @@ Users access the admin panel through:
 ## Deploying
 
 ```bash
-arcctl component build . -t ghcr.io/myorg/nextjs-with-admin:v1.0.0
-arcctl component push ghcr.io/myorg/nextjs-with-admin:v1.0.0
+cldctl component build . -t ghcr.io/myorg/nextjs-with-admin:v1.0.0
+cldctl component push ghcr.io/myorg/nextjs-with-admin:v1.0.0
 
-arcctl deploy ghcr.io/myorg/nextjs-with-admin:v1.0.0 -e production \
+cldctl deploy ghcr.io/myorg/nextjs-with-admin:v1.0.0 -e production \
   --var admin_secret=$ADMIN_SECRET
 ```
 

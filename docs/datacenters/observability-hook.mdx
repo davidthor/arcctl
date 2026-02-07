@@ -19,9 +19,9 @@ The `observability` hook provisions OpenTelemetry infrastructure and provides co
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `query_type` | `string` | Log query backend type (e.g., `loki`). Required for `arcctl logs`. |
-| `query_endpoint` | `string` | Log query endpoint URL. Required for `arcctl logs`. |
-| `dashboard_url` | `string` | Observability dashboard URL (e.g., Grafana). Used by `arcctl observability dashboard`. |
+| `query_type` | `string` | Log query backend type (e.g., `loki`). Required for `cldctl logs`. |
+| `query_endpoint` | `string` | Log query endpoint URL. Required for `cldctl logs`. |
+| `dashboard_url` | `string` | Observability dashboard URL (e.g., Grafana). Used by `cldctl observability dashboard`. |
 
 ## Hook Inputs
 
@@ -113,7 +113,7 @@ The engine merges attributes from three sources (later values override earlier o
 
 1. **Auto-generated**: `service.namespace` (component name), `deployment.environment` (environment name), `service.type` (resource type)
 2. **Datacenter hook** `attributes` output
-3. **Component** `attributes` (from the `observability` block in `architect.yml`)
+3. **Component** `attributes` (from the `observability` block in `cloud.component.yml`)
 
 The merged result is available to component authors via `${{ observability.attributes }}`.
 
@@ -124,5 +124,5 @@ For the local Docker datacenter, container stdout is automatically forwarded to 
 ## See Also
 
 - [Component Observability](/components/overview#observability) - How components declare observability preferences
-- [`arcctl logs`](/cli/logs) - View and stream logs
-- [`arcctl observability dashboard`](/cli/observability/dashboard) - Open the dashboard UI
+- [`cldctl logs`](/cli/logs) - View and stream logs
+- [`cldctl observability dashboard`](/cli/observability/dashboard) - Open the dashboard UI

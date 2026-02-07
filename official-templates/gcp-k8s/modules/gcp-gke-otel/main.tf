@@ -96,7 +96,7 @@ resource "kubernetes_service_v1" "otel_collector" {
     namespace = var.namespace
 
     labels = {
-      managed-by = "arcctl"
+      managed-by = "cldctl"
     }
   }
 

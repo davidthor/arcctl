@@ -21,7 +21,7 @@ resource "kubernetes_manifest" "httproute" {
       name      = var.name
       namespace = var.namespace
       labels = {
-        managed-by = "arcctl"
+        managed-by = "cldctl"
       }
     }
     spec = {

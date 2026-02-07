@@ -1,15 +1,15 @@
 ---
 title: "CI/CD Overview"
-description: "Automate arcctl builds and deployments in your CI/CD pipeline"
+description: "Automate cldctl builds and deployments in your CI/CD pipeline"
 ---
 
 # CI/CD Integration
 
-Integrate arcctl into your CI/CD pipeline to automate component builds, pushes, and deployments. arcctl is designed to run headlessly in any CI environment -- all you need is the CLI binary and access to your state backend.
+Integrate cldctl into your CI/CD pipeline to automate component builds, pushes, and deployments. cldctl is designed to run headlessly in any CI environment -- all you need is the CLI binary and access to your state backend.
 
 ## Typical Pipeline
 
-A standard arcctl CI/CD pipeline follows this flow:
+A standard cldctl CI/CD pipeline follows this flow:
 
 ```mermaid
 graph LR
@@ -20,9 +20,9 @@ graph LR
     E --> F[Deploy Production]
 ```
 
-1. **Build** -- `arcctl build component` creates OCI artifacts from your source code
-2. **Push** -- `arcctl push component` uploads artifacts to your container registry
-3. **Deploy Staging** -- `arcctl deploy component` rolls out to a staging environment
+1. **Build** -- `cldctl build component` creates OCI artifacts from your source code
+2. **Push** -- `cldctl push component` uploads artifacts to your container registry
+3. **Deploy Staging** -- `cldctl deploy component` rolls out to a staging environment
 4. **Test** -- Run integration/smoke tests against staging
 5. **Deploy Production** -- Promote the same artifact to production
 
@@ -30,20 +30,20 @@ graph LR
 
 ```bash
 # Build a component artifact
-arcctl build component . -t ghcr.io/myorg/my-app:$CI_COMMIT_SHA
+cldctl build component . -t ghcr.io/myorg/my-app:$CI_COMMIT_SHA
 
 # Push to registry
-arcctl push component ghcr.io/myorg/my-app:$CI_COMMIT_SHA
+cldctl push component ghcr.io/myorg/my-app:$CI_COMMIT_SHA
 
 # Deploy to an environment (non-interactive)
-arcctl deploy component ghcr.io/myorg/my-app:$CI_COMMIT_SHA \
+cldctl deploy component ghcr.io/myorg/my-app:$CI_COMMIT_SHA \
   -e staging --auto-approve
 
 # Create a preview environment
-arcctl create environment preview-123 -d my-datacenter
+cldctl create environment preview-123 -d my-datacenter
 
 # Destroy a preview environment
-arcctl destroy environment preview-123 --auto-approve
+cldctl destroy environment preview-123 --auto-approve
 ```
 
 <Note>

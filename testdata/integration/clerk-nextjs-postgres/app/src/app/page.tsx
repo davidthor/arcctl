@@ -9,7 +9,7 @@ export default function Home() {
             Clerk + PostgreSQL Integration Test
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            This app tests arcctl deployment with Clerk authentication and
+            This app tests cldctl deployment with Clerk authentication and
             PostgreSQL database connectivity.
           </p>
         </div>
@@ -71,7 +71,7 @@ export default function Home() {
               href="https://github.com/architect-team/arcctl"
               className="text-blue-600 hover:underline"
             >
-              arcctl
+              cldctl
             </a>
           </p>
         </div>

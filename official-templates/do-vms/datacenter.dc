@@ -68,7 +68,7 @@ module "load_balancer" {
   plugin = "opentofu"
   build  = "./modules/do-load-balancer"
   inputs = {
-    name     = "arcctl-lb"
+    name     = "cldctl-lb"
     region   = variable.region
     do_token = variable.do_token
   }
@@ -79,7 +79,7 @@ module "vpc" {
   plugin = "opentofu"
   build  = "./modules/do-vpc"
   inputs = {
-    name     = "arcctl-vpc"
+    name     = "cldctl-vpc"
     region   = variable.region
     do_token = variable.do_token
   }

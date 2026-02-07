@@ -3,18 +3,18 @@ title: "tag datacenter"
 description: "Create a new tag for an existing datacenter artifact"
 ---
 
-# arcctl tag datacenter
+# cldctl tag datacenter
 
 Create a new tag for an existing datacenter artifact and all its module artifacts.
 
 <Note>
-Use `arcctl tag dc` as shorthand for `arcctl tag datacenter`.
+Use `cldctl tag dc` as shorthand for `cldctl tag datacenter`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl tag datacenter <source> <target> [options]
+cldctl tag datacenter <source> <target> [options]
 ```
 
 ## Arguments
@@ -35,23 +35,23 @@ arcctl tag datacenter <source> <target> [options]
 
 ```bash
 # Tag an artifact
-arcctl tag datacenter ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest
+cldctl tag datacenter ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest
 
 # Using alias
-arcctl tag dc ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest
+cldctl tag dc ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest
 
 # Non-interactive
-arcctl tag datacenter my-dc:dev my-dc:staging -y
+cldctl tag datacenter my-dc:dev my-dc:staging -y
 
 # Override module tag
-arcctl tag datacenter ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest \
+cldctl tag datacenter ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest \
   --module-tag k8s=ghcr.io/myorg/k8s:latest
 ```
 
 ## Output
 
 ```
-$ arcctl tag datacenter ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest
+$ cldctl tag datacenter ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest
 
 Tagging datacenter artifact
   Source: ghcr.io/myorg/dc:v1.0.0
@@ -63,5 +63,5 @@ Proceed with tagging? [Y/n]:
 
 ## See Also
 
-- [`arcctl build datacenter`](/cli/build/datacenter) - Build a datacenter
-- [`arcctl push datacenter`](/cli/push/datacenter) - Push a datacenter
+- [`cldctl build datacenter`](/cli/build/datacenter) - Build a datacenter
+- [`cldctl push datacenter`](/cli/push/datacenter) - Push a datacenter

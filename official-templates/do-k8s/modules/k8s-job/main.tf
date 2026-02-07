@@ -34,8 +34,8 @@ resource "kubernetes_job_v1" "job" {
     namespace = var.namespace
 
     labels = {
-      "app.kubernetes.io/managed-by" = "arcctl"
-      "arcctl/component"             = var.name
+      "app.kubernetes.io/managed-by" = "cldctl"
+      "cldctl/component"             = var.name
     }
   }
 
@@ -46,8 +46,8 @@ resource "kubernetes_job_v1" "job" {
     template {
       metadata {
         labels = {
-          "app.kubernetes.io/managed-by" = "arcctl"
-          "arcctl/component"             = var.name
+          "app.kubernetes.io/managed-by" = "cldctl"
+          "cldctl/component"             = var.name
         }
       }
 

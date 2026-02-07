@@ -6,7 +6,7 @@
 variable "network_name" {
   description = "Docker network name for service communication"
   type        = string
-  default     = "arcctl-local"
+  default     = "cldctl-local"
 }
 
 variable "host" {
@@ -446,7 +446,7 @@ environment {
   # auto-generated attributes (service.namespace, deployment.environment).
   #
   # Docker containers forward their stdout to the collector via the fluentd
-  # logging driver so that `arcctl logs` can query all container output.
+  # logging driver so that `cldctl logs` can query all container output.
   observability {
     module "otel" {
       plugin = "native"

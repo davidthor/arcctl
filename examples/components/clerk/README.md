@@ -55,10 +55,10 @@ components:
 
 ### 2. Dependent Application
 
-In your application's `architect.yml`, declare Clerk as a dependency and access outputs:
+In your application's `cloud.component.yml`, declare Clerk as a dependency and access outputs:
 
 ```yaml
-# my-app/architect.yml
+# my-app/cloud.component.yml
 
 dependencies:
   clerk:

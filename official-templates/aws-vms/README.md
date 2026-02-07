@@ -56,11 +56,11 @@ VM-based AWS template. All deployments run on EC2 instances. Container-based dep
 
 ```bash
 # Build and push the datacenter
-arcctl dc build . -t ghcr.io/myorg/aws-vms:v1
-arcctl dc push ghcr.io/myorg/aws-vms:v1
+cldctl dc build . -t ghcr.io/myorg/aws-vms:v1
+cldctl dc push ghcr.io/myorg/aws-vms:v1
 
 # Deploy the datacenter
-arcctl dc deploy aws-vms-prod \
+cldctl dc deploy aws-vms-prod \
   --config ghcr.io/myorg/aws-vms:v1 \
   --var vpc_id=vpc-12345 \
   --var domain=app.example.com \
@@ -69,8 +69,8 @@ arcctl dc deploy aws-vms-prod \
   --var ssh_key_pair=my-key-pair
 
 # Create an environment and deploy a component
-arcctl env create staging --datacenter aws-vms-prod
-arcctl deploy ghcr.io/myorg/my-app:v1 -e staging
+cldctl env create staging --datacenter aws-vms-prod
+cldctl deploy ghcr.io/myorg/my-app:v1 -e staging
 ```
 
 ## How It Works

@@ -52,16 +52,16 @@ Deploy portable cloud-native applications to DigitalOcean Droplets (VMs) with ma
 
 ```bash
 # Build and push the datacenter
-arcctl build datacenter ./do-vms -t ghcr.io/myorg/do-vms:v1
-arcctl push datacenter ghcr.io/myorg/do-vms:v1
+cldctl build datacenter ./do-vms -t ghcr.io/myorg/do-vms:v1
+cldctl push datacenter ghcr.io/myorg/do-vms:v1
 
 # Deploy the datacenter
-arcctl deploy datacenter do-vms ghcr.io/myorg/do-vms:v1 \
+cldctl deploy datacenter do-vms ghcr.io/myorg/do-vms:v1 \
   --var do_token=$DO_TOKEN \
   --var ssh_key_fingerprint=$SSH_FINGERPRINT \
   --var domain=app.example.com
 
 # Create an environment and deploy a component
-arcctl create environment staging -d do-vms
-arcctl deploy component ghcr.io/myorg/my-app:v1 -e staging
+cldctl create environment staging -d do-vms
+cldctl deploy component ghcr.io/myorg/my-app:v1 -e staging
 ```

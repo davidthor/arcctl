@@ -130,7 +130,7 @@ locals {
         ports:
           - "3000:3000"
         environment:
-          - GF_SECURITY_ADMIN_PASSWORD=arcctl-admin
+          - GF_SECURITY_ADMIN_PASSWORD=cldctl-admin
           - GF_AUTH_ANONYMOUS_ENABLED=true
           - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
         volumes:
@@ -160,7 +160,7 @@ resource "digitalocean_droplet" "otel" {
 
   user_data = local.user_data
 
-  tags = ["arcctl", "managed-by:arcctl", "observability"]
+  tags = ["cldctl", "managed-by:cldctl", "observability"]
 
   lifecycle {
     create_before_destroy = true

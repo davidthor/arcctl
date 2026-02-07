@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/state/backend"
+	"github.com/davidthor/arcctl/pkg/state/backend"
 )
 
 // mockGCSServer simulates Google Cloud Storage API for testing.
@@ -231,9 +231,9 @@ func TestBackend_fullPath(t *testing.T) {
 		},
 		{
 			name:     "nested path with prefix",
-			prefix:   "arcctl",
+			prefix:   "cldctl",
 			path:     "environments/prod/state.json",
-			expected: "arcctl/environments/prod/state.json",
+			expected: "cldctl/environments/prod/state.json",
 		},
 	}
 
@@ -566,7 +566,7 @@ func TestBackendConfig_WithPrefix(t *testing.T) {
 
 	b, err := NewBackend(map[string]string{
 		"bucket":   "test-bucket",
-		"prefix":   "arcctl/state",
+		"prefix":   "cldctl/state",
 		"endpoint": server.URL + "/storage/v1/",
 	})
 	if err != nil {
@@ -574,8 +574,8 @@ func TestBackendConfig_WithPrefix(t *testing.T) {
 	}
 
 	gcsb := b.(*Backend)
-	if gcsb.prefix != "arcctl/state" {
-		t.Errorf("expected prefix 'arcctl/state', got %q", gcsb.prefix)
+	if gcsb.prefix != "cldctl/state" {
+		t.Errorf("expected prefix 'cldctl/state', got %q", gcsb.prefix)
 	}
 	if gcsb.bucket != "test-bucket" {
 		t.Errorf("expected bucket 'test-bucket', got %q", gcsb.bucket)

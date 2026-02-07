@@ -27,7 +27,7 @@ resource "kubernetes_secret_v1" "secret" {
     namespace = var.namespace
 
     labels = {
-      "app.kubernetes.io/managed-by" = "arcctl"
+      "app.kubernetes.io/managed-by" = "cldctl"
     }
   }
 

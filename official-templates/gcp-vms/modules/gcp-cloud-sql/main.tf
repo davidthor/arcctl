@@ -49,7 +49,7 @@ resource "google_sql_database_instance" "main" {
 
     user_labels = {
       environment = var.name
-      managed-by  = "arcctl"
+      managed-by  = "cldctl"
     }
   }
 

@@ -1,11 +1,11 @@
 ---
 title: "GitLab CI"
-description: "Automate arcctl builds and deployments with GitLab CI/CD"
+description: "Automate cldctl builds and deployments with GitLab CI/CD"
 ---
 
 # GitLab CI
 
-This guide provides a complete GitLab CI/CD pipeline for building, deploying, and promoting components with arcctl.
+This guide provides a complete GitLab CI/CD pipeline for building, deploying, and promoting components with cldctl.
 
 ## Build and Deploy Pipeline
 
@@ -20,17 +20,17 @@ stages:
   - deploy-production
 
 variables:
-  ARCCTL_BACKEND: s3
-  ARCCTL_BACKEND_S3_BUCKET: my-arcctl-state
-  ARCCTL_BACKEND_S3_REGION: us-east-1
+  CLDCTL_BACKEND: s3
+  CLDCTL_BACKEND_S3_BUCKET: my-cldctl-state
+  CLDCTL_BACKEND_S3_REGION: us-east-1
 
 build:
   stage: build
   image: golang:1.22
   script:
-    - go install github.com/architect-io/arcctl@latest
-    - arcctl build component . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-    - arcctl push component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - go install github.com/davidthor/arcctl@latest
+    - cldctl build component . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - cldctl push component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
   only:
     - main
     - tags
@@ -39,8 +39,8 @@ deploy-staging:
   stage: deploy-staging
   image: golang:1.22
   script:
-    - go install github.com/architect-io/arcctl@latest
-    - arcctl deploy component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA -e staging --auto-approve
+    - go install github.com/davidthor/arcctl@latest
+    - cldctl deploy component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA -e staging --auto-approve
   only:
     - main
   environment:
@@ -58,8 +58,8 @@ deploy-production:
   stage: deploy-production
   image: golang:1.22
   script:
-    - go install github.com/architect-io/arcctl@latest
-    - arcctl deploy component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA -e production --auto-approve
+    - go install github.com/davidthor/arcctl@latest
+    - cldctl deploy component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA -e production --auto-approve
   only:
     - tags
   environment:
@@ -76,8 +76,8 @@ GitLab provides a built-in container registry. The `$CI_REGISTRY_IMAGE` variable
 
 ```yaml
 script:
-  - arcctl build component . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-  - arcctl push component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  - cldctl build component . -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  - cldctl push component $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
 ```
 
 ### Manual Production Gates

@@ -36,31 +36,31 @@ locals {
     docker pull ${var.image}
 
     # Create systemd service for the container
-    cat > /etc/systemd/system/arcctl-app.service <<'UNIT'
+    cat > /etc/systemd/system/cldctl-app.service <<'UNIT'
     [Unit]
-    Description=arcctl managed container
+    Description=cldctl managed container
     After=docker.service
     Requires=docker.service
 
     [Service]
     Restart=always
     RestartSec=5
-    ExecStartPre=-/usr/bin/docker rm -f arcctl-app
-    ExecStart=/usr/bin/docker run --name arcctl-app \
+    ExecStartPre=-/usr/bin/docker rm -f cldctl-app
+    ExecStart=/usr/bin/docker run --name cldctl-app \
       --restart=unless-stopped \
       ${local.env_flags} \
       ${local.port_flag} \
       ${var.image} \
       ${local.command_str}
-    ExecStop=/usr/bin/docker stop arcctl-app
+    ExecStop=/usr/bin/docker stop cldctl-app
 
     [Install]
     WantedBy=multi-user.target
     UNIT
 
     systemctl daemon-reload
-    systemctl enable arcctl-app
-    systemctl start arcctl-app
+    systemctl enable cldctl-app
+    systemctl start cldctl-app
   EOT
 }
 
@@ -74,7 +74,7 @@ resource "digitalocean_droplet" "droplet" {
 
   user_data = local.user_data
 
-  tags = ["arcctl", "managed-by:arcctl", "docker", "arcctl-${var.name}"]
+  tags = ["cldctl", "managed-by:cldctl", "docker", "cldctl-${var.name}"]
 
   lifecycle {
     create_before_destroy = true

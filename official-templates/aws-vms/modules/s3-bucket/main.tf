@@ -27,7 +27,7 @@ resource "aws_s3_bucket" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -50,12 +50,12 @@ resource "aws_s3_bucket_public_access_block" "this" {
 
 # IAM user for programmatic access
 resource "aws_iam_user" "this" {
-  name = "arcctl-s3-${var.name}-${random_id.suffix.hex}"
-  path = "/arcctl/"
+  name = "cldctl-s3-${var.name}-${random_id.suffix.hex}"
+  path = "/cldctl/"
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -64,7 +64,7 @@ resource "aws_iam_access_key" "this" {
 }
 
 resource "aws_iam_user_policy" "this" {
-  name = "arcctl-s3-${var.name}-access"
+  name = "cldctl-s3-${var.name}-access"
   user = aws_iam_user.this.name
 
   policy = jsonencode({

@@ -31,7 +31,7 @@ resource "aws_iam_role" "cluster" {
 
   tags = {
     Name      = "${var.name}-cluster"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -58,7 +58,7 @@ resource "aws_eks_cluster" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 
   depends_on = [
@@ -84,7 +84,7 @@ resource "aws_iam_role" "node_group" {
 
   tags = {
     Name      = "${var.name}-node-group"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -126,7 +126,7 @@ resource "aws_eks_node_group" "default" {
 
   tags = {
     Name      = "${var.name}-${each.key}"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 
   depends_on = [

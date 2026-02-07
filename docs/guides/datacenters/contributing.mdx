@@ -1,11 +1,11 @@
 ---
 title: "Contributing Templates"
-description: "How to contribute to arcctl's official datacenter templates"
+description: "How to contribute to cldctl's official datacenter templates"
 ---
 
 # Contributing to Official Templates
 
-arcctl's official datacenter templates live in the [`official-templates/`](https://github.com/architect-io/arcctl/tree/main/official-templates) directory at the root of the repository. They are maintained by the arcctl team and community contributors, and are intended for direct re-use by any organization adopting arcctl.
+cldctl's official datacenter templates live in the [`official-templates/`](https://github.com/davidthor/arcctl/tree/main/official-templates) directory at the root of the repository. They are maintained by the cldctl team and community contributors, and are intended for direct re-use by any organization adopting cldctl.
 
 This guide explains how to propose new templates, contribute improvements to existing ones, and what we look for during review.
 
@@ -48,7 +48,7 @@ Every template README should include:
 
 ### 1. Open an Issue
 
-Before writing code, [open an issue](https://github.com/architect-io/arcctl/issues/new) describing:
+Before writing code, [open an issue](https://github.com/davidthor/arcctl/issues/new) describing:
 
 - **Target platform** -- Which cloud provider or infrastructure stack (e.g., "Google Cloud Run with Cloud SQL")
 - **Resource hooks** -- Which hooks the template will implement (database, deployment, function, etc.)
@@ -63,8 +63,8 @@ Once the issue is approved:
 
 ```bash
 # Fork and clone the repo
-git clone https://github.com/<your-username>/arcctl.git
-cd arcctl
+git clone https://github.com/<your-username>/cldctl.git
+cd cldctl
 
 # Create a branch
 git checkout -b add-template-<name>
@@ -109,26 +109,26 @@ Before submitting a PR, verify your template works end-to-end:
 
 ```bash
 # Build the datacenter
-arcctl build datacenter ./official-templates/<name> \
+cldctl build datacenter ./official-templates/<name> \
   -t ghcr.io/<your-org>/test-dc:dev
 
 # Deploy it
-arcctl deploy datacenter test-dc ./official-templates/<name> \
+cldctl deploy datacenter test-dc ./official-templates/<name> \
   --var <required_var>=<value>
 
 # Create an environment
-arcctl create environment test-env -d test-dc
+cldctl create environment test-env -d test-dc
 
 # Deploy a component to verify hooks work
-arcctl deploy component ./examples/components/nextjs-app -e test-env
+cldctl deploy component ./examples/components/nextjs-app -e test-env
 
 # Verify resources are healthy
-arcctl list component -e test-env
-arcctl logs -e test-env
+cldctl list component -e test-env
+cldctl logs -e test-env
 
 # Clean up
-arcctl destroy environment test-env --auto-approve
-arcctl destroy datacenter test-dc --auto-approve
+cldctl destroy environment test-env --auto-approve
+cldctl destroy datacenter test-dc --auto-approve
 ```
 
 ### What We Test During Review
@@ -157,4 +157,4 @@ arcctl destroy datacenter test-dc --auto-approve
 
 ## Questions?
 
-If you have questions about contributing, open a [GitHub Discussion](https://github.com/architect-io/arcctl/discussions) or reach out on the issue tracker.
+If you have questions about contributing, open a [GitHub Discussion](https://github.com/davidthor/arcctl/discussions) or reach out on the issue tracker.

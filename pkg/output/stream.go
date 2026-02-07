@@ -1,4 +1,4 @@
-// Package output provides live output streaming for arcctl operations.
+// Package output provides live output streaming for cldctl operations.
 package output
 
 import (

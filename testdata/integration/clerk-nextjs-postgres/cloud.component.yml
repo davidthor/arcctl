@@ -1,0 +1,37 @@
+# Integration Test: Next.js with Clerk Authentication and PostgreSQL
+# This component demonstrates:
+# - Clerk auth dependency (configuration passthrough pattern)
+# - PostgreSQL database
+# - Protected API routes
+# - Serverless function deployment (recommended for Next.js)
+# - Routes pointing directly to functions (no service needed)
+#
+# Dependencies are referenced by name with an OCI repo:tag reference.
+# Tag is optional and supports semver expressions (e.g., "^1", "~2.0").
+
+dependencies:
+  clerk: clerk
+
+databases:
+  main:
+    type: postgres:^16
+
+functions:
+  app:
+    build:
+      context: ./app
+    framework: nextjs
+    environment:
+      # Database connection
+      DATABASE_URL: ${{ databases.main.url }}
+      # Clerk authentication (from dependency outputs)
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ dependencies.clerk.outputs.publishable_key }}
+      CLERK_SECRET_KEY: ${{ dependencies.clerk.outputs.secret_key }}
+    memory: "512Mi"
+    timeout: 30
+
+# Routes can point directly to functions - no service wrapper needed
+routes:
+  main:
+    type: http
+    function: app

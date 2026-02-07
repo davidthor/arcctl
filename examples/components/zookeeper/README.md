@@ -37,7 +37,7 @@ ZooKeeper is commonly used as a dependency for:
 ### As a Dependency
 
 ```yaml
-# In another component's architect.yml
+# In another component's cloud.component.yml
 name: my-distributed-app
 
 dependencies:

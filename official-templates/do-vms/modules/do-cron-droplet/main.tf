@@ -53,7 +53,7 @@ locals {
     chmod +x /opt/cron-job.sh
 
     # Install crontab
-    echo "${var.schedule} /opt/cron-job.sh >> /var/log/arcctl-cron.log 2>&1" | crontab -
+    echo "${var.schedule} /opt/cron-job.sh >> /var/log/cldctl-cron.log 2>&1" | crontab -
 
     # Ensure cron is running
     systemctl enable cron
@@ -71,7 +71,7 @@ resource "digitalocean_droplet" "droplet" {
 
   user_data = local.user_data
 
-  tags = ["arcctl", "managed-by:arcctl", "cronjob"]
+  tags = ["cldctl", "managed-by:cldctl", "cronjob"]
 
   lifecycle {
     create_before_destroy = true

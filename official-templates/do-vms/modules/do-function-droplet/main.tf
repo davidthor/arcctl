@@ -50,31 +50,31 @@ locals {
     CADDY
 
     # Create systemd service for the function container
-    cat > /etc/systemd/system/arcctl-function.service <<'UNIT'
+    cat > /etc/systemd/system/cldctl-function.service <<'UNIT'
     [Unit]
-    Description=arcctl managed function
+    Description=cldctl managed function
     After=docker.service
     Requires=docker.service
 
     [Service]
     Restart=always
     RestartSec=5
-    ExecStartPre=-/usr/bin/docker rm -f arcctl-function
-    ExecStart=/usr/bin/docker run --name arcctl-function \
+    ExecStartPre=-/usr/bin/docker rm -f cldctl-function
+    ExecStart=/usr/bin/docker run --name cldctl-function \
       --restart=unless-stopped \
       -p ${local.app_port}:${local.app_port} \
       ${local.env_flags} \
       ${var.image} \
       ${local.command_str}
-    ExecStop=/usr/bin/docker stop arcctl-function
+    ExecStop=/usr/bin/docker stop cldctl-function
 
     [Install]
     WantedBy=multi-user.target
     UNIT
 
     systemctl daemon-reload
-    systemctl enable arcctl-function
-    systemctl start arcctl-function
+    systemctl enable cldctl-function
+    systemctl start cldctl-function
     systemctl restart caddy
   EOT
 }
@@ -89,7 +89,7 @@ resource "digitalocean_droplet" "droplet" {
 
   user_data = local.user_data
 
-  tags = ["arcctl", "managed-by:arcctl", "function", "arcctl-${var.name}"]
+  tags = ["cldctl", "managed-by:cldctl", "function", "cldctl-${var.name}"]
 
   lifecycle {
     create_before_destroy = true

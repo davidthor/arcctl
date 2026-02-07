@@ -1,11 +1,11 @@
 ---
 title: "Platform Engineer Workflow"
-description: "The complete DevOps guide to authoring datacenters and managing infrastructure with arcctl"
+description: "The complete DevOps guide to authoring datacenters and managing infrastructure with cldctl"
 ---
 
 # Platform Engineer Workflow
 
-Welcome to the DevOps guide for arcctl. This is your starting point for learning how to author datacenters, deploy them, provision environments for your developers, and monitor the infrastructure running beneath their applications.
+Welcome to the DevOps guide for cldctl. This is your starting point for learning how to author datacenters, deploy them, provision environments for your developers, and monitor the infrastructure running beneath their applications.
 
 As a platform engineer, you define *how* resources are provisioned so that developers can focus on *what* they need. Your datacenter configuration translates portable component declarations (like `databases.main: postgres:^16`) into real infrastructure (RDS instances, managed databases, Docker containers, etc.).
 
@@ -164,7 +164,7 @@ environment {
         
         # Add standard labels
         labels = merge(node.inputs.labels, {
-          "app.kubernetes.io/managed-by" = "arcctl"
+          "app.kubernetes.io/managed-by" = "cldctl"
           "environment"                   = environment.name
           "component"                     = node.component
         })
@@ -310,7 +310,7 @@ environment {
 
 ## Writing IaC Modules
 
-Modules contain the actual infrastructure code. arcctl supports Pulumi and OpenTofu.
+Modules contain the actual infrastructure code. cldctl supports Pulumi and OpenTofu.
 
 ### Pulumi Module Example
 
@@ -420,29 +420,29 @@ output "connection_url" {
 
 ```bash
 # Build datacenter with all modules
-arcctl dc build . -t ghcr.io/myorg/aws-datacenter:v1.0.0
+cldctl dc build . -t ghcr.io/myorg/aws-datacenter:v1.0.0
 
 # View what will be built
-arcctl dc build . -t ghcr.io/myorg/aws-datacenter:v1.0.0 --dry-run
+cldctl dc build . -t ghcr.io/myorg/aws-datacenter:v1.0.0 --dry-run
 ```
 
 ### Push to Registry
 
 ```bash
-arcctl dc push ghcr.io/myorg/aws-datacenter:v1.0.0
+cldctl dc push ghcr.io/myorg/aws-datacenter:v1.0.0
 ```
 
 ### Deploy the Datacenter
 
 ```bash
 # Deploy with variables
-arcctl dc deploy aws-production ghcr.io/myorg/aws-datacenter:v1.0.0 \
+cldctl dc deploy aws-production ghcr.io/myorg/aws-datacenter:v1.0.0 \
   --var cluster_name=prod-cluster \
   --var region=us-east-1 \
   --var domain=prod.example.com
 
 # Deploy with variable file
-arcctl dc deploy aws-production ghcr.io/myorg/aws-datacenter:v1.0.0 \
+cldctl dc deploy aws-production ghcr.io/myorg/aws-datacenter:v1.0.0 \
   --var-file ./vars/production.dcvars
 ```
 
@@ -456,10 +456,10 @@ See all datacenters you've deployed:
 
 ```bash
 # List all datacenters
-arcctl list datacenter
+cldctl list datacenter
 
 # Get detailed info about a specific datacenter
-arcctl get datacenter aws-production
+cldctl get datacenter aws-production
 ```
 
 ### List Environments
@@ -468,10 +468,10 @@ See which environments are running on your datacenters:
 
 ```bash
 # List all environments
-arcctl list environment
+cldctl list environment
 
 # Get details for a specific environment
-arcctl get environment staging
+cldctl get environment staging
 ```
 
 ### Inspect Deployed Components
@@ -480,10 +480,10 @@ Drill into what's running inside each environment:
 
 ```bash
 # List all components in an environment
-arcctl list component -e staging
+cldctl list component -e staging
 
 # Get detailed info about a specific component
-arcctl get component my-app -e staging
+cldctl get component my-app -e staging
 ```
 
 The `get component` command shows the component's resource graph, including databases, deployments, services, and routes with their current state and outputs.
@@ -494,19 +494,19 @@ Query logs from any environment to diagnose issues:
 
 ```bash
 # All logs from an environment
-arcctl logs -e staging
+cldctl logs -e staging
 
 # Logs from a specific component
-arcctl logs -e staging my-app
+cldctl logs -e staging my-app
 
 # Logs from a specific resource type within a component
-arcctl logs -e staging my-app/deployment/api
+cldctl logs -e staging my-app/deployment/api
 
 # Stream logs in real-time
-arcctl logs -e staging -f
+cldctl logs -e staging -f
 
 # Logs from the last 5 minutes
-arcctl logs -e staging --since 5m
+cldctl logs -e staging --since 5m
 ```
 
 ### Observability Dashboards
@@ -514,7 +514,7 @@ arcctl logs -e staging --since 5m
 If your datacenter includes an observability hook, open the Grafana dashboard in your browser:
 
 ```bash
-arcctl observability dashboard -e staging
+cldctl observability dashboard -e staging
 ```
 
 <Tip>

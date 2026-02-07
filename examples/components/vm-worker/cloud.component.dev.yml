@@ -1,0 +1,10 @@
+# Dev variant - runs locally with hot-reloading
+# Usage: cldctl up -c cloud.component.dev.yml
+
+extends: cloud.component.yml
+
+deployments:
+  worker:
+    runtime: node:20
+    command: ["npx", "tsx", "watch", "src/worker.ts"]
+    replicas: 1

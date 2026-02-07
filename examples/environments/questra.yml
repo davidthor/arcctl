@@ -5,7 +5,7 @@
 # from OS environment variables or a .env file chain.
 #
 # Deploy with:
-#   arcctl update environment questra examples/environments/questra.yml
+#   cldctl update environment questra examples/environments/questra.yml
 #
 # Secrets are loaded from (highest priority first):
 #   1. --var CLI flags

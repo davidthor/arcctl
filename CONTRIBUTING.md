@@ -1,6 +1,6 @@
-# Contributing to arcctl
+# Contributing to cldctl
 
-This guide explains how to contribute new features to arcctl, including adding new resource types to components, new hooks to datacenters, new state backends, and new IaC plugins.
+This guide explains how to contribute new features to cldctl, including adding new resource types to components, new hooks to datacenters, new state backends, and new IaC plugins.
 
 ## Table of Contents
 
@@ -27,8 +27,8 @@ This guide explains how to contribute new features to arcctl, including adding n
 
 ```bash
 # Clone the repository
-git clone https://github.com/architect-io/arcctl.git
-cd arcctl
+git clone https://github.com/davidthor/arcctl.git
+cd cldctl
 
 # Install dependencies
 go mod download
@@ -46,8 +46,8 @@ make lint
 ### Project Layout
 
 ```
-arcctl/
-├── cmd/arcctl/          # CLI entry point
+cldctl/
+├── cmd/cldctl/          # CLI entry point
 ├── internal/            # Private packages (CLI implementation)
 ├── pkg/                 # Public packages (can be imported externally)
 │   ├── schema/          # Configuration parsing
@@ -70,13 +70,13 @@ arcctl/
 
 ### Naming Conventions
 
-| Item | Convention | Example |
-|------|-----------|---------|
-| Packages | lowercase, single word | `schema`, `state`, `engine` |
-| Interfaces | Descriptive nouns | `Backend`, `Plugin`, `Loader` |
-| Implementations | Prefixed with type | `S3Backend`, `PulumiPlugin` |
-| Test files | `*_test.go` | `parser_test.go` |
-| Test functions | `Test<Function>_<Case>` | `TestParser_ValidComponent` |
+| Item            | Convention              | Example                       |
+| --------------- | ----------------------- | ----------------------------- |
+| Packages        | lowercase, single word  | `schema`, `state`, `engine`   |
+| Interfaces      | Descriptive nouns       | `Backend`, `Plugin`, `Loader` |
+| Implementations | Prefixed with type      | `S3Backend`, `PulumiPlugin`   |
+| Test files      | `*_test.go`             | `parser_test.go`              |
+| Test functions  | `Test<Function>_<Case>` | `TestParser_ValidComponent`   |
 
 ### Error Handling
 
@@ -208,7 +208,7 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
     ic := &internal.InternalComponent{
         // ... existing transformations
     }
-    
+
     // Transform queues
     for name, q := range v1.Queues {
         iq, err := t.transformQueue(name, q)
@@ -217,7 +217,7 @@ func (t *Transformer) Transform(v1 *SchemaV1) (*internal.InternalComponent, erro
         }
         ic.Queues = append(ic.Queues, iq)
     }
-    
+
     return ic, nil
 }
 
@@ -229,7 +229,7 @@ func (t *Transformer) transformQueue(name string, q QueueV1) (internal.InternalQ
             "invalid queue type %q, must be one of: %v", q.Type, validTypes,
         )
     }
-    
+
     return internal.InternalQueue{
         Name:       name,
         Type:       q.Type,
@@ -248,7 +248,7 @@ Update the validator:
 
 func (v *Validator) validateQueues(queues map[string]QueueV1) []ValidationError {
     var errs []ValidationError
-    
+
     for name, q := range queues {
         if q.Type == "" {
             errs = append(errs, ValidationError{
@@ -256,7 +256,7 @@ func (v *Validator) validateQueues(queues map[string]QueueV1) []ValidationError 
                 Message: "type is required",
             })
         }
-        
+
         if q.MaxRetries < 0 {
             errs = append(errs, ValidationError{
                 Field:   fmt.Sprintf("queues.%s.maxRetries", name),
@@ -264,7 +264,7 @@ func (v *Validator) validateQueues(queues map[string]QueueV1) []ValidationError 
             })
         }
     }
-    
+
     return errs
 }
 ```
@@ -302,15 +302,15 @@ func (e *Evaluator) resolveQueue(path []string, queues map[string]QueueOutputs) 
     if len(path) < 2 {
         return nil, fmt.Errorf("invalid queue reference: need name and property")
     }
-    
+
     name := path[0]
     prop := path[1]
-    
+
     q, ok := queues[name]
     if !ok {
         return nil, fmt.Errorf("queue %q not found", name)
     }
-    
+
     switch prop {
     case "url":
         return q.URL, nil
@@ -335,9 +335,9 @@ Add queue nodes to the dependency graph:
 
 func (r *Resolver) resolveComponent(comp component.Component) (*Graph, error) {
     g := NewGraph()
-    
+
     // ... existing resource resolution
-    
+
     // Add queue nodes
     for _, q := range comp.Queues() {
         node := &Node{
@@ -352,7 +352,7 @@ func (r *Resolver) resolveComponent(comp component.Component) (*Graph, error) {
         }
         g.AddNode(node)
     }
-    
+
     return g, nil
 }
 ```
@@ -375,10 +375,10 @@ queues:
   notifications:
     type: rabbitmq
 `
-    
+
     p := NewParser()
     result, err := p.ParseBytes([]byte(input))
-    
+
     require.NoError(t, err)
     assert.Len(t, result.Queues, 2)
     assert.Equal(t, "sqs", result.Queues["orders"].Type)
@@ -393,10 +393,10 @@ queues:
   orders:
     type: invalid-type
 `
-    
+
     p := NewParser()
     _, err := p.ParseBytes([]byte(input))
-    
+
     require.Error(t, err)
     assert.Contains(t, err.Error(), "invalid queue type")
 }
@@ -410,9 +410,9 @@ Update the PRD and add examples:
 # Example in PRD or documentation
 queues:
   orders:
-    type: sqs           # Required: sqs, rabbitmq, kafka
-    maxRetries: 3       # Optional: max delivery attempts
-    dlq: true           # Optional: enable dead letter queue
+    type: sqs # Required: sqs, rabbitmq, kafka
+    maxRetries: 3 # Optional: max delivery attempts
+    dlq: true # Optional: enable dead letter queue
 ```
 
 ---
@@ -478,7 +478,7 @@ func (e *Executor) executeQueueHook(
     if hook == nil {
         return nil, fmt.Errorf("no queue hook matches inputs: %v", node.Inputs)
     }
-    
+
     // Execute hook modules
     var outputs map[string]interface{}
     for _, mod := range hook.Modules() {
@@ -488,12 +488,12 @@ func (e *Executor) executeQueueHook(
         }
         outputs = mergeOutputs(outputs, result.Outputs)
     }
-    
+
     // Validate required outputs
     if err := validateQueueOutputs(outputs); err != nil {
         return nil, fmt.Errorf("hook outputs invalid: %w", err)
     }
-    
+
     return &QueueResult{
         URL:    outputs["url"].(string),
         ARN:    outputs["arn"].(string),
@@ -522,7 +522,7 @@ Provide an example in documentation:
 environment {
   queue {
     when = node.inputs.queueType == "sqs"
-    
+
     module "sqs_queue" {
       build = "./modules/sqs-queue"
       inputs = {
@@ -532,7 +532,7 @@ environment {
         region      = variable.region
       }
     }
-    
+
     outputs = {
       url    = module.sqs_queue.queue_url
       arn    = module.sqs_queue.queue_arn
@@ -563,9 +563,9 @@ import (
     "fmt"
     "io"
     "path"
-    
+
     "github.com/hashicorp/consul/api"
-    "github.com/architect-io/arcctl/pkg/state/backend"
+    "github.com/davidthor/arcctl/pkg/state/backend"
 )
 
 // Backend implements the state backend interface for Consul KV
@@ -581,20 +581,20 @@ func NewBackend(config map[string]string) (backend.Backend, error) {
     if address == "" {
         address = "localhost:8500"
     }
-    
+
     // Create Consul client
     consulConfig := api.DefaultConfig()
     consulConfig.Address = address
-    
+
     if token := config["token"]; token != "" {
         consulConfig.Token = token
     }
-    
+
     client, err := api.NewClient(consulConfig)
     if err != nil {
         return nil, fmt.Errorf("failed to create Consul client: %w", err)
     }
-    
+
     return &Backend{
         client: client,
         prefix: config["prefix"],
@@ -607,27 +607,27 @@ func (b *Backend) Type() string {
 
 func (b *Backend) Read(ctx context.Context, statePath string) (io.ReadCloser, error) {
     key := path.Join(b.prefix, statePath)
-    
+
     pair, _, err := b.client.KV().Get(key, nil)
     if err != nil {
         return nil, fmt.Errorf("failed to read from Consul: %w", err)
     }
-    
+
     if pair == nil {
         return nil, backend.ErrNotFound
     }
-    
+
     return io.NopCloser(bytes.NewReader(pair.Value)), nil
 }
 
 func (b *Backend) Write(ctx context.Context, statePath string, data io.Reader) error {
     key := path.Join(b.prefix, statePath)
-    
+
     value, err := io.ReadAll(data)
     if err != nil {
         return fmt.Errorf("failed to read data: %w", err)
     }
-    
+
     _, err = b.client.KV().Put(&api.KVPair{
         Key:   key,
         Value: value,
@@ -635,53 +635,53 @@ func (b *Backend) Write(ctx context.Context, statePath string, data io.Reader) e
     if err != nil {
         return fmt.Errorf("failed to write to Consul: %w", err)
     }
-    
+
     return nil
 }
 
 func (b *Backend) Delete(ctx context.Context, statePath string) error {
     key := path.Join(b.prefix, statePath)
-    
+
     _, err := b.client.KV().Delete(key, nil)
     if err != nil {
         return fmt.Errorf("failed to delete from Consul: %w", err)
     }
-    
+
     return nil
 }
 
 func (b *Backend) List(ctx context.Context, prefix string) ([]string, error) {
     key := path.Join(b.prefix, prefix)
-    
+
     pairs, _, err := b.client.KV().List(key, nil)
     if err != nil {
         return nil, fmt.Errorf("failed to list from Consul: %w", err)
     }
-    
+
     var paths []string
     for _, pair := range pairs {
         // Strip the backend prefix to return relative paths
         relPath := strings.TrimPrefix(pair.Key, b.prefix+"/")
         paths = append(paths, relPath)
     }
-    
+
     return paths, nil
 }
 
 func (b *Backend) Exists(ctx context.Context, statePath string) (bool, error) {
     key := path.Join(b.prefix, statePath)
-    
+
     pair, _, err := b.client.KV().Get(key, nil)
     if err != nil {
         return false, fmt.Errorf("failed to check existence in Consul: %w", err)
     }
-    
+
     return pair != nil, nil
 }
 
 func (b *Backend) Lock(ctx context.Context, statePath string, info backend.LockInfo) (backend.Lock, error) {
     key := path.Join(b.prefix, statePath, ".lock")
-    
+
     lock, err := b.client.LockOpts(&api.LockOptions{
         Key:   key,
         Value: encodeLockInfo(info),
@@ -689,12 +689,12 @@ func (b *Backend) Lock(ctx context.Context, statePath string, info backend.LockI
     if err != nil {
         return nil, fmt.Errorf("failed to create lock: %w", err)
     }
-    
+
     _, err = lock.Lock(nil)
     if err != nil {
         return nil, fmt.Errorf("failed to acquire lock: %w", err)
     }
-    
+
     return &consulLock{
         lock: lock,
         info: info,
@@ -727,7 +727,7 @@ Add to the registry initialization:
 // pkg/state/backend/registry.go
 
 import (
-    "github.com/architect-io/arcctl/pkg/state/backend/consul"
+    "github.com/davidthor/arcctl/pkg/state/backend/consul"
 )
 
 func init() {
@@ -745,10 +745,10 @@ Document the environment variable pattern:
 
 ```go
 // Environment variables for Consul backend:
-// ARCCTL_BACKEND=consul
-// ARCCTL_BACKEND_CONSUL_ADDRESS=localhost:8500
-// ARCCTL_BACKEND_CONSUL_TOKEN=<token>
-// ARCCTL_BACKEND_CONSUL_PREFIX=arcctl/state
+// CLDCTL_BACKEND=consul
+// CLDCTL_BACKEND_CONSUL_ADDRESS=localhost:8500
+// CLDCTL_BACKEND_CONSUL_TOKEN=<token>
+// CLDCTL_BACKEND_CONSUL_PREFIX=cldctl/state
 ```
 
 ### Step 4: Write Tests
@@ -762,28 +762,28 @@ func TestBackend_ReadWrite(t *testing.T) {
     if err != nil {
         t.Skip("Consul not available")
     }
-    
+
     backend, err := NewBackend(map[string]string{
-        "prefix": "arcctl-test",
+        "prefix": "cldctl-test",
     })
     require.NoError(t, err)
-    
+
     ctx := context.Background()
     testData := []byte(`{"test": "data"}`)
-    
+
     // Write
     err = backend.Write(ctx, "test/state.json", bytes.NewReader(testData))
     require.NoError(t, err)
-    
+
     // Read
     reader, err := backend.Read(ctx, "test/state.json")
     require.NoError(t, err)
     defer reader.Close()
-    
+
     data, err := io.ReadAll(reader)
     require.NoError(t, err)
     assert.Equal(t, testData, data)
-    
+
     // Cleanup
     backend.Delete(ctx, "test/state.json")
 }
@@ -807,8 +807,8 @@ import (
     "encoding/json"
     "fmt"
     "os/exec"
-    
-    "github.com/architect-io/arcctl/pkg/iac"
+
+    "github.com/davidthor/arcctl/pkg/iac"
 )
 
 // Plugin implements the IaC plugin interface for AWS CDK
@@ -832,22 +832,22 @@ func (p *Plugin) Preview(ctx context.Context, opts iac.RunOptions) (*iac.Preview
         return nil, err
     }
     defer cleanup()
-    
+
     // Write inputs as CDK context
     if err := p.writeContext(workDir, opts.Inputs); err != nil {
         return nil, err
     }
-    
+
     // Run cdk diff
     cmd := exec.CommandContext(ctx, "cdk", "diff", "--json")
     cmd.Dir = workDir
     cmd.Env = p.buildEnvironment(opts.Environment)
-    
+
     output, err := cmd.Output()
     if err != nil {
         return nil, fmt.Errorf("cdk diff failed: %w", err)
     }
-    
+
     return p.parsePreviewOutput(output)
 }
 
@@ -857,42 +857,42 @@ func (p *Plugin) Apply(ctx context.Context, opts iac.RunOptions) (*iac.ApplyResu
         return nil, err
     }
     defer cleanup()
-    
+
     // Write inputs as CDK context
     if err := p.writeContext(workDir, opts.Inputs); err != nil {
         return nil, err
     }
-    
+
     // Import existing state if provided
     if opts.StateReader != nil {
         if err := p.importState(ctx, workDir, opts.StateReader); err != nil {
             return nil, err
         }
     }
-    
+
     // Run cdk deploy
     cmd := exec.CommandContext(ctx, "cdk", "deploy", "--require-approval", "never", "--outputs-file", "outputs.json")
     cmd.Dir = workDir
     cmd.Env = p.buildEnvironment(opts.Environment)
     cmd.Stdout = opts.Stdout
     cmd.Stderr = opts.Stderr
-    
+
     if err := cmd.Run(); err != nil {
         return nil, fmt.Errorf("cdk deploy failed: %w", err)
     }
-    
+
     // Read outputs
     outputs, err := p.readOutputs(workDir)
     if err != nil {
         return nil, err
     }
-    
+
     // Export state
     state, err := p.exportState(ctx, workDir)
     if err != nil {
         return nil, err
     }
-    
+
     return &iac.ApplyResult{
         Outputs: outputs,
         State:   state,
@@ -905,21 +905,21 @@ func (p *Plugin) Destroy(ctx context.Context, opts iac.RunOptions) error {
         return err
     }
     defer cleanup()
-    
+
     // Import state
     if opts.StateReader != nil {
         if err := p.importState(ctx, workDir, opts.StateReader); err != nil {
             return err
         }
     }
-    
+
     // Run cdk destroy
     cmd := exec.CommandContext(ctx, "cdk", "destroy", "--force")
     cmd.Dir = workDir
     cmd.Env = p.buildEnvironment(opts.Environment)
     cmd.Stdout = opts.Stdout
     cmd.Stderr = opts.Stderr
-    
+
     return cmd.Run()
 }
 
@@ -954,7 +954,7 @@ func (p *Plugin) writeContext(workDir string, inputs map[string]interface{}) err
 // pkg/iac/registry.go
 
 import (
-    "github.com/architect-io/arcctl/pkg/iac/awscdk"
+    "github.com/davidthor/arcctl/pkg/iac/awscdk"
 )
 
 func init() {
@@ -975,14 +975,14 @@ var validPlugins = []string{"pulumi", "opentofu", "awscdk"}
 
 func (v *Validator) validateModule(mod ModuleBlockV1) []ValidationError {
     var errs []ValidationError
-    
+
     if mod.Plugin != "" && !contains(validPlugins, mod.Plugin) {
         errs = append(errs, ValidationError{
             Field:   "plugin",
             Message: fmt.Sprintf("invalid plugin %q, must be one of: %v", mod.Plugin, validPlugins),
         })
     }
-    
+
     return errs
 }
 ```
@@ -1016,7 +1016,7 @@ func TestParser_Parse(t *testing.T) {
             wantErr: true,
         },
     }
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             // Test implementation
@@ -1067,7 +1067,7 @@ func TestBackend_Integration(t *testing.T) {
 //     if err != nil {
 //         return err
 //     }
-//     
+//
 //     data, err := backend.Read(ctx, "path/to/state.json")
 type Backend interface {
     // ...
@@ -1090,14 +1090,17 @@ Add entries to CHANGELOG.md following [Keep a Changelog](https://keepachangelog.
 ## [Unreleased]
 
 ### Added
+
 - Queue resource type for message queue support (#123)
 - Consul state backend (#124)
 - AWS CDK plugin (#125)
 
 ### Changed
+
 - Improved error messages for validation failures
 
 ### Fixed
+
 - State locking race condition on S3 backend
 ```
 

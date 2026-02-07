@@ -40,7 +40,7 @@ resource "aws_iam_role" "lambda" {
 
   tags = {
     Name      = "${local.name}-function"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -73,7 +73,7 @@ resource "aws_lambda_function" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 

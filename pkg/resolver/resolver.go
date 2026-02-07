@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/oci"
-	"github.com/architect-io/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/oci"
+	"github.com/davidthor/arcctl/pkg/schema/component"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 )
@@ -87,7 +87,7 @@ func NewResolver(opts Options) Resolver {
 	cacheDir := opts.CacheDir
 	if cacheDir == "" {
 		homeDir, _ := os.UserHomeDir()
-		cacheDir = filepath.Join(homeDir, ".arcctl", "cache", "components")
+		cacheDir = filepath.Join(homeDir, ".cldctl", "cache", "components")
 	}
 
 	return &resolver{
@@ -101,7 +101,7 @@ func NewResolver(opts Options) Resolver {
 
 func (r *resolver) Resolve(ctx context.Context, ref string) (ResolvedComponent, error) {
 	// Use local-aware detection only when local references are allowed (CLI usage)
-	// This enables commands like "arcctl up mycomponent" to work with local directories
+	// This enables commands like "cldctl up mycomponent" to work with local directories
 	var refType ReferenceType
 	if r.allowLocal {
 		refType = DetectReferenceTypeWithLocal(ref)
@@ -152,13 +152,13 @@ func (r *resolver) resolveLocal(ctx context.Context, ref string) (ResolvedCompon
 		return ResolvedComponent{}, fmt.Errorf("path not found: %w", err)
 	}
 
-	// If directory, look for architect.yml
+	// If directory, look for cloud.component.yml
 	if info.IsDir() {
-		componentFile := filepath.Join(absPath, "architect.yml")
+		componentFile := filepath.Join(absPath, "cloud.component.yml")
 		if _, err := os.Stat(componentFile); err != nil {
-			componentFile = filepath.Join(absPath, "architect.yaml")
+			componentFile = filepath.Join(absPath, "cloud.component.yaml")
 			if _, err := os.Stat(componentFile); err != nil {
-				return ResolvedComponent{}, fmt.Errorf("no architect.yml found in %s", absPath)
+				return ResolvedComponent{}, fmt.Errorf("no cloud.component.yml found in %s", absPath)
 			}
 		}
 		absPath = componentFile
@@ -199,7 +199,7 @@ func (r *resolver) resolveOCI(ctx context.Context, ref string) (ResolvedComponen
 	digestFile := filepath.Join(componentDir, ".digest")
 
 	// Check if already cached
-	componentFile := filepath.Join(componentDir, "architect.yml")
+	componentFile := filepath.Join(componentDir, "cloud.component.yml")
 	if _, err := os.Stat(componentFile); err == nil {
 		// Cache exists - check if we need to update by comparing digests
 		needsUpdate := false
@@ -255,12 +255,12 @@ func (r *resolver) resolveOCI(ctx context.Context, ref string) (ResolvedComponen
 		_ = os.WriteFile(digestFile, []byte(remoteDigest), 0644)
 	}
 
-	// Find architect.yml in pulled content
-	componentFile = filepath.Join(componentDir, "architect.yml")
+	// Find cloud.component.yml in pulled content
+	componentFile = filepath.Join(componentDir, "cloud.component.yml")
 	if _, err := os.Stat(componentFile); err != nil {
-		componentFile = filepath.Join(componentDir, "architect.yaml")
+		componentFile = filepath.Join(componentDir, "cloud.component.yaml")
 		if _, err := os.Stat(componentFile); err != nil {
-			return ResolvedComponent{}, fmt.Errorf("no architect.yml found in pulled artifact")
+			return ResolvedComponent{}, fmt.Errorf("no cloud.component.yml found in pulled artifact")
 		}
 	}
 
@@ -328,11 +328,11 @@ func (r *resolver) resolveGit(ctx context.Context, ref string) (ResolvedComponen
 		componentDir = filepath.Join(repoDir, subPath)
 	}
 
-	componentFile := filepath.Join(componentDir, "architect.yml")
+	componentFile := filepath.Join(componentDir, "cloud.component.yml")
 	if _, err := os.Stat(componentFile); err != nil {
-		componentFile = filepath.Join(componentDir, "architect.yaml")
+		componentFile = filepath.Join(componentDir, "cloud.component.yaml")
 		if _, err := os.Stat(componentFile); err != nil {
-			return ResolvedComponent{}, fmt.Errorf("no architect.yml found at %s", componentDir)
+			return ResolvedComponent{}, fmt.Errorf("no cloud.component.yml found at %s", componentDir)
 		}
 	}
 
@@ -410,7 +410,7 @@ func DetectReferenceTypeWithLocal(ref string) ReferenceType {
 	}
 
 	// For OCI-looking refs, also check if they exist locally
-	// This allows CLI commands like "arcctl up mycomponent" to work
+	// This allows CLI commands like "cldctl up mycomponent" to work
 	// when there's a local directory named "mycomponent"
 	if _, err := os.Stat(ref); err == nil {
 		return ReferenceTypeLocal

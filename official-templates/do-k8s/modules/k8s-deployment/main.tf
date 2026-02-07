@@ -42,7 +42,7 @@ resource "kubernetes_deployment_v1" "deployment" {
 
     labels = {
       "app.kubernetes.io/name"       = local.name
-      "app.kubernetes.io/managed-by" = "arcctl"
+      "app.kubernetes.io/managed-by" = "cldctl"
     }
   }
 
@@ -59,7 +59,7 @@ resource "kubernetes_deployment_v1" "deployment" {
       metadata {
         labels = {
           "app.kubernetes.io/name"       = local.name
-          "app.kubernetes.io/managed-by" = "arcctl"
+          "app.kubernetes.io/managed-by" = "cldctl"
         }
       }
 

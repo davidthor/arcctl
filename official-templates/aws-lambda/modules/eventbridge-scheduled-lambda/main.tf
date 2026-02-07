@@ -41,7 +41,7 @@ resource "aws_iam_role" "lambda" {
 
   tags = {
     Name      = "${local.name}-cronjob"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -78,7 +78,7 @@ resource "aws_lambda_function" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -90,7 +90,7 @@ resource "aws_cloudwatch_event_rule" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 

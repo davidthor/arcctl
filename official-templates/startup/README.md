@@ -78,11 +78,11 @@ All environments deploy to a **single Vercel project**. Each environment uses:
 
 ```bash
 # Build and push
-arcctl dc build . -t ghcr.io/myorg/startup:v1
-arcctl dc push ghcr.io/myorg/startup:v1
+cldctl dc build . -t ghcr.io/myorg/startup:v1
+cldctl dc push ghcr.io/myorg/startup:v1
 
 # Deploy datacenter (one datacenter for all environments)
-arcctl dc deploy startup \
+cldctl dc deploy startup \
   --config ghcr.io/myorg/startup:v1 \
   --var vercel_token=$VERCEL_TOKEN \
   --var vercel_project_name=my-app \
@@ -94,21 +94,21 @@ arcctl dc deploy startup \
   --var domain=app.example.com
 
 # Create environments
-arcctl env create production --datacenter startup
-arcctl env create staging --datacenter startup
+cldctl env create production --datacenter startup
+cldctl env create staging --datacenter startup
 
 # Deploy to production
-arcctl deploy ghcr.io/myorg/my-app:v1 -e production
+cldctl deploy ghcr.io/myorg/my-app:v1 -e production
 
 # Deploy to staging (Neon branches from main)
-arcctl deploy ghcr.io/myorg/my-app:v1 -e staging
+cldctl deploy ghcr.io/myorg/my-app:v1 -e staging
 
 # Create a preview environment for a PR (Neon branches from staging)
-arcctl env create preview-42 --datacenter startup
-arcctl deploy ghcr.io/myorg/my-app:pr-42 -e preview-42
+cldctl env create preview-42 --datacenter startup
+cldctl deploy ghcr.io/myorg/my-app:pr-42 -e preview-42
 
 # Tear down preview when PR is merged
-arcctl destroy environment preview-42
+cldctl destroy environment preview-42
 ```
 
 ## Notes

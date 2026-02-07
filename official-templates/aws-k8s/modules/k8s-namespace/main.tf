@@ -12,8 +12,8 @@ resource "kubernetes_namespace_v1" "this" {
     name = var.name
 
     labels = {
-      "app.kubernetes.io/managed-by" = "arcctl"
-      "arcctl.io/environment"        = var.name
+      "app.kubernetes.io/managed-by" = "cldctl"
+      "cldctl.io/environment"        = var.name
     }
   }
 }

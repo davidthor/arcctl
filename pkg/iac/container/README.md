@@ -15,7 +15,7 @@ The container approach provides several benefits:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        arcctl host                               │
+│                        cldctl host                               │
 │                                                                  │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
 │  │   Executor   │───▶│   Docker     │───▶│   Module     │      │
@@ -67,9 +67,9 @@ The container writes a JSON response to `/workspace/output.json`:
   "success": true,
   "action": "apply",
   "outputs": {
-    "host": {"value": "db.example.com"},
-    "port": {"value": 5432},
-    "url": {"value": "postgres://..."}
+    "host": { "value": "db.example.com" },
+    "port": { "value": 5432 },
+    "url": { "value": "postgres://..." }
   }
 }
 ```
@@ -79,6 +79,7 @@ The container writes a JSON response to `/workspace/output.json`:
 ### Automatic Detection
 
 The builder detects the module type from the source directory:
+
 - **Pulumi**: Contains `Pulumi.yaml`
 - **OpenTofu**: Contains `.tf` files
 
@@ -91,8 +92,8 @@ FROM pulumi/pulumi-nodejs:latest
 WORKDIR /app
 COPY . .
 RUN npm ci --production
-COPY --from=arcctl-entrypoint /arcctl-entrypoint /arcctl-entrypoint
-ENTRYPOINT ["/arcctl-entrypoint"]
+COPY --from=cldctl-entrypoint /cldctl-entrypoint /cldctl-entrypoint
+ENTRYPOINT ["/cldctl-entrypoint"]
 ```
 
 #### OpenTofu
@@ -102,8 +103,8 @@ FROM ghcr.io/opentofu/opentofu:latest
 WORKDIR /app
 COPY . .
 RUN tofu init -backend=false
-COPY --from=arcctl-entrypoint /arcctl-entrypoint /arcctl-entrypoint
-ENTRYPOINT ["/arcctl-entrypoint"]
+COPY --from=cldctl-entrypoint /cldctl-entrypoint /cldctl-entrypoint
+ENTRYPOINT ["/cldctl-entrypoint"]
 ```
 
 ## Usage
@@ -145,7 +146,7 @@ response, err := executor.Execute(ctx, container.ExecuteOptions{
 
 ```go
 // Register automatically on import
-import _ "github.com/architect-io/arcctl/pkg/iac/container"
+import _ "github.com/davidthor/arcctl/pkg/iac/container"
 
 // Get plugin from registry
 plugin, _ := iac.DefaultRegistry.Get("container")
@@ -161,11 +162,11 @@ result, err := plugin.Apply(ctx, iac.RunOptions{
 
 ## Supported Actions
 
-| Action | Description |
-|--------|-------------|
-| `preview` | Show planned changes without applying |
-| `apply` | Create or update resources |
-| `destroy` | Remove all resources |
+| Action    | Description                            |
+| --------- | -------------------------------------- |
+| `preview` | Show planned changes without applying  |
+| `apply`   | Create or update resources             |
+| `destroy` | Remove all resources                   |
 | `refresh` | Read current state from infrastructure |
 
 ## Cloud Provider Credentials
@@ -173,23 +174,27 @@ result, err := plugin.Apply(ctx, iac.RunOptions{
 The executor automatically passes through common cloud credentials:
 
 ### AWS
+
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_SESSION_TOKEN`
 - `AWS_REGION`
 
 ### GCP
+
 - `GOOGLE_APPLICATION_CREDENTIALS`
 - `GOOGLE_PROJECT`
 - `GOOGLE_REGION`
 
 ### Azure
+
 - `AZURE_SUBSCRIPTION_ID`
 - `AZURE_TENANT_ID`
 - `AZURE_CLIENT_ID`
 - `AZURE_CLIENT_SECRET`
 
 ### Kubernetes
+
 - `KUBECONFIG`
 
 ## Entrypoint Program
@@ -208,7 +213,7 @@ The entrypoint needs to be compiled and included in module images:
 
 ```bash
 cd pkg/iac/container/entrypoint
-GOOS=linux GOARCH=amd64 go build -o arcctl-entrypoint .
+GOOS=linux GOARCH=amd64 go build -o cldctl-entrypoint .
 ```
 
 For production, this is built as a multi-architecture binary and published as a scratch image that module Dockerfiles copy from.

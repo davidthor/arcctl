@@ -51,7 +51,7 @@ resource "digitalocean_spaces_bucket_cors_configuration" "cors" {
 resource "digitalocean_spaces_bucket_object" "access_marker" {
   region       = var.region
   bucket       = digitalocean_spaces_bucket.bucket.name
-  key          = ".arcctl-managed"
-  content      = "managed by arcctl"
+  key          = ".cldctl-managed"
+  content      = "managed by cldctl"
   content_type = "text/plain"
 }

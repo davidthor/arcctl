@@ -152,7 +152,7 @@ After deployment:
 
 ## Upgrading
 
-To upgrade n8n, update the image tag in `architect.yml`:
+To upgrade n8n, update the image tag in `cloud.component.yml`:
 
 ```yaml
 deployments:
@@ -194,7 +194,7 @@ curl https://your-n8n-url/healthz
 Check the deployment logs for errors:
 
 ```bash
-arcctl logs n8n --deployment app
+cldctl logs n8n --deployment app
 ```
 
 ## Links

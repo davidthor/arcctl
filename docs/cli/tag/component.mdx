@@ -3,18 +3,18 @@ title: "tag component"
 description: "Create a new tag for an existing component artifact"
 ---
 
-# arcctl tag component
+# cldctl tag component
 
 Create a new tag for an existing component artifact and all its child artifacts.
 
 <Note>
-Use `arcctl tag comp` as shorthand for `arcctl tag component`.
+Use `cldctl tag comp` as shorthand for `cldctl tag component`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl tag component <source> <target> [options]
+cldctl tag component <source> <target> [options]
 ```
 
 ## Arguments
@@ -35,23 +35,23 @@ arcctl tag component <source> <target> [options]
 
 ```bash
 # Tag an artifact
-arcctl tag component ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest
+cldctl tag component ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest
 
 # Using alias
-arcctl tag comp ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest
+cldctl tag comp ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest
 
 # Non-interactive
-arcctl tag component myapp:dev myapp:staging -y
+cldctl tag component myapp:dev myapp:staging -y
 
 # Override child artifact tag
-arcctl tag component ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest \
+cldctl tag component ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest \
   --artifact-tag deployment/api=ghcr.io/myorg/api:latest
 ```
 
 ## Output
 
 ```
-$ arcctl tag component ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest
+$ cldctl tag component ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest
 
 Tagging component artifact
   Source: ghcr.io/myorg/app:v1.0.0
@@ -63,5 +63,5 @@ Proceed with tagging? [Y/n]:
 
 ## See Also
 
-- [`arcctl build component`](/cli/build/component) - Build a component
-- [`arcctl push component`](/cli/push/component) - Push a component
+- [`cldctl build component`](/cli/build/component) - Build a component
+- [`cldctl push component`](/cli/push/component) - Push a component

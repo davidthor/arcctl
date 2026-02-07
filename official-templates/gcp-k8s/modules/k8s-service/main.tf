@@ -20,7 +20,7 @@ resource "kubernetes_service_v1" "main" {
 
     labels = {
       app        = var.name
-      managed-by = "arcctl"
+      managed-by = "cldctl"
     }
   }
 

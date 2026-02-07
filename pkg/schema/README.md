@@ -1,6 +1,6 @@
 # schema
 
-Schema parsing, validation, and transformation for arcctl configuration files. Supports components, datacenters, and environments with versioned schemas.
+Schema parsing, validation, and transformation for cldctl configuration files. Supports components, datacenters, and environments with versioned schemas.
 
 ## Overview
 
@@ -43,7 +43,7 @@ Parses and validates component configurations that define application resources.
 ### Usage
 
 ```go
-import "github.com/architect-io/arcctl/pkg/schema/component"
+import "github.com/davidthor/arcctl/pkg/schema/component"
 
 // Create a loader
 loader := component.NewLoader()
@@ -124,7 +124,7 @@ Parses and validates datacenter configurations that define infrastructure module
 ### Usage
 
 ```go
-import "github.com/architect-io/arcctl/pkg/schema/datacenter"
+import "github.com/davidthor/arcctl/pkg/schema/datacenter"
 
 // Create a loader
 loader := datacenter.NewLoader()
@@ -158,7 +158,7 @@ type Datacenter interface {
 Datacenters use HCL with runtime evaluation:
 
 ```go
-import "github.com/architect-io/arcctl/pkg/schema/datacenter/v1"
+import "github.com/davidthor/arcctl/pkg/schema/datacenter/v1"
 
 // Create parser with context
 parser := v1.NewParser()
@@ -199,7 +199,7 @@ variable "region" {
 module "vpc" {
   source = "./modules/vpc"
   plugin = "opentofu"
-  
+
   inputs = {
     region = variable.region
     cidr   = "10.0.0.0/16"
@@ -209,12 +209,12 @@ module "vpc" {
 environment {
   database "postgres" {
     module = "rds"
-    
+
     inputs = {
       vpc_id = module.vpc.outputs.vpc_id
       name   = node.name
     }
-    
+
     outputs = {
       host     = module.rds.outputs.endpoint
       port     = 5432
@@ -234,7 +234,7 @@ Parses and validates environment configurations that define how components are d
 ### Usage
 
 ```go
-import "github.com/architect-io/arcctl/pkg/schema/environment"
+import "github.com/davidthor/arcctl/pkg/schema/environment"
 
 // Create a loader
 loader := environment.NewLoader()
@@ -296,7 +296,7 @@ components:
     scaling:
       api:
         replicas: ${{ locals.replicas }}
-        
+
   web:
     source: ghcr.io/myorg/web:v1.0.0
     variables:
@@ -334,7 +334,7 @@ for _, e := range errors {
 Each schema type has internal types for canonical representation:
 
 ```go
-import "github.com/architect-io/arcctl/pkg/schema/component/internal"
+import "github.com/davidthor/arcctl/pkg/schema/component/internal"
 
 // Access internal representation
 internal := comp.Internal()
@@ -350,7 +350,7 @@ for _, db := range internal.Databases {
 For components, the internal package provides an Expression type:
 
 ```go
-import "github.com/architect-io/arcctl/pkg/schema/component/internal"
+import "github.com/davidthor/arcctl/pkg/schema/component/internal"
 
 // Create an expression
 expr := internal.NewExpression("${{ variables.name }}")

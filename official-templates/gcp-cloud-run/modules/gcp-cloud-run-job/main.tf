@@ -56,6 +56,6 @@ resource "google_cloud_run_v2_job" "main" {
   }
 
   labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
   }
 }

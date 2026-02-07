@@ -54,15 +54,15 @@ locals {
     aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com || true
 
     # Create cron job script
-    cat > /usr/local/bin/arcctl-cron.sh <<'CRONEOF'
+    cat > /usr/local/bin/cldctl-cron.sh <<'CRONEOF'
     #!/bin/bash
     ${local.env_exports}
     docker run --rm ${var.image} ${try(join(" ", var.command), "")}
     CRONEOF
-    chmod +x /usr/local/bin/arcctl-cron.sh
+    chmod +x /usr/local/bin/cldctl-cron.sh
 
     # Install crontab
-    echo "${local.schedule} /usr/local/bin/arcctl-cron.sh >> /var/log/cron.log 2>&1" | crontab -
+    echo "${local.schedule} /usr/local/bin/cldctl-cron.sh >> /var/log/cron.log 2>&1" | crontab -
   USERDATA
 }
 
@@ -82,7 +82,7 @@ resource "aws_iam_role" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -117,6 +117,6 @@ resource "aws_instance" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

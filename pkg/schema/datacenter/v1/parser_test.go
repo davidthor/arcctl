@@ -10,7 +10,7 @@ func TestParser_ParseBytes(t *testing.T) {
 	hcl := `
 variable "network_name" {
   description = "Name of the Docker network"
-  default     = "arcctl-local"
+  default     = "cldctl-local"
 }
 
 module "network" {

@@ -1,6 +1,6 @@
 ---
 title: "Variables"
-description: "Define configurable inputs for arcctl components"
+description: "Define configurable inputs for cldctl components"
 ---
 
 # Variables
@@ -85,7 +85,7 @@ deployments:
 ### CLI
 
 ```bash
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging \
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging \
   --var log_level=debug \
   --var api_key=sk-xxx
 ```
@@ -101,7 +101,7 @@ api_key=sk-xxx-staging
 ```
 
 ```bash
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging \
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging \
   --var-file ./staging.dcvars
 ```
 

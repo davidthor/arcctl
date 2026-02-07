@@ -1,10 +1,10 @@
 # engine
 
-Core orchestration engine for arcctl deployments. Coordinates component deployments, manages state, and orchestrates the execution pipeline.
+Core orchestration engine for cldctl deployments. Coordinates component deployments, manages state, and orchestrates the execution pipeline.
 
 ## Overview
 
-The `engine` package is the heart of arcctl's deployment system. It provides:
+The `engine` package is the heart of cldctl's deployment system. It provides:
 
 - Deployment orchestration
 - Dependency graph construction and traversal
@@ -98,7 +98,7 @@ result, err := engine.Destroy(ctx, engine.DestroyOptions{
 Executes planned changes sequentially or in parallel, respecting dependencies.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/engine/executor"
+import "github.com/davidthor/arcctl/pkg/engine/executor"
 
 // Create an executor with options
 exec := executor.NewExecutor(stateManager, iacRegistry, executor.Options{
@@ -116,6 +116,7 @@ result, err := exec.ExecuteParallel(ctx, plan, graph)
 ```
 
 **Types:**
+
 - `Executor` - Executes planned changes
 - `ExecutionResult` - Results of an execution (Success, Duration, Created, Updated, Deleted, Failed, Errors)
 - `NodeResult` - Result of executing a single node
@@ -126,7 +127,7 @@ result, err := exec.ExecuteParallel(ctx, plan, graph)
 Parses and evaluates `${{ }}` expressions against a context.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/engine/expression"
+import "github.com/davidthor/arcctl/pkg/engine/expression"
 
 // Parse an expression
 parser := expression.NewParser()
@@ -145,6 +146,7 @@ hasExpr := expression.ContainsExpression("${{ foo }}")  // true
 ```
 
 **Built-in Pipe Functions:**
+
 - `join` - Joins array elements with a separator
 - `first` - Returns the first element of an array
 - `last` - Returns the last element of an array
@@ -155,6 +157,7 @@ hasExpr := expression.ContainsExpression("${{ foo }}")  // true
 - `trim` - Trims whitespace from a string
 
 **Context Types:**
+
 - `EvalContext` - Values for expression evaluation
 - `DatabaseOutputs` - Outputs from a provisioned database
 - `BucketOutputs` - Outputs from a provisioned bucket
@@ -171,7 +174,7 @@ This package is located at `pkg/graph/` (not under engine) for broader reusabili
 such as rendering topology without executing.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/graph"
+import "github.com/davidthor/arcctl/pkg/graph"
 
 // Create a new graph
 g := graph.NewGraph("production", "aws")
@@ -202,6 +205,7 @@ if g.HasFailed() {
 ```
 
 **Node Types:**
+
 - `NodeTypeDatabase`
 - `NodeTypeBucket`
 - `NodeTypeDeployment`
@@ -214,6 +218,7 @@ if g.HasFailed() {
 - `NodeTypeMigration`
 
 **Node States:**
+
 - `NodeStatePending`
 - `NodeStateRunning`
 - `NodeStateCompleted`
@@ -221,6 +226,7 @@ if g.HasFailed() {
 - `NodeStateSkipped`
 
 **Builder:**
+
 ```go
 builder := graph.NewBuilder("production", "aws")
 builder.AddComponent("my-app", component)  // Component name provided externally
@@ -232,7 +238,7 @@ g := builder.Build()
 Generates execution plans by comparing desired state with current state.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/engine/planner"
+import "github.com/davidthor/arcctl/pkg/engine/planner"
 
 // Create a planner
 p := planner.NewPlanner()
@@ -255,6 +261,7 @@ for _, change := range plan.Changes {
 ```
 
 **Actions:**
+
 - `ActionCreate` - Resource will be created
 - `ActionUpdate` - Resource will be updated in place
 - `ActionReplace` - Resource will be destroyed and recreated
@@ -262,6 +269,7 @@ for _, change := range plan.Changes {
 - `ActionNoop` - No changes needed
 
 **Types:**
+
 - `Planner` - Generates execution plans
 - `Plan` - Execution plan (Changes, ToCreate, ToUpdate, ToDelete, NoChange)
 - `ResourceChange` - Planned change to a resource
@@ -285,9 +293,9 @@ for _, change := range plan.Changes {
 
 ```go
 import (
-    "github.com/architect-io/arcctl/pkg/engine"
-    "github.com/architect-io/arcctl/pkg/iac"
-    "github.com/architect-io/arcctl/pkg/state"
+    "github.com/davidthor/arcctl/pkg/engine"
+    "github.com/davidthor/arcctl/pkg/iac"
+    "github.com/davidthor/arcctl/pkg/state"
 )
 
 // Initialize dependencies
@@ -314,7 +322,7 @@ if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("Deployment %s in %v\n", 
+fmt.Printf("Deployment %s in %v\n",
     map[bool]string{true: "succeeded", false: "failed"}[result.Success],
     result.Duration)
 ```

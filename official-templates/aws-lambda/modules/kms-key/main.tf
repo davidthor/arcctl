@@ -40,11 +40,11 @@ resource "aws_kms_key" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
 resource "aws_kms_alias" "this" {
-  name          = "alias/arcctl-${replace(var.name, "/", "-")}"
+  name          = "alias/cldctl-${replace(var.name, "/", "-")}"
   target_key_id = aws_kms_key.this.key_id
 }

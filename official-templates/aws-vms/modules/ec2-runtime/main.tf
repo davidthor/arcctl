@@ -118,7 +118,7 @@ resource "aws_iam_role" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -148,7 +148,7 @@ resource "aws_instance" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 
   lifecycle {

@@ -170,7 +170,7 @@ func (c *Client) Tag(ctx context.Context, srcRef, destRef string) error {
 // BuildFromDirectory builds an artifact from a directory.
 func (c *Client) BuildFromDirectory(ctx context.Context, dir string, artifactType ArtifactType, config interface{}) (*Artifact, error) {
 	// Create tar from directory
-	f, err := os.CreateTemp("", "arcctl-build-*.tar.gz")
+	f, err := os.CreateTemp("", "cldctl-build-*.tar.gz")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}

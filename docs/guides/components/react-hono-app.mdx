@@ -190,7 +190,7 @@ functions:
 
 ```
 react-hono-app/
-├── architect.yml
+├── cloud.component.yml
 ├── api/
 │   ├── Dockerfile
 │   ├── src/
@@ -221,7 +221,7 @@ RUN npm ci
 
 COPY migrations ./migrations
 
-# DATABASE_URL is provided by arcctl
+# DATABASE_URL is provided by cldctl
 CMD ["npm", "run", "migrate:up"]
 ```
 
@@ -229,10 +229,10 @@ CMD ["npm", "run", "migrate:up"]
 
 ```bash
 # Build and deploy
-arcctl component build . -t ghcr.io/myorg/react-hono-app:v1.0.0
-arcctl component push ghcr.io/myorg/react-hono-app:v1.0.0
+cldctl component build . -t ghcr.io/myorg/react-hono-app:v1.0.0
+cldctl component push ghcr.io/myorg/react-hono-app:v1.0.0
 
-arcctl deploy ghcr.io/myorg/react-hono-app:v1.0.0 -e staging \
+cldctl deploy ghcr.io/myorg/react-hono-app:v1.0.0 -e staging \
   --var jwt_secret=my-secret-key
 ```
 

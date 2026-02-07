@@ -35,7 +35,7 @@ resource "kubernetes_cron_job_v1" "cronjob" {
     namespace = var.namespace
 
     labels = {
-      "app.kubernetes.io/managed-by" = "arcctl"
+      "app.kubernetes.io/managed-by" = "cldctl"
     }
   }
 
@@ -48,8 +48,8 @@ resource "kubernetes_cron_job_v1" "cronjob" {
     job_template {
       metadata {
         labels = {
-          "app.kubernetes.io/managed-by" = "arcctl"
-          "arcctl/component"             = local.name
+          "app.kubernetes.io/managed-by" = "cldctl"
+          "cldctl/component"             = local.name
         }
       }
 
@@ -59,8 +59,8 @@ resource "kubernetes_cron_job_v1" "cronjob" {
         template {
           metadata {
             labels = {
-              "app.kubernetes.io/managed-by" = "arcctl"
-              "arcctl/component"             = local.name
+              "app.kubernetes.io/managed-by" = "cldctl"
+              "cldctl/component"             = local.name
             }
           }
 

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/state/backend"
+	"github.com/davidthor/arcctl/pkg/state/backend"
 )
 
 // mockS3Server simulates AWS S3 API for testing.
@@ -213,9 +213,9 @@ func TestBackend_fullPath(t *testing.T) {
 		},
 		{
 			name:     "nested path with prefix",
-			prefix:   "arcctl",
+			prefix:   "cldctl",
 			path:     "environments/prod/state.json",
-			expected: "arcctl/environments/prod/state.json",
+			expected: "cldctl/environments/prod/state.json",
 		},
 	}
 
@@ -569,7 +569,7 @@ func TestBackendConfig_WithKeyPrefix(t *testing.T) {
 
 	b, err := NewBackend(map[string]string{
 		"bucket":           "test-bucket",
-		"key":              "arcctl/state",
+		"key":              "cldctl/state",
 		"endpoint":         server.URL,
 		"access_key":       "test-key",
 		"secret_key":       "test-secret",
@@ -580,8 +580,8 @@ func TestBackendConfig_WithKeyPrefix(t *testing.T) {
 	}
 
 	s3b := b.(*Backend)
-	if s3b.prefix != "arcctl/state" {
-		t.Errorf("expected prefix 'arcctl/state', got %q", s3b.prefix)
+	if s3b.prefix != "cldctl/state" {
+		t.Errorf("expected prefix 'cldctl/state', got %q", s3b.prefix)
 	}
 }
 

@@ -1,6 +1,6 @@
 # output
 
-Live output streaming for arcctl operations. Supports event-driven output with multiple handlers, progress tracking, and formatted console/JSON output.
+Live output streaming for cldctl operations. Supports event-driven output with multiple handlers, progress tracking, and formatted console/JSON output.
 
 ## Overview
 
@@ -62,7 +62,7 @@ The main stream manages event distribution to handlers.
 ### Creating a Stream
 
 ```go
-import "github.com/architect-io/arcctl/pkg/output"
+import "github.com/davidthor/arcctl/pkg/output"
 
 stream := output.NewStream()
 ```
@@ -147,6 +147,7 @@ stream.AddHandler(handler)
 ```
 
 Output format:
+
 ```json
 {"time":"2024-01-15T10:30:00Z","level":"info","component":"api","resource":"deployment","message":"Creating..."}
 {"time":"2024-01-15T10:30:01Z","level":"info","component":"api","resource":"deployment","message":"Created"}
@@ -210,7 +211,7 @@ import (
     "context"
     "os"
     "os/exec"
-    "github.com/architect-io/arcctl/pkg/output"
+    "github.com/davidthor/arcctl/pkg/output"
 )
 
 func main() {
@@ -221,23 +222,23 @@ func main() {
         UseColors: true,
     }))
     defer stream.Close()
-    
+
     // Emit status updates
     stream.EmitInfo("api", "build", "Starting build...")
-    
+
     // Create progress bar
     bar := output.NewProgressBar(stream, "api", "build", 100)
-    
+
     // Run a command with output streaming
     cmd := exec.Command("docker", "build", "-t", "myapp", ".")
     cmd.Stdout = stream.Writer("api", "build", output.LevelInfo)
     cmd.Stderr = stream.Writer("api", "build", output.LevelError)
-    
+
     if err := cmd.Run(); err != nil {
         stream.EmitError("api", "build", err)
         return
     }
-    
+
     bar.Complete()
     stream.EmitInfo("api", "build", "Build complete!")
 }

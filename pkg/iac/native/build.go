@@ -68,7 +68,7 @@ type BuildResult struct {
 
 // BuildImage builds a Docker image from a Dockerfile.
 func (d *DockerClient) BuildImage(ctx context.Context, opts BuildOptions) (*BuildResult, error) {
-	if os.Getenv("ARCCTL_DEBUG") != "" {
+	if os.Getenv("CLDCTL_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] BuildImage: creating build context for %s\n", opts.Context)
 	}
 
@@ -79,7 +79,7 @@ func (d *DockerClient) BuildImage(ctx context.Context, opts BuildOptions) (*Buil
 	}
 	defer contextTar.Close()
 
-	if os.Getenv("ARCCTL_DEBUG") != "" {
+	if os.Getenv("CLDCTL_DEBUG") != "" {
 		fmt.Fprintf(os.Stderr, "[debug] BuildImage: build context created, starting Docker build\n")
 	}
 
@@ -226,7 +226,7 @@ func (d *DockerClient) processBuildOutput(reader io.Reader, stdout, stderr io.Wr
 		if strings.HasPrefix(msg.Stream, "Step ") {
 			lastStep = strings.TrimSpace(msg.Stream)
 			// Show step progress in debug mode
-			if stderr != nil && os.Getenv("ARCCTL_DEBUG") != "" {
+			if stderr != nil && os.Getenv("CLDCTL_DEBUG") != "" {
 				fmt.Fprintf(stderr, "[build] %s", msg.Stream)
 			}
 		}

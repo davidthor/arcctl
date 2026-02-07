@@ -28,6 +28,6 @@ resource "aws_cloudwatch_log_group" "otel" {
 
   tags = {
     Name      = "${local.name}-otel"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

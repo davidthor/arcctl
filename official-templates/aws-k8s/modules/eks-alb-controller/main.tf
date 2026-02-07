@@ -46,7 +46,7 @@ resource "aws_iam_role" "alb_controller" {
 
   tags = {
     Name      = "${var.cluster_name}-alb-controller"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 

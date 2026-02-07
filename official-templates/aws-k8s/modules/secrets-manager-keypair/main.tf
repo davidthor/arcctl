@@ -35,7 +35,7 @@ resource "aws_secretsmanager_secret" "private_key" {
 
   tags = {
     Name      = "${var.name}-private-key"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -51,7 +51,7 @@ resource "aws_secretsmanager_secret" "public_key" {
 
   tags = {
     Name      = "${var.name}-public-key"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 

@@ -48,5 +48,5 @@ resource "digitalocean_database_cluster" "db" {
   region     = var.region
   node_count = 1
 
-  tags = ["arcctl", "managed-by:arcctl"]
+  tags = ["cldctl", "managed-by:cldctl"]
 }

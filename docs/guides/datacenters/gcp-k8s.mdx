@@ -8,7 +8,7 @@ description: "Deploy to GKE with Knative, Cloud SQL, and Compute Engine VMs"
 This guide shows how to build a datacenter that deploys components to Google Kubernetes Engine (GKE) with Knative for serverless functions, Cloud SQL for databases, and Compute Engine for VM-based workloads.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/gcp-k8s/`](https://github.com/architect-io/arcctl/tree/main/official-templates/gcp-k8s)
+This is an officially maintained datacenter template. Source: [`official-templates/gcp-k8s/`](https://github.com/davidthor/arcctl/tree/main/official-templates/gcp-k8s)
 </Info>
 
 ## Overview
@@ -392,21 +392,21 @@ observability {
 
 ```bash
 # Build the datacenter
-arcctl dc build . -t ghcr.io/myorg/gcp-k8s-dc:v1.0.0
-arcctl dc push ghcr.io/myorg/gcp-k8s-dc:v1.0.0
+cldctl dc build . -t ghcr.io/myorg/gcp-k8s-dc:v1.0.0
+cldctl dc push ghcr.io/myorg/gcp-k8s-dc:v1.0.0
 
 # Deploy with variables
-arcctl dc deploy gcp-k8s-production \
+cldctl dc deploy gcp-k8s-production \
   --config ghcr.io/myorg/gcp-k8s-dc:v1.0.0 \
   --var gcp_project=my-project \
   --var cluster_name=prod-cluster \
-  --var registry=us-central1-docker.pkg.dev/my-project/arcctl \
+  --var registry=us-central1-docker.pkg.dev/my-project/cldctl \
   --var domain=app.example.com \
   --var smtp_password=$SMTP_PASSWORD
 
 # Create environment and deploy
-arcctl env create staging --datacenter gcp-k8s-production
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl env create staging --datacenter gcp-k8s-production
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 ## Cost Optimization

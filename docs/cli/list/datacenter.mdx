@@ -3,18 +3,18 @@ title: "list datacenter"
 description: "List deployed datacenters"
 ---
 
-# arcctl list datacenter
+# cldctl list datacenter
 
 List all deployed datacenters.
 
 <Note>
-Use `arcctl ls dc` or `arcctl list dc` as shorthand.
+Use `cldctl ls dc` or `cldctl list dc` as shorthand.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl list datacenter [options]
+cldctl list datacenter [options]
 ```
 
 ## Options
@@ -29,22 +29,22 @@ arcctl list datacenter [options]
 
 ```bash
 # List datacenters
-arcctl list datacenter
+cldctl list datacenter
 
 # Using alias
-arcctl ls dc
+cldctl ls dc
 
 # Output as JSON
-arcctl list datacenter -o json
+cldctl list datacenter -o json
 
 # Output as YAML
-arcctl list datacenter -o yaml
+cldctl list datacenter -o yaml
 ```
 
 ## Output
 
 ```
-$ arcctl list datacenter
+$ cldctl list datacenter
 
 NAME              SOURCE                                        ENVIRONMENTS
 aws-production    ghcr.io/myorg/aws-dc:v1.0.0                  production, staging
@@ -54,5 +54,5 @@ local             local                                         local-dev
 
 ## See Also
 
-- [`arcctl get datacenter`](/cli/get/datacenter) - Get datacenter details
-- [`arcctl deploy datacenter`](/cli/deploy/datacenter) - Deploy a datacenter
+- [`cldctl get datacenter`](/cli/get/datacenter) - Get datacenter details
+- [`cldctl deploy datacenter`](/cli/deploy/datacenter) - Deploy a datacenter

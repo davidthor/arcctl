@@ -59,11 +59,11 @@ Deploy portable applications to Amazon EKS with managed AWS services for databas
 
 ```bash
 # Build and push the datacenter
-arcctl dc build . -t ghcr.io/myorg/aws-k8s:v1
-arcctl dc push ghcr.io/myorg/aws-k8s:v1
+cldctl dc build . -t ghcr.io/myorg/aws-k8s:v1
+cldctl dc push ghcr.io/myorg/aws-k8s:v1
 
 # Deploy the datacenter
-arcctl dc deploy aws-k8s-prod \
+cldctl dc deploy aws-k8s-prod \
   --config ghcr.io/myorg/aws-k8s:v1 \
   --var cluster_name=prod-eks \
   --var vpc_id=vpc-12345 \
@@ -72,8 +72,8 @@ arcctl dc deploy aws-k8s-prod \
   --var certificate_arn=arn:aws:acm:us-east-1:123456:certificate/abc
 
 # Create an environment and deploy a component
-arcctl env create staging --datacenter aws-k8s-prod
-arcctl deploy ghcr.io/myorg/my-app:v1 -e staging
+cldctl env create staging --datacenter aws-k8s-prod
+cldctl deploy ghcr.io/myorg/my-app:v1 -e staging
 ```
 
 ## Prerequisites

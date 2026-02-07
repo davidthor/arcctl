@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/state/backend"
+	"github.com/davidthor/arcctl/pkg/state/backend"
 	"github.com/google/uuid"
 )
 
@@ -30,12 +30,12 @@ type Backend struct {
 func NewBackend(config map[string]string) (backend.Backend, error) {
 	path := config["path"]
 	if path == "" {
-		// Default to ~/.arcctl/state
+		// Default to ~/.cldctl/state
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get home directory: %w", err)
 		}
-		path = filepath.Join(homeDir, ".arcctl", "state")
+		path = filepath.Join(homeDir, ".cldctl", "state")
 	}
 
 	// Ensure base path exists
@@ -77,7 +77,7 @@ func (b *Backend) Write(ctx context.Context, path string, data io.Reader) error 
 	}
 
 	// Write to temp file first, then rename for atomicity
-	tempFile, err := os.CreateTemp(dir, ".arcctl-state-*")
+	tempFile, err := os.CreateTemp(dir, ".cldctl-state-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}

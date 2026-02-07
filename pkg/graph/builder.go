@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/schema/component"
 )
 
 // Builder constructs a dependency graph from component specifications.

@@ -1,6 +1,6 @@
 # state
 
-State management for arcctl. Provides storage and retrieval of datacenters, environments, components, and resources with support for multiple backends.
+State management for cldctl. Provides storage and retrieval of datacenters, environments, components, and resources with support for multiple backends.
 
 ## Overview
 
@@ -32,15 +32,15 @@ The manager provides high-level operations for state management.
 
 ```go
 import (
-    "github.com/architect-io/arcctl/pkg/state"
-    "github.com/architect-io/arcctl/pkg/state/backend"
+    "github.com/davidthor/arcctl/pkg/state"
+    "github.com/davidthor/arcctl/pkg/state/backend"
 )
 
 // From a backend instance
 localBackend, _ := backend.Create(backend.Config{
     Type: "local",
     Config: map[string]string{
-        "path": "~/.arcctl/state",
+        "path": "~/.cldctl/state",
     },
 })
 manager := state.NewManager(localBackend)
@@ -49,7 +49,7 @@ manager := state.NewManager(localBackend)
 manager, err := state.NewManagerFromConfig(backend.Config{
     Type: "s3",
     Config: map[string]string{
-        "bucket": "my-arcctl-state",
+        "bucket": "my-cldctl-state",
         "region": "us-west-2",
     },
 })
@@ -68,26 +68,26 @@ type Manager interface {
     SaveDatacenter(ctx context.Context, state *types.DatacenterState) error
     DeleteDatacenter(ctx context.Context, name string) error
     ListDatacenters(ctx context.Context) ([]string, error)
-    
+
     // Environment operations (datacenter-scoped)
     ListEnvironments(ctx context.Context, datacenter string) ([]types.EnvironmentRef, error)
     GetEnvironment(ctx context.Context, datacenter, name string) (*types.EnvironmentState, error)
     SaveEnvironment(ctx context.Context, datacenter string, state *types.EnvironmentState) error
     DeleteEnvironment(ctx context.Context, datacenter, name string) error
-    
+
     // Component operations (datacenter-scoped)
     GetComponent(ctx context.Context, dc, env, name string) (*types.ComponentState, error)
     SaveComponent(ctx context.Context, dc, env string, state *types.ComponentState) error
     DeleteComponent(ctx context.Context, dc, env, name string) error
-    
+
     // Resource operations (datacenter-scoped)
     GetResource(ctx context.Context, dc, env, comp, name string) (*types.ResourceState, error)
     SaveResource(ctx context.Context, dc, env, comp string, state *types.ResourceState) error
     DeleteResource(ctx context.Context, dc, env, comp, name string) error
-    
+
     // Locking
     Lock(ctx context.Context, scope LockScope) (backend.Lock, error)
-    
+
     // Backend access
     Backend() backend.Backend
 }
@@ -236,10 +236,10 @@ type Backend interface {
 Stores state on the local filesystem.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/state/backend/local"
+import "github.com/davidthor/arcctl/pkg/state/backend/local"
 
 backend, err := local.NewBackend(map[string]string{
-    "path": "~/.arcctl/state",  // Optional, default: ~/.arcctl/state
+    "path": "~/.cldctl/state",  // Optional, default: ~/.cldctl/state
 })
 ```
 
@@ -248,12 +248,12 @@ backend, err := local.NewBackend(map[string]string{
 Stores state in AWS S3 or compatible services (MinIO, R2).
 
 ```go
-import "github.com/architect-io/arcctl/pkg/state/backend/s3"
+import "github.com/davidthor/arcctl/pkg/state/backend/s3"
 
 backend, err := s3.NewBackend(map[string]string{
-    "bucket":           "my-arcctl-state",  // Required
+    "bucket":           "my-cldctl-state",  // Required
     "region":           "us-west-2",        // Optional, default: us-east-1
-    "key":              "arcctl/",          // Optional prefix
+    "key":              "cldctl/",          // Optional prefix
     "endpoint":         "...",              // Optional, for S3-compatible services
     "access_key":       "...",              // Optional, uses default credentials
     "secret_key":       "...",              // Optional
@@ -266,11 +266,11 @@ backend, err := s3.NewBackend(map[string]string{
 Stores state in Google Cloud Storage.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/state/backend/gcs"
+import "github.com/davidthor/arcctl/pkg/state/backend/gcs"
 
 backend, err := gcs.NewBackend(map[string]string{
-    "bucket":           "my-arcctl-state",  // Required
-    "prefix":           "arcctl/",          // Optional
+    "bucket":           "my-cldctl-state",  // Required
+    "prefix":           "cldctl/",          // Optional
     "credentials":      "/path/to/key.json", // Optional
     "credentials_json": "...",              // Optional, inline JSON
     "endpoint":         "...",              // Optional, for emulator
@@ -283,12 +283,12 @@ defer backend.Close()
 Stores state in Azure Blob Storage.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/state/backend/azurerm"
+import "github.com/davidthor/arcctl/pkg/state/backend/azurerm"
 
 backend, err := azurerm.NewBackend(map[string]string{
     "storage_account_name": "myaccount",    // Required
-    "container_name":       "arcctl-state", // Required
-    "key":                  "arcctl/",      // Optional prefix
+    "container_name":       "cldctl-state", // Required
+    "key":                  "cldctl/",      // Optional prefix
     "access_key":           "...",          // Optional
     "sas_token":            "...",          // Optional
     "connection_string":    "...",          // Optional
@@ -299,7 +299,7 @@ backend, err := azurerm.NewBackend(map[string]string{
 ### Backend Registry
 
 ```go
-import "github.com/architect-io/arcctl/pkg/state/backend"
+import "github.com/davidthor/arcctl/pkg/state/backend"
 
 // Create a backend from configuration
 b, err := backend.Create(backend.Config{
@@ -332,7 +332,7 @@ datacenters/<datacenter>/environments/<env>/modules/<module>.state.json
 datacenters/<datacenter>/environments/<env>/resources/<component>/<resource>.state.json
 ```
 
-Use `arcctl migrate state` to migrate from the old flat structure
+Use `cldctl migrate state` to migrate from the old flat structure
 (`environments/<name>/...`) to the new nested structure.
 
 ## Locking
@@ -374,28 +374,28 @@ type LockError struct {
 import (
     "context"
     "time"
-    "github.com/architect-io/arcctl/pkg/state"
-    "github.com/architect-io/arcctl/pkg/state/backend"
-    "github.com/architect-io/arcctl/pkg/state/types"
+    "github.com/davidthor/arcctl/pkg/state"
+    "github.com/davidthor/arcctl/pkg/state/backend"
+    "github.com/davidthor/arcctl/pkg/state/types"
 )
 
 func main() {
     ctx := context.Background()
-    
+
     // Create manager with S3 backend
     manager, err := state.NewManagerFromConfig(backend.Config{
         Type: "s3",
         Config: map[string]string{
-            "bucket": "my-arcctl-state",
+            "bucket": "my-cldctl-state",
             "region": "us-west-2",
         },
     })
     if err != nil {
         log.Fatal(err)
     }
-    
+
     datacenter := "aws-us-east"
-    
+
     // Acquire lock
     lock, err := manager.Lock(ctx, state.LockScope{
         Datacenter:  datacenter,
@@ -407,7 +407,7 @@ func main() {
         log.Fatal(err)
     }
     defer lock.Unlock(ctx)
-    
+
     // Get or create environment state (scoped to datacenter)
     env, err := manager.GetEnvironment(ctx, datacenter, "production")
     if err == backend.ErrNotFound {
@@ -418,16 +418,16 @@ func main() {
             Status:     types.EnvironmentStatusPending,
         }
     }
-    
+
     // Update state
     env.Status = types.EnvironmentStatusProvisioning
     env.UpdatedAt = time.Now()
-    
+
     err = manager.SaveEnvironment(ctx, datacenter, env)
     if err != nil {
         log.Fatal(err)
     }
-    
+
     // Save component state (scoped to datacenter + environment)
     compState := &types.ComponentState{
         Name:       "api",
@@ -436,7 +436,7 @@ func main() {
         DeployedAt: time.Now(),
         Status:     "ready",
     }
-    
+
     err = manager.SaveComponent(ctx, datacenter, "production", compState)
     if err != nil {
         log.Fatal(err)
@@ -447,7 +447,7 @@ func main() {
 ## Error Handling
 
 ```go
-import "github.com/architect-io/arcctl/pkg/state/backend"
+import "github.com/davidthor/arcctl/pkg/state/backend"
 
 // Check for not found
 if err == backend.ErrNotFound {
@@ -456,8 +456,8 @@ if err == backend.ErrNotFound {
 
 // Check for lock conflict
 if lockErr, ok := err.(*backend.LockError); ok {
-    fmt.Printf("Locked by %s since %v\n", 
-        lockErr.Info.Who, 
+    fmt.Printf("Locked by %s since %v\n",
+        lockErr.Info.Who,
         lockErr.Info.Created)
 }
 ```

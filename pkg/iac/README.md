@@ -1,6 +1,6 @@
 # iac
 
-Infrastructure-as-Code plugin framework for arcctl. Provides a unified interface for different IaC tools including native Docker execution, OpenTofu/Terraform, and Pulumi.
+Infrastructure-as-Code plugin framework for cldctl. Provides a unified interface for different IaC tools including native Docker execution, OpenTofu/Terraform, and Pulumi.
 
 ## Overview
 
@@ -108,7 +108,7 @@ plugins := iac.DefaultRegistry.List()
 Native IaC plugin for Docker and process execution. Executes Docker containers, networks, volumes, and host commands directly without external IaC tools.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/iac/native"
+import "github.com/davidthor/arcctl/pkg/iac/native"
 
 // Create a native plugin
 plugin, err := native.NewPlugin()
@@ -126,12 +126,14 @@ err = docker.RunContainer(ctx, native.ContainerOptions{
 ```
 
 **Supported Resource Types:**
+
 - `docker:container` - Docker containers
 - `docker:network` - Docker networks
 - `docker:volume` - Docker volumes
 - `exec` - One-time command execution
 
 **Docker Client Methods:**
+
 - `RunContainer()`, `InspectContainer()`, `IsContainerRunning()`, `RemoveContainer()`
 - `CreateNetwork()`, `NetworkExists()`, `RemoveNetwork()`
 - `CreateVolume()`, `VolumeExists()`, `RemoveVolume()`
@@ -139,6 +141,7 @@ err = docker.RunContainer(ctx, native.ContainerOptions{
 - `BuildImage()`, `PushImage()`, `TagImage()`, `RemoveImage()`
 
 **Expression Support:**
+
 ```yaml
 resources:
   - name: api
@@ -154,13 +157,14 @@ resources:
 IaC plugin for OpenTofu/Terraform. Wraps the `tofu` or `terraform` binary.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/iac/opentofu"
+import "github.com/davidthor/arcctl/pkg/iac/opentofu"
 
 // Create a plugin (auto-detects tofu or terraform binary)
 plugin, err := opentofu.NewPlugin("tofu")  // or "terraform"
 ```
 
 **Features:**
+
 - Auto-detects `tofu` or `terraform` binary
 - Registers as both "opentofu" and "terraform" plugins
 - Writes `terraform.tfvars.json` from inputs
@@ -173,13 +177,14 @@ plugin, err := opentofu.NewPlugin("tofu")  // or "terraform"
 IaC plugin for Pulumi. Wraps the `pulumi` binary.
 
 ```go
-import "github.com/architect-io/arcctl/pkg/iac/pulumi"
+import "github.com/davidthor/arcctl/pkg/iac/pulumi"
 
 // Create a Pulumi plugin
 plugin, err := pulumi.NewPlugin()
 ```
 
 **Features:**
+
 - Stack management (auto-creates/selects stacks)
 - Writes `Pulumi.<stack>.yaml` config files from inputs
 - Stack name resolution from environment variables
@@ -191,8 +196,8 @@ plugin, err := pulumi.NewPlugin()
 
 ```go
 import (
-    "github.com/architect-io/arcctl/pkg/iac"
-    "github.com/architect-io/arcctl/pkg/output"
+    "github.com/davidthor/arcctl/pkg/iac"
+    "github.com/davidthor/arcctl/pkg/output"
 )
 
 // Get a plugin
@@ -220,9 +225,9 @@ if err != nil {
     log.Fatal(err)
 }
 
-fmt.Printf("Changes: +%d ~%d -%d\n", 
-    preview.Summary.ToCreate, 
-    preview.Summary.ToUpdate, 
+fmt.Printf("Changes: +%d ~%d -%d\n",
+    preview.Summary.ToCreate,
+    preview.Summary.ToUpdate,
     preview.Summary.ToDelete)
 
 // Apply changes

@@ -8,7 +8,7 @@ description: "Serverless-first AWS deployment with Lambda, API Gateway, and Clou
 This guide shows how to build a serverless-first datacenter on AWS. All compute runs on Lambda with API Gateway for routing, RDS for databases, S3 for storage, and SES for email.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/aws-lambda/`](https://github.com/architect-io/arcctl/tree/main/official-templates/aws-lambda)
+This is an officially maintained datacenter template. Source: [`official-templates/aws-lambda/`](https://github.com/davidthor/arcctl/tree/main/official-templates/aws-lambda)
 </Info>
 
 ## Overview
@@ -86,7 +86,7 @@ Resources created once and shared across environments:
 module "api_gateway" {
   build = "./modules/api-gateway"
   inputs = {
-    name            = "arcctl-gateway"
+    name            = "cldctl-gateway"
     region          = variable.aws_region
     certificate_arn = variable.certificate_arn
   }
@@ -429,11 +429,11 @@ observability {
 
 ```bash
 # Build the datacenter
-arcctl dc build . -t ghcr.io/myorg/aws-lambda-dc:v1.0.0
-arcctl dc push ghcr.io/myorg/aws-lambda-dc:v1.0.0
+cldctl dc build . -t ghcr.io/myorg/aws-lambda-dc:v1.0.0
+cldctl dc push ghcr.io/myorg/aws-lambda-dc:v1.0.0
 
 # Deploy with variables
-arcctl dc deploy aws-serverless \
+cldctl dc deploy aws-serverless \
   --config ghcr.io/myorg/aws-lambda-dc:v1.0.0 \
   --var vpc_id=vpc-12345 \
   --var domain=app.example.com \
@@ -444,8 +444,8 @@ arcctl dc deploy aws-serverless \
   --var ses_smtp_password=$SES_PASSWORD
 
 # Create environment and deploy
-arcctl env create staging --datacenter aws-serverless
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl env create staging --datacenter aws-serverless
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 ## Limitations

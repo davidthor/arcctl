@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/oci"
+	"github.com/davidthor/arcctl/pkg/oci"
 	"github.com/spf13/cobra"
 )
 
@@ -38,8 +38,8 @@ This command pulls the source artifact and pushes it with the new target tag,
 automatically handling all child artifacts (deployments, functions, etc.).
 
 Examples:
-  arcctl tag component ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest
-  arcctl tag component myapp:dev myapp:staging -y`,
+  cldctl tag component ghcr.io/myorg/app:v1.0.0 ghcr.io/myorg/app:latest
+  cldctl tag component myapp:dev myapp:staging -y`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
@@ -100,8 +100,8 @@ This command pulls the source artifact and pushes it with the new target tag,
 automatically handling all module artifacts.
 
 Examples:
-  arcctl tag datacenter ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest
-  arcctl tag datacenter my-dc:dev my-dc:staging -y`,
+  cldctl tag datacenter ghcr.io/myorg/dc:v1.0.0 ghcr.io/myorg/dc:latest
+  cldctl tag datacenter my-dc:dev my-dc:staging -y`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]

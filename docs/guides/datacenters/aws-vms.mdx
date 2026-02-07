@@ -8,7 +8,7 @@ description: "VM-based AWS deployment with EC2 instances, RDS, S3, and SES"
 This guide shows how to build a datacenter that deploys all workloads to EC2 instances. Container-based deployments install Docker on EC2, runtime-based deployments install the language runtime directly, and functions run as long-lived processes behind ALB.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/aws-vms/`](https://github.com/architect-io/arcctl/tree/main/official-templates/aws-vms)
+This is an officially maintained datacenter template. Source: [`official-templates/aws-vms/`](https://github.com/davidthor/arcctl/tree/main/official-templates/aws-vms)
 </Info>
 
 ## Overview
@@ -92,7 +92,7 @@ variable "ses_smtp_password" {
 module "alb" {
   build = "./modules/alb"
   inputs = {
-    name            = "arcctl-alb"
+    name            = "cldctl-alb"
     vpc_id          = variable.vpc_id
     certificate_arn = variable.certificate_arn
   }
@@ -478,11 +478,11 @@ observability {
 
 ```bash
 # Build the datacenter
-arcctl dc build . -t ghcr.io/myorg/aws-vms-dc:v1.0.0
-arcctl dc push ghcr.io/myorg/aws-vms-dc:v1.0.0
+cldctl dc build . -t ghcr.io/myorg/aws-vms-dc:v1.0.0
+cldctl dc push ghcr.io/myorg/aws-vms-dc:v1.0.0
 
 # Deploy with variables
-arcctl dc deploy aws-vms-prod \
+cldctl dc deploy aws-vms-prod \
   --config ghcr.io/myorg/aws-vms-dc:v1.0.0 \
   --var vpc_id=vpc-12345 \
   --var domain=app.example.com \
@@ -494,8 +494,8 @@ arcctl dc deploy aws-vms-prod \
   --var ses_smtp_password=$SES_PASSWORD
 
 # Create environment and deploy
-arcctl env create staging --datacenter aws-vms-prod
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl env create staging --datacenter aws-vms-prod
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 ## How It Works

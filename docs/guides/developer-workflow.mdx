@@ -1,15 +1,15 @@
 ---
 title: "Developer Workflow"
-description: "The complete developer guide to building and deploying components with arcctl"
+description: "The complete developer guide to building and deploying components with cldctl"
 ---
 
 # Developer Workflow
 
-Welcome to the developer guide for arcctl. This is your starting point for learning how to author components, iterate locally, build portable artifacts, and deploy to any environment your platform team has provisioned. You don't need to know anything about the underlying infrastructure -- arcctl and your datacenter handle that for you.
+Welcome to the developer guide for cldctl. This is your starting point for learning how to author components, iterate locally, build portable artifacts, and deploy to any environment your platform team has provisioned. You don't need to know anything about the underlying infrastructure -- cldctl and your datacenter handle that for you.
 
 ## Overview
 
-The typical developer workflow with arcctl:
+The typical developer workflow with cldctl:
 
 ```mermaid
 graph LR
@@ -20,8 +20,8 @@ graph LR
     E --> F[Monitor]
 ```
 
-1. **Write**: Create your application with an `architect.yml` file
-2. **Local Dev**: Use `arcctl up` for rapid iteration
+1. **Write**: Create your application with an `cloud.component.yml` file
+2. **Local Dev**: Use `cldctl up` for rapid iteration
 3. **Build**: Build portable OCI artifacts
 4. **Push**: Push to a container registry
 5. **Deploy**: Deploy to staging/production environments
@@ -29,34 +29,34 @@ graph LR
 
 ## Local Development
 
-### Quick Start with `arcctl up`
+### Quick Start with `cldctl up`
 
 The fastest way to start developing:
 
 ```bash
 # Start your application with all dependencies
-arcctl up
+cldctl up
 
 # With custom variables
-arcctl up --var log_level=debug
+cldctl up --var log_level=debug
 
 # Named environment (useful for multiple instances)
-arcctl up --name feature-branch
+cldctl up --name feature-branch
 ```
 
-`arcctl up` will:
-- Parse your `architect.yml`
+`cldctl up` will:
+- Parse your `cloud.component.yml`
 - Provision databases and other resources locally
 - Build your application containers
 - Watch for file changes and auto-reload
 
 ### Project Structure
 
-A typical arcctl project structure:
+A typical cldctl project structure:
 
 ```
 my-app/
-├── architect.yml           # Component definition
+├── cloud.component.yml           # Component definition
 ├── api/
 │   ├── Dockerfile
 │   ├── package.json
@@ -142,7 +142,7 @@ deployments:
 Set variables during development:
 
 ```bash
-arcctl up --var log_level=debug --var api_key=dev-key
+cldctl up --var log_level=debug --var api_key=dev-key
 ```
 
 ### Working with Dependencies
@@ -170,13 +170,13 @@ When ready to share or deploy:
 
 ```bash
 # Build with version tag
-arcctl component build . -t ghcr.io/myorg/my-app:v1.0.0
+cldctl component build . -t ghcr.io/myorg/my-app:v1.0.0
 
 # Build for specific platform
-arcctl component build . -t ghcr.io/myorg/my-app:v1.0.0 --platform linux/amd64
+cldctl component build . -t ghcr.io/myorg/my-app:v1.0.0 --platform linux/amd64
 
 # View what will be built
-arcctl component build . -t ghcr.io/myorg/my-app:v1.0.0 --dry-run
+cldctl component build . -t ghcr.io/myorg/my-app:v1.0.0 --dry-run
 ```
 
 ### Understanding Build Output
@@ -197,17 +197,17 @@ Child Artifacts:
 
 ```bash
 # Push all artifacts
-arcctl component push ghcr.io/myorg/my-app:v1.0.0
+cldctl component push ghcr.io/myorg/my-app:v1.0.0
 ```
 
 ### Tagging Releases
 
 ```bash
 # Tag as latest
-arcctl component tag ghcr.io/myorg/my-app:v1.0.0 ghcr.io/myorg/my-app:latest
+cldctl component tag ghcr.io/myorg/my-app:v1.0.0 ghcr.io/myorg/my-app:latest
 
 # Tag for production
-arcctl component tag ghcr.io/myorg/my-app:v1.0.0 ghcr.io/myorg/my-app:production
+cldctl component tag ghcr.io/myorg/my-app:v1.0.0 ghcr.io/myorg/my-app:production
 ```
 
 ## Deploying to Environments
@@ -216,11 +216,11 @@ arcctl component tag ghcr.io/myorg/my-app:v1.0.0 ghcr.io/myorg/my-app:production
 
 ```bash
 # Deploy from OCI artifact
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging \
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging \
   --var log_level=debug
 
 # Deploy from local source (for testing)
-arcctl deploy ./my-app -e staging \
+cldctl deploy ./my-app -e staging \
   --var log_level=debug
 ```
 
@@ -228,20 +228,20 @@ arcctl deploy ./my-app -e staging \
 
 ```bash
 # List components in environment
-arcctl component list -e staging
+cldctl component list -e staging
 
 # Get detailed component info
-arcctl component get my-app -e staging
+cldctl component get my-app -e staging
 ```
 
 ### Update Deployments
 
 ```bash
 # Deploy new version
-arcctl deploy ghcr.io/myorg/my-app:v1.1.0 -e staging
+cldctl deploy ghcr.io/myorg/my-app:v1.1.0 -e staging
 ```
 
-arcctl will show a diff of changes:
+cldctl will show a diff of changes:
 
 ```
 Execution Plan:
@@ -258,24 +258,24 @@ Plan: 0 to create, 1 to update, 0 to destroy
 Deploy the previous version:
 
 ```bash
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 ## Testing Strategies
 
 ### Local Integration Tests
 
-Use `arcctl up` to spin up the full stack for integration tests:
+Use `cldctl up` to spin up the full stack for integration tests:
 
 ```bash
 # Start the environment
-arcctl up --name test-env --detach
+cldctl up --name test-env --detach
 
 # Run tests against local environment
 npm test
 
 # Cleanup
-arcctl env destroy test-env
+cldctl env destroy test-env
 ```
 
 ### Preview Environments
@@ -284,13 +284,13 @@ Create ephemeral environments for pull request testing:
 
 ```bash
 # Create preview environment
-arcctl env create preview-$PR_NUMBER --datacenter aws-staging --if-not-exists
+cldctl env create preview-$PR_NUMBER --datacenter aws-staging --if-not-exists
 
 # Deploy PR build
-arcctl deploy ghcr.io/myorg/my-app:pr-$PR_NUMBER -e preview-$PR_NUMBER
+cldctl deploy ghcr.io/myorg/my-app:pr-$PR_NUMBER -e preview-$PR_NUMBER
 
 # Get preview URL
-arcctl env get preview-$PR_NUMBER
+cldctl env get preview-$PR_NUMBER
 ```
 
 <Tip>
@@ -303,13 +303,13 @@ Test in staging before production:
 
 ```bash
 # Deploy to staging
-arcctl deploy ghcr.io/myorg/my-app:v1.1.0 -e staging
+cldctl deploy ghcr.io/myorg/my-app:v1.1.0 -e staging
 
 # Run smoke tests
 ./scripts/smoke-test.sh staging
 
 # Promote to production
-arcctl deploy ghcr.io/myorg/my-app:v1.1.0 -e production
+cldctl deploy ghcr.io/myorg/my-app:v1.1.0 -e production
 ```
 
 ## Best Practices
@@ -354,7 +354,7 @@ arcctl deploy ghcr.io/myorg/my-app:v1.1.0 -e production
   <Accordion title="Use .env files for local variables">
     Create a `.env.local` file for development secrets:
     ```bash
-    arcctl up --var-file .env.local
+    cldctl up --var-file .env.local
     ```
   </Accordion>
   
@@ -403,10 +403,10 @@ arcctl deploy ghcr.io/myorg/my-app:v1.1.0 -e production
 
 ```bash
 # Show command help
-arcctl deploy --help
+cldctl deploy --help
 
 # Verbose output for debugging
-arcctl deploy ./my-app -e staging --verbose
+cldctl deploy ./my-app -e staging --verbose
 ```
 
 ## Next Steps

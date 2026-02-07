@@ -41,7 +41,7 @@ jobs:
           echo "Found templates: ${templates}"
 
   # ---------------------------------------------------------------------------
-  # Build arcctl binary (shared across all datacenter builds)
+  # Build cldctl binary (shared across all datacenter builds)
   # ---------------------------------------------------------------------------
   build-cli:
     name: Build CLI
@@ -56,14 +56,14 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Build arcctl
+      - name: Build cldctl
         run: make build
 
-      - name: Upload arcctl binary
+      - name: Upload cldctl binary
         uses: actions/upload-artifact@v4
         with:
-          name: arcctl-binary
-          path: bin/arcctl
+          name: cldctl-binary
+          path: bin/cldctl
           retention-days: 1
 
   # ---------------------------------------------------------------------------
@@ -82,14 +82,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download arcctl binary
+      - name: Download cldctl binary
         uses: actions/download-artifact@v4
         with:
-          name: arcctl-binary
+          name: cldctl-binary
           path: bin
 
-      - name: Make arcctl executable
-        run: chmod +x bin/arcctl
+      - name: Make cldctl executable
+        run: chmod +x bin/cldctl
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -101,7 +101,7 @@ jobs:
         run: |
           IMAGE="${REGISTRY}/${DOCKERHUB_USERNAME}/${{ matrix.template }}-datacenter:latest"
           echo "Building and pushing ${IMAGE}..."
-          bin/arcctl build datacenter \
+          bin/cldctl build datacenter \
             "./official-templates/${{ matrix.template }}" \
             -t "${IMAGE}" \
             --push
@@ -122,14 +122,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download arcctl binary
+      - name: Download cldctl binary
         uses: actions/download-artifact@v4
         with:
-          name: arcctl-binary
+          name: cldctl-binary
           path: bin
 
-      - name: Make arcctl executable
-        run: chmod +x bin/arcctl
+      - name: Make cldctl executable
+        run: chmod +x bin/cldctl
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -142,7 +142,7 @@ jobs:
           VERSION="${{ github.ref_name }}"
           IMAGE="${REGISTRY}/${DOCKERHUB_USERNAME}/${{ matrix.template }}-datacenter"
           echo "Building and pushing ${IMAGE}:${VERSION}..."
-          bin/arcctl build datacenter \
+          bin/cldctl build datacenter \
             "./official-templates/${{ matrix.template }}" \
             -t "${IMAGE}:${VERSION}" \
             --push
@@ -152,4 +152,4 @@ jobs:
           VERSION="${{ github.ref_name }}"
           IMAGE="${REGISTRY}/${DOCKERHUB_USERNAME}/${{ matrix.template }}-datacenter"
           echo "Tagging ${IMAGE}:${VERSION} → ${IMAGE}:latest..."
-          bin/arcctl tag datacenter "${IMAGE}:${VERSION}" "${IMAGE}:latest" -y
+          bin/cldctl tag datacenter "${IMAGE}:${VERSION}" "${IMAGE}:latest" -y

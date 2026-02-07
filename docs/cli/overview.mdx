@@ -1,28 +1,28 @@
 ---
 title: "CLI Overview"
-description: "arcctl command reference"
+description: "cldctl command reference"
 ---
 
 # CLI Overview
 
-arcctl provides a comprehensive CLI for building, pushing, and deploying components and datacenters.
+cldctl provides a comprehensive CLI for building, pushing, and deploying components and datacenters.
 
 ## Installation
 
 ```bash
-# Install arcctl
-go install github.com/architect-io/arcctl@latest
+# Install cldctl
+go install github.com/davidthor/arcctl@latest
 
 # Verify installation
-arcctl --version
+cldctl --version
 ```
 
 ## Command Structure
 
-arcctl uses an intuitive action-first command structure:
+cldctl uses an intuitive action-first command structure:
 
 ```
-arcctl <action> <resource> [arguments] [flags]
+cldctl <action> <resource> [arguments] [flags]
 ```
 
 ### Global Flags
@@ -40,167 +40,167 @@ arcctl <action> <resource> [arguments] [flags]
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl up`](/cli/up) | Quick start for local development |
-| [`arcctl images`](/cli/images) | List locally cached artifacts (like `docker images`) |
-| [`arcctl config`](/cli/config) | Manage CLI configuration (e.g., default datacenter) |
-| [`arcctl migrate state`](/cli/migrate) | Migrate state to the latest format |
+| [`cldctl up`](/cli/up) | Quick start for local development |
+| [`cldctl images`](/cli/images) | List locally cached artifacts (like `docker images`) |
+| [`cldctl config`](/cli/config) | Manage CLI configuration (e.g., default datacenter) |
+| [`cldctl migrate state`](/cli/migrate) | Migrate state to the latest format |
 
 ### Build Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl build component`](/cli/build/component) | Build a component into OCI artifacts |
-| [`arcctl build datacenter`](/cli/build/datacenter) | Build a datacenter into OCI artifacts |
+| [`cldctl build component`](/cli/build/component) | Build a component into OCI artifacts |
+| [`cldctl build datacenter`](/cli/build/datacenter) | Build a datacenter into OCI artifacts |
 
 ### Deploy Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl deploy component`](/cli/deploy/component) | Deploy a component to an environment (auto-deploys missing dependencies) |
-| [`arcctl deploy datacenter`](/cli/deploy/datacenter) | Deploy/update a datacenter |
+| [`cldctl deploy component`](/cli/deploy/component) | Deploy a component to an environment (auto-deploys missing dependencies) |
+| [`cldctl deploy datacenter`](/cli/deploy/datacenter) | Deploy/update a datacenter |
 
 ### Destroy Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl destroy component`](/cli/destroy/component) | Destroy a deployed component |
-| [`arcctl destroy datacenter`](/cli/destroy/datacenter) | Destroy a datacenter |
-| [`arcctl destroy environment`](/cli/destroy/environment) | Destroy an environment |
+| [`cldctl destroy component`](/cli/destroy/component) | Destroy a deployed component |
+| [`cldctl destroy datacenter`](/cli/destroy/datacenter) | Destroy a datacenter |
+| [`cldctl destroy environment`](/cli/destroy/environment) | Destroy an environment |
 
 ### Logs & Observability
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl logs`](/cli/logs) | View and stream logs from an environment |
-| [`arcctl observability dashboard`](/cli/observability/dashboard) | Open the observability dashboard in a browser |
+| [`cldctl logs`](/cli/logs) | View and stream logs from an environment |
+| [`cldctl observability dashboard`](/cli/observability/dashboard) | Open the observability dashboard in a browser |
 
 ### List Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl list component`](/cli/list/component) | List components |
-| [`arcctl list datacenter`](/cli/list/datacenter) | List deployed datacenters |
-| [`arcctl list environment`](/cli/list/environment) | List environments |
+| [`cldctl list component`](/cli/list/component) | List components |
+| [`cldctl list datacenter`](/cli/list/datacenter) | List deployed datacenters |
+| [`cldctl list environment`](/cli/list/environment) | List environments |
 
 ### Get Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl get component`](/cli/get/component) | Get component details |
-| [`arcctl get datacenter`](/cli/get/datacenter) | Get datacenter details |
-| [`arcctl get environment`](/cli/get/environment) | Get environment details |
+| [`cldctl get component`](/cli/get/component) | Get component details |
+| [`cldctl get datacenter`](/cli/get/datacenter) | Get datacenter details |
+| [`cldctl get environment`](/cli/get/environment) | Get environment details |
 
 ### Inspect Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl inspect`](/cli/inspect) | Inspect deployed state (environment, component, or resource) |
-| [`arcctl inspect component`](/cli/inspect) | Visualize a component's resource topology |
+| [`cldctl inspect`](/cli/inspect) | Inspect deployed state (environment, component, or resource) |
+| [`cldctl inspect component`](/cli/inspect) | Visualize a component's resource topology |
 
 ### Create Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl create environment`](/cli/create/environment) | Create an environment |
+| [`cldctl create environment`](/cli/create/environment) | Create an environment |
 
 ### Update Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl update environment`](/cli/update/environment) | Update environment (supports config files) |
+| [`cldctl update environment`](/cli/update/environment) | Update environment (supports config files) |
 
 ### Tag Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl tag component`](/cli/tag/component) | Tag component artifacts |
-| [`arcctl tag datacenter`](/cli/tag/datacenter) | Tag datacenter artifacts |
+| [`cldctl tag component`](/cli/tag/component) | Tag component artifacts |
+| [`cldctl tag datacenter`](/cli/tag/datacenter) | Tag datacenter artifacts |
 
 ### Push Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl push component`](/cli/push/component) | Push component artifacts to registry |
-| [`arcctl push datacenter`](/cli/push/datacenter) | Push datacenter artifacts to registry |
+| [`cldctl push component`](/cli/push/component) | Push component artifacts to registry |
+| [`cldctl push datacenter`](/cli/push/datacenter) | Push datacenter artifacts to registry |
 
 ### Pull Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl pull component`](/cli/pull/component) | Pull component artifacts from registry |
-| [`arcctl pull datacenter`](/cli/pull/datacenter) | Pull datacenter artifacts from registry |
+| [`cldctl pull component`](/cli/pull/component) | Pull component artifacts from registry |
+| [`cldctl pull datacenter`](/cli/pull/datacenter) | Pull datacenter artifacts from registry |
 
 ### Validate Commands
 
 | Command | Description |
 |---------|-------------|
-| [`arcctl validate component`](/cli/validate/component) | Validate component configuration |
-| [`arcctl validate datacenter`](/cli/validate/datacenter) | Validate datacenter configuration |
-| [`arcctl validate environment`](/cli/validate/environment) | Validate environment configuration |
+| [`cldctl validate component`](/cli/validate/component) | Validate component configuration |
+| [`cldctl validate datacenter`](/cli/validate/datacenter) | Validate datacenter configuration |
+| [`cldctl validate environment`](/cli/validate/environment) | Validate environment configuration |
 
 ## Command Aliases
 
-For convenience, arcctl supports shorthand aliases:
+For convenience, cldctl supports shorthand aliases:
 
 | Full Command | Alias |
 |--------------|-------|
-| `arcctl build component` | `arcctl build comp` |
-| `arcctl deploy datacenter` | `arcctl deploy dc` |
-| `arcctl list environment` | `arcctl list env` or `arcctl ls env` |
+| `cldctl build component` | `cldctl build comp` |
+| `cldctl deploy datacenter` | `cldctl deploy dc` |
+| `cldctl list environment` | `cldctl list env` or `cldctl ls env` |
 
 ```bash
 # These are equivalent:
-arcctl deploy component ./my-app -e staging
-arcctl deploy comp ./my-app -e staging
+cldctl deploy component ./my-app -e staging
+cldctl deploy comp ./my-app -e staging
 
 # These are equivalent:
-arcctl build datacenter . -t ghcr.io/myorg/dc:v1.0.0
-arcctl build dc . -t ghcr.io/myorg/dc:v1.0.0
+cldctl build datacenter . -t ghcr.io/myorg/dc:v1.0.0
+cldctl build dc . -t ghcr.io/myorg/dc:v1.0.0
 
 # These are equivalent:
-arcctl list environment
-arcctl ls env
+cldctl list environment
+cldctl ls env
 ```
 
 ## State Backends
 
-arcctl supports multiple state backends for storing deployment state:
+cldctl supports multiple state backends for storing deployment state:
 
 ### Local Backend (Default)
 
 ```bash
-arcctl deploy component ./my-app -e staging
+cldctl deploy component ./my-app -e staging
 ```
 
-State is stored in `~/.arcctl/state/`.
+State is stored in `~/.cldctl/state/`.
 
 ### S3 Backend
 
 ```bash
-arcctl deploy component ./my-app -e staging \
+cldctl deploy component ./my-app -e staging \
   --backend s3 \
-  --backend-config bucket=my-arcctl-state \
+  --backend-config bucket=my-cldctl-state \
   --backend-config region=us-east-1 \
-  --backend-config key=arcctl
+  --backend-config key=cldctl
 ```
 
 ### GCS Backend
 
 ```bash
-arcctl deploy component ./my-app -e staging \
+cldctl deploy component ./my-app -e staging \
   --backend gcs \
-  --backend-config bucket=my-arcctl-state \
-  --backend-config prefix=arcctl
+  --backend-config bucket=my-cldctl-state \
+  --backend-config prefix=cldctl
 ```
 
 ### Azure Backend
 
 ```bash
-arcctl deploy component ./my-app -e staging \
+cldctl deploy component ./my-app -e staging \
   --backend azurerm \
   --backend-config storage_account_name=myaccount \
-  --backend-config container_name=arcctl-state \
-  --backend-config key=arcctl
+  --backend-config container_name=cldctl-state \
+  --backend-config key=cldctl
 ```
 
 ### Environment Variables
@@ -208,11 +208,11 @@ arcctl deploy component ./my-app -e staging \
 Backend configuration can also be provided via environment variables:
 
 ```bash
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
 
-arcctl deploy component ./my-app -e staging
+cldctl deploy component ./my-app -e staging
 ```
 
 ## Output Formats
@@ -221,13 +221,13 @@ Many commands support different output formats:
 
 ```bash
 # Default table format
-arcctl list component -e staging
+cldctl list component -e staging
 
 # JSON output (for scripting)
-arcctl list component -e staging --output json
+cldctl list component -e staging --output json
 
 # YAML output
-arcctl list component -e staging --output yaml
+cldctl list component -e staging --output yaml
 ```
 
 ## Exit Codes

@@ -1,6 +1,6 @@
 # Environment configuration template
 # Note: name and datacenter are specified via CLI flags when creating/updating
-# Example: arcctl update environment staging -d local environment.yml
+# Example: cldctl update environment staging -d local environment.yml
 
 locals:
   base_domain: staging.example.com

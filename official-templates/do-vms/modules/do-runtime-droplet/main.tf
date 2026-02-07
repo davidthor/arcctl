@@ -82,9 +82,9 @@ locals {
     ${local.setup_commands}
 
     # Create systemd service for the application
-    cat > /etc/systemd/system/arcctl-app.service <<'UNIT'
+    cat > /etc/systemd/system/cldctl-app.service <<'UNIT'
     [Unit]
-    Description=arcctl managed application
+    Description=cldctl managed application
     After=network.target
 
     [Service]
@@ -100,8 +100,8 @@ locals {
     UNIT
 
     systemctl daemon-reload
-    systemctl enable arcctl-app
-    systemctl start arcctl-app
+    systemctl enable cldctl-app
+    systemctl start cldctl-app
   EOT
 }
 
@@ -115,7 +115,7 @@ resource "digitalocean_droplet" "droplet" {
 
   user_data = local.user_data
 
-  tags = ["arcctl", "managed-by:arcctl", "runtime", "arcctl-${var.name}"]
+  tags = ["cldctl", "managed-by:cldctl", "runtime", "cldctl-${var.name}"]
 
   lifecycle {
     create_before_destroy = true

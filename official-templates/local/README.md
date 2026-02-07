@@ -1,10 +1,10 @@
 # Local Docker Datacenter
 
-A lightweight datacenter for local development using arcctl's native plugin. Optimized for fast startup with minimal overhead.
+A lightweight datacenter for local development using cldctl's native plugin. Optimized for fast startup with minimal overhead.
 
 ## Features
 
-- **Native Plugin**: Uses arcctl's built-in native plugin instead of Terraform/Pulumi
+- **Native Plugin**: Uses cldctl's built-in native plugin instead of Terraform/Pulumi
 - **Fast Development**: Deployments run as local processes without Docker builds
 - **Process-based Functions**: Functions run as local processes for fast iteration
 - **Docker Infrastructure**: Databases and supporting services run as Docker containers
@@ -16,7 +16,7 @@ A lightweight datacenter for local development using arcctl's native plugin. Opt
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `network_name` | string | `arcctl-local` | Docker network for container communication |
+| `network_name` | string | `cldctl-local` | Docker network for container communication |
 | `host` | string | `localhost` | Host for service URLs |
 | `base_port` | number | `8000` | Base port for auto-assignment |
 
@@ -48,15 +48,15 @@ A lightweight datacenter for local development using arcctl's native plugin. Opt
 
 ```bash
 # Build and push
-arcctl dc build . -t ghcr.io/myorg/local:v1
-arcctl dc push ghcr.io/myorg/local:v1
+cldctl dc build . -t ghcr.io/myorg/local:v1
+cldctl dc push ghcr.io/myorg/local:v1
 
 # Deploy datacenter
-arcctl dc deploy local-dev --config ghcr.io/myorg/local:v1
+cldctl dc deploy local-dev --config ghcr.io/myorg/local:v1
 
 # Create environment and deploy
-arcctl env create my-env --datacenter local-dev
-arcctl deploy ./my-app -e my-env
+cldctl env create my-env --datacenter local-dev
+cldctl deploy ./my-app -e my-env
 ```
 
 ## Module Structure

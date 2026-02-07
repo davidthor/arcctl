@@ -413,8 +413,8 @@ func TestEnvProvider_Get(t *testing.T) {
 	ctx := context.Background()
 
 	// Set test env var
-	os.Setenv("ARCCTL_SECRET_TEST_KEY", "test-value")
-	defer os.Unsetenv("ARCCTL_SECRET_TEST_KEY")
+	os.Setenv("CLDCTL_SECRET_TEST_KEY", "test-value")
+	defer os.Unsetenv("CLDCTL_SECRET_TEST_KEY")
 
 	t.Run("with prefix", func(t *testing.T) {
 		value, err := provider.Get(ctx, "test-key")
@@ -451,10 +451,10 @@ func TestEnvProvider_GetBatch(t *testing.T) {
 	provider := NewEnvProvider()
 	ctx := context.Background()
 
-	os.Setenv("ARCCTL_SECRET_KEY1", "value1")
-	os.Setenv("ARCCTL_SECRET_KEY2", "value2")
-	defer os.Unsetenv("ARCCTL_SECRET_KEY1")
-	defer os.Unsetenv("ARCCTL_SECRET_KEY2")
+	os.Setenv("CLDCTL_SECRET_KEY1", "value1")
+	os.Setenv("CLDCTL_SECRET_KEY2", "value2")
+	defer os.Unsetenv("CLDCTL_SECRET_KEY1")
+	defer os.Unsetenv("CLDCTL_SECRET_KEY2")
 
 	results, err := provider.GetBatch(ctx, []string{"key1", "key2", "nonexistent"})
 	if err != nil {
@@ -470,12 +470,12 @@ func TestEnvProvider_List(t *testing.T) {
 	provider := NewEnvProvider()
 	ctx := context.Background()
 
-	os.Setenv("ARCCTL_SECRET_DB_PASSWORD", "pass")
-	os.Setenv("ARCCTL_SECRET_DB_USER", "user")
-	os.Setenv("ARCCTL_SECRET_API_KEY", "key")
-	defer os.Unsetenv("ARCCTL_SECRET_DB_PASSWORD")
-	defer os.Unsetenv("ARCCTL_SECRET_DB_USER")
-	defer os.Unsetenv("ARCCTL_SECRET_API_KEY")
+	os.Setenv("CLDCTL_SECRET_DB_PASSWORD", "pass")
+	os.Setenv("CLDCTL_SECRET_DB_USER", "user")
+	os.Setenv("CLDCTL_SECRET_API_KEY", "key")
+	defer os.Unsetenv("CLDCTL_SECRET_DB_PASSWORD")
+	defer os.Unsetenv("CLDCTL_SECRET_DB_USER")
+	defer os.Unsetenv("CLDCTL_SECRET_API_KEY")
 
 	keys, err := provider.List(ctx, "db")
 	if err != nil {
@@ -507,10 +507,10 @@ func TestEnvProvider_Set(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Set failed: %v", err)
 	}
-	defer os.Unsetenv("ARCCTL_SECRET_NEW_KEY")
+	defer os.Unsetenv("CLDCTL_SECRET_NEW_KEY")
 
 	// Verify it was set
-	value := os.Getenv("ARCCTL_SECRET_NEW_KEY")
+	value := os.Getenv("CLDCTL_SECRET_NEW_KEY")
 	if value != "new-value" {
 		t.Errorf("Env var not set correctly: got %q", value)
 	}
@@ -520,14 +520,14 @@ func TestEnvProvider_Delete(t *testing.T) {
 	provider := NewEnvProvider()
 	ctx := context.Background()
 
-	os.Setenv("ARCCTL_SECRET_TO_DELETE", "value")
+	os.Setenv("CLDCTL_SECRET_TO_DELETE", "value")
 
 	err := provider.Delete(ctx, "to-delete")
 	if err != nil {
 		t.Fatalf("Delete failed: %v", err)
 	}
 
-	value := os.Getenv("ARCCTL_SECRET_TO_DELETE")
+	value := os.Getenv("CLDCTL_SECRET_TO_DELETE")
 	if value != "" {
 		t.Error("Env var should be deleted")
 	}

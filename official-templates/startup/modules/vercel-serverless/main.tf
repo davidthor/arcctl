@@ -21,7 +21,7 @@ resource "vercel_deployment" "this" {
   production = var.vercel_env == "production"
 
   environment = merge(var.environment, {
-    ARCCTL_DEPLOYMENT_NAME = var.name
+    CLDCTL_DEPLOYMENT_NAME = var.name
   })
 }
 

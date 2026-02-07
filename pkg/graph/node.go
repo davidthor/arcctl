@@ -1,4 +1,4 @@
-// Package graph provides dependency graph construction and traversal for arcctl.
+// Package graph provides dependency graph construction and traversal for cldctl.
 package graph
 
 import (

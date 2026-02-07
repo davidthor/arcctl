@@ -1,0 +1,92 @@
+# Example: Backend API with dynamic CORS from dependent components
+# Demonstrates using the `dependents` expression to automatically discover
+# which frontend applications will call this API and configure CORS accordingly.
+#
+# When other components declare this API as a dependency, their route URLs
+# are automatically collected and made available via the dependents expression.
+
+variables:
+  jwt_secret:
+    description: "Secret for JWT token signing"
+    required: true
+    sensitive: true
+
+builds:
+  api:
+    context: ./api
+
+databases:
+  main:
+    type: postgres:^16
+
+deployments:
+  api:
+    image: ${{ builds.api.image }}
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      JWT_SECRET: ${{ variables.jwt_secret }}
+      # Dynamically collect CORS origins from all dependent components' routes
+      # This will be a comma-separated list of URLs (e.g., "https://app.example.com,https://admin.example.com")
+      CORS_ORIGINS: ${{ dependents.*.routes.*.url | join "," }}
+      # Can also reference a specific dependent's route if you know the component name
+      # CORS_ORIGIN: ${{ dependents.frontend-app.routes.main.url }}
+      # Reference this API's own public URL
+      API_BASE_URL: ${{ routes.api.url }}
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 2
+    liveness_probe:
+      path: /health
+      port: 3000
+
+services:
+  api:
+    deployment: api
+    port: 3000
+
+routes:
+  api:
+    type: http
+    rules:
+      - name: api
+        matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - service: api
+            port: 3000
+        # Add CORS headers at the route level
+        # Note: For multiple origins, the application should dynamically respond
+        # with the matching origin from CORS_ORIGINS. The route-level header
+        # can be used for a single primary origin or set to the first dependent.
+        filters:
+          - type: ResponseHeaderModifier
+            responseHeaderModifier:
+              set:
+                - name: Access-Control-Allow-Origin
+                  # Use the first dependent's route URL, or handle dynamically in app
+                  value: ${{ dependents.*.routes.*.url | first }}
+                - name: Access-Control-Allow-Methods
+                  value: "GET, POST, PUT, DELETE, OPTIONS"
+                - name: Access-Control-Allow-Headers
+                  value: "Content-Type, Authorization"
+
+# Example: A frontend component that depends on this API would look like:
+#
+# name: frontend-app
+# dependencies:
+#   api: registry.example.com/org/api-with-cors:v1
+#
+# deployments:
+#   web:
+#     environment:
+#       API_URL: ${{ dependencies.api.routes.api.url }}
+#
+# routes:
+#   main:
+#     type: http
+#     service: web
+#
+# The api-with-cors component will automatically see frontend-app's routes
+# and include them in CORS_ORIGINS.

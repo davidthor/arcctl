@@ -1,0 +1,47 @@
+builds:
+  api:
+    context: ./api
+
+databases:
+  main:
+    type: postgres:^15
+    migrations:
+      build:
+        context: ./migrations
+      command: ["npm", "run", "migrate"]
+
+deployments:
+  api:
+    image: ${{ builds.api.image }}
+    environment:
+      DATABASE_URL: ${{ databases.main.url }}
+      LOG_LEVEL: ${{ variables.log_level }}
+    cpu: "0.5"
+    memory: "512Mi"
+    replicas: 2
+    liveness_probe:
+      path: /health
+      port: 8080
+
+services:
+  api:
+    deployment: api
+    port: 8080
+
+routes:
+  main:
+    type: http
+    rules:
+      - name: api
+        matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - service: api
+            port: 8080
+
+variables:
+  log_level:
+    description: "Application log level"
+    default: "info"

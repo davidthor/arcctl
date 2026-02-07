@@ -1,6 +1,6 @@
 # Clerk + Next.js + PostgreSQL Integration Test
 
-This integration test validates the full deployment flow of a Next.js application with Clerk authentication and PostgreSQL database using arcctl.
+This integration test validates the full deployment flow of a Next.js application with Clerk authentication and PostgreSQL database using cldctl.
 
 ## Overview
 
@@ -31,7 +31,7 @@ The test deploys:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ARCCTL_BINARY` | Path to arcctl binary | Auto-detected or built |
+| `CLDCTL_BINARY` | Path to cldctl binary | Auto-detected or built |
 | `TEST_TIMEOUT` | Maximum test duration | `5m` |
 
 ## Running the Tests
@@ -55,11 +55,11 @@ go test -tags=integration -v -timeout=10m ./testdata/integration/...
 
 ### Manual Deployment
 
-To deploy manually using arcctl (name and datacenter are CLI flags):
+To deploy manually using cldctl (name and datacenter are CLI flags):
 
 ```bash
 # From repository root
-arcctl update environment clerk-test \
+cldctl update environment clerk-test \
   -d ./official-templates/local \
   ./testdata/integration/clerk-nextjs-postgres/environment.yml
 ```
@@ -77,7 +77,7 @@ go test -tags=integration -v -run "Validation" ./testdata/integration/...
 
 ```
 clerk-nextjs-postgres/
-├── architect.yml          # Component definition
+├── cloud.component.yml    # Component definition
 ├── environment.yml        # Environment configuration
 ├── app/                   # Next.js application
 │   ├── package.json
@@ -96,7 +96,7 @@ clerk-nextjs-postgres/
 ### Test Cases
 
 1. **TestClerkNextJSPostgres** - Full integration test
-   - Deploys environment with `arcctl env update`
+   - Deploys environment with `cldctl env update`
    - Waits for application to be healthy
    - Tests public health endpoint
    - Tests protected endpoint returns 401 without auth
@@ -107,7 +107,7 @@ clerk-nextjs-postgres/
    - Verifies all required files exist
 
 3. **TestClerkNextJSPostgres_ComponentValidation** - Component validation
-   - Runs `arcctl component validate`
+   - Runs `cldctl component validate`
 
 ## API Endpoints
 
@@ -181,7 +181,7 @@ If you see "Skipping integration test", ensure all required environment variable
 ### Deployment Fails
 
 1. Check Docker is running: `docker info`
-2. Check arcctl is built: `make build`
+2. Check cldctl is built: `make build`
 3. Review deployment logs in test output
 
 ### Health Check Fails
@@ -194,7 +194,7 @@ Ensure the PostgreSQL container is running and the `DATABASE_URL` environment va
 
 ## Development
 
-### Local Testing Without arcctl
+### Local Testing Without cldctl
 
 ```bash
 cd app

@@ -58,9 +58,9 @@ resource "kubernetes_secret_v1" "key_secret" {
     namespace = var.namespace
 
     labels = {
-      "app.kubernetes.io/managed-by" = "arcctl"
-      "arcctl/resource-type"         = "encryption-key"
-      "arcctl/key-type"              = var.key_type
+      "app.kubernetes.io/managed-by" = "cldctl"
+      "cldctl/resource-type"         = "encryption-key"
+      "cldctl/key-type"              = var.key_type
     }
   }
 

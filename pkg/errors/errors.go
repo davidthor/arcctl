@@ -1,4 +1,4 @@
-// Package errors provides structured error types for arcctl.
+// Package errors provides structured error types for cldctl.
 package errors
 
 import (
@@ -26,7 +26,7 @@ const (
 	ErrCodeDatacenterHook  ErrorCode = "DATACENTER_HOOK_ERROR"
 )
 
-// Error is the base error type for arcctl
+// Error is the base error type for cldctl
 type Error struct {
 	Code    ErrorCode
 	Message string

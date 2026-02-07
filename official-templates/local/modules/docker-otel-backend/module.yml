@@ -4,7 +4,7 @@
 #
 # The collector is configured with a fluentd receiver on port 24224 so that
 # Docker containers can forward their stdout/stderr logs via the fluentd
-# logging driver. This allows `arcctl logs` to query ALL container output,
+# logging driver. This allows `cldctl logs` to query ALL container output,
 # not just logs from OTel-instrumented applications.
 plugin: native
 type: docker

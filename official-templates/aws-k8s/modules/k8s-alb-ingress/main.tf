@@ -26,7 +26,7 @@ resource "kubernetes_ingress_v1" "this" {
     }
 
     labels = {
-      "app.kubernetes.io/managed-by" = "arcctl"
+      "app.kubernetes.io/managed-by" = "cldctl"
     }
   }
 

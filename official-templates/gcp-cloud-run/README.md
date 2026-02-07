@@ -57,20 +57,20 @@ A serverless datacenter for Google Cloud Platform using Cloud Run for compute, C
 
 ```bash
 # Build and push
-arcctl dc build . -t ghcr.io/myorg/gcp-cloud-run:v1
-arcctl dc push ghcr.io/myorg/gcp-cloud-run:v1
+cldctl dc build . -t ghcr.io/myorg/gcp-cloud-run:v1
+cldctl dc push ghcr.io/myorg/gcp-cloud-run:v1
 
 # Deploy datacenter
-arcctl dc deploy gcp-prod \
+cldctl dc deploy gcp-prod \
   --config ghcr.io/myorg/gcp-cloud-run:v1 \
   --var gcp_project=my-project \
-  --var registry=us-central1-docker.pkg.dev/my-project/arcctl \
+  --var registry=us-central1-docker.pkg.dev/my-project/cldctl \
   --var domain=app.example.com \
   --var smtp_password=$SMTP_PASSWORD
 
 # Create environment and deploy
-arcctl env create staging --datacenter gcp-prod
-arcctl deploy ghcr.io/myorg/my-app:v1 -e staging
+cldctl env create staging --datacenter gcp-prod
+cldctl deploy ghcr.io/myorg/my-app:v1 -e staging
 ```
 
 ## Prerequisites

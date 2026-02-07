@@ -28,10 +28,10 @@ locals {
     docker pull ${var.image}
 
     # Set up cron job
-    cat > /etc/cron.d/arcctl-cronjob <<'CRON'
-    ${var.schedule} root docker run --rm ${local.env_flags} ${var.image} ${local.cmd_string} >> /var/log/arcctl-cron.log 2>&1
+    cat > /etc/cron.d/cldctl-cronjob <<'CRON'
+    ${var.schedule} root docker run --rm ${local.env_flags} ${var.image} ${local.cmd_string} >> /var/log/cldctl-cron.log 2>&1
     CRON
-    chmod 644 /etc/cron.d/arcctl-cronjob
+    chmod 644 /etc/cron.d/cldctl-cronjob
 
     echo "Cron deployment complete"
   EOT
@@ -59,7 +59,7 @@ resource "google_compute_instance" "main" {
   }
 
   metadata = {
-    ssh-keys = var.ssh_key != "" ? "arcctl:${var.ssh_key}" : null
+    ssh-keys = var.ssh_key != "" ? "cldctl:${var.ssh_key}" : null
   }
 
   metadata_startup_script = local.startup_script
@@ -69,7 +69,7 @@ resource "google_compute_instance" "main" {
   }
 
   labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
   }
 
   tags = coalesce(var.tags, [])

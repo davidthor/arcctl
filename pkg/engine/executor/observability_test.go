@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/architect-io/arcctl/pkg/graph"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter"
+	"github.com/davidthor/arcctl/pkg/graph"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter"
 )
 
 // --- enrichObservabilityOutputs tests ---

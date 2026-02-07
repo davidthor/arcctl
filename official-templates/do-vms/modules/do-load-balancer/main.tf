@@ -42,5 +42,5 @@ resource "digitalocean_loadbalancer" "lb" {
   redirect_http_to_https = true
   enable_proxy_protocol  = false
 
-  droplet_tag = "arcctl-${var.name}"
+  droplet_tag = "cldctl-${var.name}"
 }

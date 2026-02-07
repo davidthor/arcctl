@@ -18,7 +18,7 @@ resource "kubernetes_namespace_v1" "main" {
     name = var.name
 
     labels = {
-      managed-by = "arcctl"
+      managed-by = "cldctl"
     }
   }
 }

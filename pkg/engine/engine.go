@@ -1,4 +1,4 @@
-// Package engine provides the core orchestration for arcctl deployments.
+// Package engine provides the core orchestration for cldctl deployments.
 package engine
 
 import (
@@ -11,17 +11,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/engine/executor"
-	"github.com/architect-io/arcctl/pkg/engine/planner"
-	"github.com/architect-io/arcctl/pkg/graph"
-	"github.com/architect-io/arcctl/pkg/iac"
-	"github.com/architect-io/arcctl/pkg/oci"
-	"github.com/architect-io/arcctl/pkg/registry"
-	"github.com/architect-io/arcctl/pkg/schema/component"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter"
-	"github.com/architect-io/arcctl/pkg/schema/environment"
-	"github.com/architect-io/arcctl/pkg/state"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/engine/executor"
+	"github.com/davidthor/arcctl/pkg/engine/planner"
+	"github.com/davidthor/arcctl/pkg/graph"
+	"github.com/davidthor/arcctl/pkg/iac"
+	"github.com/davidthor/arcctl/pkg/oci"
+	"github.com/davidthor/arcctl/pkg/registry"
+	"github.com/davidthor/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter"
+	"github.com/davidthor/arcctl/pkg/schema/environment"
+	"github.com/davidthor/arcctl/pkg/state"
+	"github.com/davidthor/arcctl/pkg/state/types"
 )
 
 // OCIClient defines the interface for OCI registry operations needed by the engine.
@@ -737,7 +737,7 @@ func (e *Engine) printDestroyPlanSummary(w io.Writer, plan *planner.Plan) {
 }
 
 // DeployDatacenter provisions root-level modules defined in the datacenter and
-// reconciles all existing environments. This is called by `arcctl deploy datacenter`.
+// reconciles all existing environments. This is called by `cldctl deploy datacenter`.
 func (e *Engine) DeployDatacenter(ctx context.Context, opts DeployDatacenterOptions) (*DeployDatacenterResult, error) {
 	startTime := time.Now()
 	result := &DeployDatacenterResult{
@@ -1377,11 +1377,11 @@ func isFilePath(source string) bool {
 // findComponentFile looks for a component config file in the given directory.
 // Returns the path to the file if found, or empty string if not.
 func findComponentFile(dir string) string {
-	ymlFile := filepath.Join(dir, "architect.yml")
+	ymlFile := filepath.Join(dir, "cloud.component.yml")
 	if _, err := os.Stat(ymlFile); err == nil {
 		return ymlFile
 	}
-	yamlFile := filepath.Join(dir, "architect.yaml")
+	yamlFile := filepath.Join(dir, "cloud.component.yaml")
 	if _, err := os.Stat(yamlFile); err == nil {
 		return yamlFile
 	}
@@ -1390,7 +1390,7 @@ func findComponentFile(dir string) string {
 
 // loadComponentConfig resolves a component OCI reference to a local file path.
 // Resolution order: unified artifact registry (local cache) → remote OCI pull.
-// Returns the local path to the architect.yml file.
+// Returns the local path to the cloud.component.yml file.
 func (e *Engine) loadComponentConfig(ctx context.Context, ref string) (string, error) {
 	// Check the unified artifact registry first (like docker run).
 	reg, err := registry.NewRegistry()
@@ -1411,7 +1411,7 @@ func (e *Engine) loadComponentConfig(ctx context.Context, ref string) (string, e
 
 // loadComponentFromOCI pulls a component artifact from a remote OCI registry,
 // caches it locally, registers it in the unified artifact registry, and returns
-// the local path to the architect.yml file.
+// the local path to the cloud.component.yml file.
 func (e *Engine) loadComponentFromOCI(ctx context.Context, ref string) (string, error) {
 	compDir, err := registry.CachePathForRef(ref)
 	if err != nil {
@@ -1435,7 +1435,7 @@ func (e *Engine) loadComponentFromOCI(ctx context.Context, ref string) (string, 
 	compFile := findComponentFile(compDir)
 	if compFile == "" {
 		os.RemoveAll(compDir)
-		return "", fmt.Errorf("no architect.yml or architect.yaml found in pulled artifact: %s", ref)
+		return "", fmt.Errorf("no cloud.component.yml or cloud.component.yaml found in pulled artifact: %s", ref)
 	}
 
 	// Calculate size
@@ -1489,7 +1489,7 @@ type DependencyInfo struct {
 	// OCIRef is the OCI reference for the dependency component.
 	OCIRef string
 
-	// LocalPath is the resolved local file path to the architect.yml.
+	// LocalPath is the resolved local file path to the cloud.component.yml.
 	LocalPath string
 
 	// Component is the loaded component schema.

@@ -1,4 +1,4 @@
-// Package state provides state management for arcctl.
+// Package state provides state management for cldctl.
 package state
 
 import (
@@ -9,8 +9,8 @@ import (
 	"io"
 	"path"
 
-	"github.com/architect-io/arcctl/pkg/state/backend"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/state/backend"
+	"github.com/davidthor/arcctl/pkg/state/types"
 )
 
 // Manager provides high-level state operations.

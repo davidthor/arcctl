@@ -8,7 +8,7 @@ description: "Deploy to DigitalOcean Kubernetes with managed databases and full 
 This guide shows how to build a datacenter that deploys components to DigitalOcean Kubernetes (DOKS) with managed databases, Spaces for storage, encryption keys, SMTP, and observability.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/do-k8s/`](https://github.com/architect-io/arcctl/tree/main/official-templates/do-k8s)
+This is an officially maintained datacenter template. Source: [`official-templates/do-k8s/`](https://github.com/davidthor/arcctl/tree/main/official-templates/do-k8s)
 </Info>
 
 ## Overview
@@ -549,19 +549,19 @@ observability {
 
 ```bash
 # Build and push
-arcctl build datacenter ./do-k8s -t ghcr.io/myorg/do-k8s-dc:v1
-arcctl push datacenter ghcr.io/myorg/do-k8s-dc:v1
+cldctl build datacenter ./do-k8s -t ghcr.io/myorg/do-k8s-dc:v1
+cldctl push datacenter ghcr.io/myorg/do-k8s-dc:v1
 
 # Deploy datacenter
-arcctl deploy datacenter do-production ghcr.io/myorg/do-k8s-dc:v1 \
+cldctl deploy datacenter do-production ghcr.io/myorg/do-k8s-dc:v1 \
   --var cluster_name=prod-cluster \
   --var domain=app.example.com \
   --var do_token=$DO_TOKEN \
   --var smtp_password=$SMTP_PASSWORD
 
 # Create environment and deploy
-arcctl create environment staging -d do-production
-arcctl deploy component ghcr.io/myorg/my-app:v1 -e staging
+cldctl create environment staging -d do-production
+cldctl deploy component ghcr.io/myorg/my-app:v1 -e staging
 ```
 
 ## Cost Optimization

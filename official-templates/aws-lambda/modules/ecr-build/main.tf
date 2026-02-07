@@ -23,7 +23,7 @@ resource "random_id" "suffix" {
 }
 
 locals {
-  repo_name = "arcctl/${replace(basename(var.context), ".", "app")}-${random_id.suffix.hex}"
+  repo_name = "cldctl/${replace(basename(var.context), ".", "app")}-${random_id.suffix.hex}"
   image_tag = "latest"
   image_uri = "${aws_ecr_repository.this.repository_url}:${local.image_tag}"
 
@@ -43,7 +43,7 @@ resource "aws_ecr_repository" "this" {
 
   tags = {
     Name      = local.repo_name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 

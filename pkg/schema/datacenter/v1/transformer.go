@@ -3,7 +3,7 @@ package v1
 import (
 	"os"
 
-	"github.com/architect-io/arcctl/pkg/schema/datacenter/internal"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter/internal"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 )

@@ -1,4 +1,4 @@
-// Package expression provides expression parsing and evaluation for arcctl.
+// Package expression provides expression parsing and evaluation for cldctl.
 package expression
 
 // No imports needed for this file

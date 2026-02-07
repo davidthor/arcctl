@@ -19,7 +19,7 @@ resource "kubernetes_service_v1" "this" {
 
     labels = {
       "app.kubernetes.io/name"       = local.name
-      "app.kubernetes.io/managed-by" = "arcctl"
+      "app.kubernetes.io/managed-by" = "cldctl"
     }
   }
 

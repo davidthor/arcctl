@@ -1,10 +1,10 @@
 ---
-description: Go code patterns and conventions for arcctl
+description: Go code patterns and conventions for cldctl
 globs: "**/*.go"
 alwaysApply: false
 ---
 
-# Go Code Patterns for arcctl
+# Go Code Patterns for cldctl
 
 ## Interface Design
 

@@ -8,7 +8,7 @@ description: "Deploy to GCP Cloud Run with Cloud SQL, GCS, and Cloud Monitoring"
 This guide shows how to build a datacenter that deploys components to Google Cloud Run with Cloud SQL for databases, GCS for storage, and Cloud Monitoring for observability. Cloud Run provides a fully serverless experience with automatic scaling and scale-to-zero.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/gcp-cloud-run/`](https://github.com/architect-io/arcctl/tree/main/official-templates/gcp-cloud-run)
+This is an officially maintained datacenter template. Source: [`official-templates/gcp-cloud-run/`](https://github.com/davidthor/arcctl/tree/main/official-templates/gcp-cloud-run)
 </Info>
 
 ## Overview
@@ -341,20 +341,20 @@ dockerBuild {
 
 ```bash
 # Build the datacenter
-arcctl dc build . -t ghcr.io/myorg/gcp-cloud-run-dc:v1.0.0
-arcctl dc push ghcr.io/myorg/gcp-cloud-run-dc:v1.0.0
+cldctl dc build . -t ghcr.io/myorg/gcp-cloud-run-dc:v1.0.0
+cldctl dc push ghcr.io/myorg/gcp-cloud-run-dc:v1.0.0
 
 # Deploy with variables
-arcctl dc deploy gcp-production \
+cldctl dc deploy gcp-production \
   --config ghcr.io/myorg/gcp-cloud-run-dc:v1.0.0 \
   --var gcp_project=my-project \
-  --var registry=us-central1-docker.pkg.dev/my-project/arcctl \
+  --var registry=us-central1-docker.pkg.dev/my-project/cldctl \
   --var domain=app.example.com \
   --var smtp_password=$SMTP_PASSWORD
 
 # Create environment and deploy
-arcctl env create staging --datacenter gcp-production
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl env create staging --datacenter gcp-production
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 ## Cost Optimization

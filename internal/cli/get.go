@@ -40,8 +40,8 @@ func newGetComponentCmd() *cobra.Command {
 		Long: `Get detailed information about a deployed component.
 
 Examples:
-  arcctl get component my-app -e production
-  arcctl get component api -e staging -o json`,
+  cldctl get component my-app -e production
+  cldctl get component api -e staging -o json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			componentName := args[0]
@@ -153,8 +153,8 @@ func newGetDatacenterCmd() *cobra.Command {
 		Long: `Get detailed information about a datacenter.
 
 Examples:
-  arcctl get datacenter my-dc
-  arcctl get datacenter prod-dc -o json`,
+  cldctl get datacenter my-dc
+  cldctl get datacenter prod-dc -o json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dcName := args[0]
@@ -259,8 +259,8 @@ func newGetEnvironmentCmd() *cobra.Command {
 		Long: `Get detailed information about an environment.
 
 Examples:
-  arcctl get environment staging
-  arcctl get environment production -o json`,
+  cldctl get environment staging
+  cldctl get environment production -o json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envName := args[0]

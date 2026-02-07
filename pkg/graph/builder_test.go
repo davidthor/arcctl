@@ -3,14 +3,14 @@ package graph
 import (
 	"testing"
 
-	"github.com/architect-io/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/schema/component"
 )
 
 // loadComponent is a test helper that parses a YAML component specification.
 func loadComponent(t *testing.T, yaml string) component.Component {
 	t.Helper()
 	loader := component.NewLoader()
-	comp, err := loader.LoadFromBytes([]byte(yaml), "/tmp/test/architect.yml")
+	comp, err := loader.LoadFromBytes([]byte(yaml), "/tmp/test/cloud.component.yml")
 	if err != nil {
 		t.Fatalf("failed to load component: %v", err)
 	}

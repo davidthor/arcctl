@@ -14,6 +14,6 @@ provider "digitalocean" {
 resource "digitalocean_vpc" "vpc" {
   name        = var.name
   region      = var.region
-  description = "VPC for arcctl managed infrastructure"
+  description = "VPC for cldctl managed infrastructure"
   ip_range    = "10.10.10.0/24"
 }

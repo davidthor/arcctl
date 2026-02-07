@@ -1,11 +1,11 @@
 ---
 title: "Quickstart"
-description: "Get started with arcctl in 5 minutes"
+description: "Get started with cldctl in 5 minutes"
 ---
 
 # Quickstart
 
-This guide will help you create and deploy your first arcctl component.
+This guide will help you create and deploy your first cldctl component.
 
 ## Prerequisites
 
@@ -16,11 +16,11 @@ This guide will help you create and deploy your first arcctl component.
 ## Installation
 
 ```bash
-# Install arcctl
-go install github.com/architect-io/arcctl@latest
+# Install cldctl
+go install github.com/davidthor/arcctl@latest
 
 # Verify installation
-arcctl --version
+cldctl --version
 ```
 
 ## Create Your First Component
@@ -35,9 +35,9 @@ mkdir my-app && cd my-app
 
 ### 2. Create the Component File
 
-Create an `architect.yml` file that describes your application:
+Create an `cloud.component.yml` file that describes your application:
 
-```yaml architect.yml
+```yaml cloud.component.yml
 # Define Docker image builds
 builds:
   api:
@@ -123,11 +123,11 @@ CMD ["npm", "start"]
 For rapid local development, use the `up` command:
 
 ```bash
-arcctl up
+cldctl up
 ```
 
 This will:
-1. Parse your `architect.yml`
+1. Parse your `cloud.component.yml`
 2. Create a local development environment
 3. Build and deploy your application with all dependencies
 4. Watch for changes and auto-reload
@@ -139,7 +139,7 @@ When you're ready to share or deploy to cloud environments:
 ### 1. Build the Component
 
 ```bash
-arcctl component build . -t ghcr.io/myorg/my-app:v1.0.0
+cldctl component build . -t ghcr.io/myorg/my-app:v1.0.0
 ```
 
 This creates OCI artifacts for:
@@ -149,7 +149,7 @@ This creates OCI artifacts for:
 ### 2. Push to Registry
 
 ```bash
-arcctl component push ghcr.io/myorg/my-app:v1.0.0
+cldctl component push ghcr.io/myorg/my-app:v1.0.0
 ```
 
 ## Deploy to an Environment
@@ -157,28 +157,28 @@ arcctl component push ghcr.io/myorg/my-app:v1.0.0
 ### 1. Create an Environment
 
 ```bash
-arcctl env create staging
+cldctl env create staging
 ```
 
 ### 2. Deploy the Component
 
 ```bash
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 ### 3. Check Status
 
 ```bash
 # List deployed components
-arcctl component list -e staging
+cldctl component list -e staging
 
 # Get detailed component info
-arcctl component get my-app -e staging
+cldctl component get my-app -e staging
 ```
 
 ## Understanding the Output
 
-When you deploy, arcctl shows you what's happening:
+When you deploy, cldctl shows you what's happening:
 
 ```
 Component:   my-app
@@ -209,13 +209,13 @@ Proceed with deployment? [Y/n]:
 To remove the deployment:
 
 ```bash
-arcctl component destroy my-app -e staging
+cldctl component destroy my-app -e staging
 ```
 
 To delete the environment:
 
 ```bash
-arcctl env destroy staging
+cldctl env destroy staging
 ```
 
 ## Next Steps
@@ -231,6 +231,6 @@ arcctl env destroy staging
     Complete command reference
   </Card>
   <Card title="Developer Workflow" icon="code" href="/guides/developer-workflow">
-    Best practices for developing with arcctl
+    Best practices for developing with cldctl
   </Card>
 </CardGroup>

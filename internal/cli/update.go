@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/engine"
-	"github.com/architect-io/arcctl/pkg/engine/executor"
-	"github.com/architect-io/arcctl/pkg/envfile"
-	"github.com/architect-io/arcctl/pkg/schema/environment"
-	"github.com/architect-io/arcctl/pkg/state"
-	"github.com/architect-io/arcctl/pkg/state/types"
+	"github.com/davidthor/arcctl/pkg/engine"
+	"github.com/davidthor/arcctl/pkg/engine/executor"
+	"github.com/davidthor/arcctl/pkg/envfile"
+	"github.com/davidthor/arcctl/pkg/schema/environment"
+	"github.com/davidthor/arcctl/pkg/state"
+	"github.com/davidthor/arcctl/pkg/state/types"
 	"github.com/spf13/cobra"
 )
 
@@ -46,19 +46,19 @@ func newUpdateEnvironmentCmd() *cobra.Command {
 You can update an environment in two ways:
 
 1. Update specific settings with flags:
-   arcctl update environment staging --datacenter new-dc
+   cldctl update environment staging --datacenter new-dc
 
 2. Apply a configuration file that defines the full environment state:
-   arcctl update environment staging environment.yml
+   cldctl update environment staging environment.yml
 
 When providing a config file, the environment's components and configuration
 will be updated to match the file. Components not in the file will be removed,
 and new components will be deployed.
 
 Examples:
-  arcctl update environment staging --datacenter new-dc
-  arcctl update environment staging environment.yml
-  arcctl update environment staging ./envs/staging.yml --auto-approve`,
+  cldctl update environment staging --datacenter new-dc
+  cldctl update environment staging environment.yml
+  cldctl update environment staging ./envs/staging.yml --auto-approve`,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envName := args[0]

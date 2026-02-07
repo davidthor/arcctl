@@ -22,7 +22,7 @@ resource "aws_service_discovery_private_dns_namespace" "this" {
 
   tags = {
     Name      = var.namespace
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -46,6 +46,6 @@ resource "aws_service_discovery_service" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

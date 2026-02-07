@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/oci"
-	"github.com/architect-io/arcctl/pkg/registry"
-	"github.com/architect-io/arcctl/pkg/schema/component"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter"
+	"github.com/davidthor/arcctl/pkg/oci"
+	"github.com/davidthor/arcctl/pkg/registry"
+	"github.com/davidthor/arcctl/pkg/schema/component"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +46,7 @@ func newBuildComponentCmd() *cobra.Command {
 		Short:   "Build a component into an OCI artifact",
 		Long: `Build a component and its container images into OCI artifacts.
 
-When building a component, arcctl creates multiple artifacts:
+When building a component, cldctl creates multiple artifacts:
   - Root artifact containing the component configuration
   - Child artifacts for each deployment, function, cronjob, and migration
 
@@ -59,7 +59,7 @@ If no tag is provided, the artifact is identified by its content digest
 				path = args[0]
 			}
 
-			// Determine architect.yml location
+			// Determine cloud.component.yml location
 			componentFile := file
 			if componentFile == "" {
 				// Check if path is a file or directory
@@ -68,10 +68,10 @@ If no tag is provided, the artifact is identified by its content digest
 					return fmt.Errorf("failed to access path: %w", err)
 				}
 				if info.IsDir() {
-					// Look for architect.yml in the directory
-					componentFile = filepath.Join(path, "architect.yml")
+					// Look for cloud.component.yml in the directory
+					componentFile = filepath.Join(path, "cloud.component.yml")
 					if _, err := os.Stat(componentFile); os.IsNotExist(err) {
-						componentFile = filepath.Join(path, "architect.yaml")
+						componentFile = filepath.Join(path, "cloud.component.yaml")
 					}
 				} else {
 					// Path is a file, use it directly
@@ -379,7 +379,7 @@ If no tag is provided, the artifact is identified by its content digest
 
 	cmd.Flags().StringVarP(&tag, "tag", "t", "", "Tag for the root component artifact (omit to use content digest)")
 	cmd.Flags().StringArrayVar(&artifactTags, "artifact-tag", nil, "Override tag for a specific child artifact (name=repo:tag)")
-	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to architect.yml if not in default location")
+	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to cloud.component.yml if not in default location")
 	cmd.Flags().StringVar(&platform, "platform", "", "Target platform (linux/amd64, linux/arm64)")
 	cmd.Flags().BoolVar(&noCache, "no-cache", false, "Disable build cache")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be built without building")
@@ -402,7 +402,7 @@ func newBuildDatacenterCmd() *cobra.Command {
 		Short:   "Build a datacenter into an OCI artifact",
 		Long: `Build a datacenter and its IaC modules into OCI artifacts.
 
-When building a datacenter, arcctl bundles all IaC modules:
+When building a datacenter, cldctl bundles all IaC modules:
   - Root artifact containing the datacenter configuration
   - Module artifacts for each IaC module referenced
 

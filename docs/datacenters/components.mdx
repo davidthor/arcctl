@@ -29,7 +29,7 @@ The block label is the component's registry address (e.g., `myorg/stripe`, `ghcr
 
 ## How It Works
 
-1. **Declaration**: Platform engineers declare components in the datacenter file with their source and variable values, or register them via `arcctl deploy component`
+1. **Declaration**: Platform engineers declare components in the datacenter file with their source and variable values, or register them via `cldctl deploy component`
 2. **Registration**: Component declarations are stored as individual state files, separate from the datacenter template state. Re-deploying the datacenter template does not remove previously registered components
 3. **Resolution**: When a component deployed to an environment declares a dependency on a datacenter-level component, the engine automatically uses the datacenter's source and variables instead of prompting the user
 4. **Deployment**: The dependency component is deployed into the environment using the datacenter-provided configuration
@@ -42,13 +42,13 @@ In addition to declaring components in the HCL file, you can manage datacenter c
 
 ```bash
 # Register a component with the datacenter
-arcctl deploy component myorg/stripe:latest -d my-dc --var key=sk_live_xxx
+cldctl deploy component myorg/stripe:latest -d my-dc --var key=sk_live_xxx
 
 # Remove a component declaration from the datacenter
-arcctl destroy component myorg/stripe -d my-dc
+cldctl destroy component myorg/stripe -d my-dc
 
 # List datacenter components
-arcctl list component -d my-dc
+cldctl list component -d my-dc
 ```
 
 Components registered via CLI are stored independently and are not affected by datacenter template re-deployments.
@@ -139,10 +139,10 @@ environment {
 }
 ```
 
-### Application Component (architect.yml)
+### Application Component (cloud.component.yml)
 
 ```yaml
-# architect.yml for myorg/web-app
+# cloud.component.yml for myorg/web-app
 dependencies:
   myorg/stripe:
     component: myorg/stripe

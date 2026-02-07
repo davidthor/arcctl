@@ -292,8 +292,8 @@ func TestBuildFromDirectory(t *testing.T) {
 	defer os.RemoveAll(srcDir)
 
 	// Create test component structure
-	if err := os.WriteFile(filepath.Join(srcDir, "architect.yml"), []byte("name: test-component\nversion: v1"), 0644); err != nil {
-		t.Fatalf("Failed to create architect.yml: %v", err)
+	if err := os.WriteFile(filepath.Join(srcDir, "cloud.component.yml"), []byte("name: test-component\nversion: v1"), 0644); err != nil {
+		t.Fatalf("Failed to create cloud.component.yml: %v", err)
 	}
 
 	client := NewClient()

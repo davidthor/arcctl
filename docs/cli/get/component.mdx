@@ -3,18 +3,18 @@ title: "get component"
 description: "Get details of a deployed component"
 ---
 
-# arcctl get component
+# cldctl get component
 
 Get detailed information about a deployed component.
 
 <Note>
-Use `arcctl get comp` as shorthand for `arcctl get component`.
+Use `cldctl get comp` as shorthand for `cldctl get component`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl get component <name> -e <environment> [options]
+cldctl get component <name> -e <environment> [options]
 ```
 
 ## Arguments
@@ -28,7 +28,7 @@ arcctl get component <name> -e <environment> [options]
 | Option | Description |
 |--------|-------------|
 | `-e, --environment <name>` | Target environment (required) |
-| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `ARCCTL_DATACENTER` env var, or CLI config default) |
+| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `CLDCTL_DATACENTER` env var, or CLI config default) |
 | `-o, --output <format>` | Output format: `table`, `json`, `yaml` |
 | `--backend <type>` | State backend type |
 | `--backend-config <key=value>` | Backend configuration |
@@ -37,19 +37,19 @@ arcctl get component <name> -e <environment> [options]
 
 ```bash
 # Get component details
-arcctl get component my-app -e production
+cldctl get component my-app -e production
 
 # Using alias
-arcctl get comp my-app -e production
+cldctl get comp my-app -e production
 
 # Output as JSON
-arcctl get component my-app -e staging -o json
+cldctl get component my-app -e staging -o json
 ```
 
 ## Output
 
 ```
-$ arcctl get component web-app -e staging
+$ cldctl get component web-app -e staging
 
 Component:   web-app
 Environment: staging
@@ -72,5 +72,5 @@ Resources:
 
 ## See Also
 
-- [`arcctl list component`](/cli/list/component) - List components
-- [`arcctl deploy component`](/cli/deploy/component) - Deploy a component
+- [`cldctl list component`](/cli/list/component) - List components
+- [`cldctl deploy component`](/cli/deploy/component) - Deploy a component

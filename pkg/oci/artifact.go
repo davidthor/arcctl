@@ -1,4 +1,4 @@
-// Package oci provides OCI artifact management for arcctl.
+// Package oci provides OCI artifact management for cldctl.
 package oci
 
 import (
@@ -14,7 +14,7 @@ const (
 	ArtifactTypeModule     ArtifactType = "module"
 )
 
-// MediaTypes for arcctl artifacts.
+// MediaTypes for cldctl artifacts.
 const (
 	MediaTypeComponentConfig  = "application/vnd.architect.component.config.v1+json"
 	MediaTypeComponentLayer   = "application/vnd.architect.component.layer.v1.tar+gzip"

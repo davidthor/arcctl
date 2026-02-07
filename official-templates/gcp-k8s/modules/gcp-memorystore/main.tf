@@ -22,6 +22,6 @@ resource "google_redis_instance" "main" {
 
   labels = {
     environment = var.name
-    managed-by  = "arcctl"
+    managed-by  = "cldctl"
   }
 }

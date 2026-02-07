@@ -8,7 +8,7 @@ description: "Deploy to AWS ECS Fargate with RDS, S3, SES, KMS, and OTel observa
 This guide shows how to build a datacenter that deploys components to AWS ECS Fargate with managed services for databases, storage, email, encryption, and observability.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/aws-ecs/`](https://github.com/architect-io/arcctl/tree/main/official-templates/aws-ecs)
+This is an officially maintained datacenter template. Source: [`official-templates/aws-ecs/`](https://github.com/davidthor/arcctl/tree/main/official-templates/aws-ecs)
 </Info>
 
 ## Overview
@@ -478,11 +478,11 @@ observability {
 
 ```bash
 # Build the datacenter
-arcctl dc build . -t ghcr.io/myorg/aws-ecs-dc:v1.0.0
-arcctl dc push ghcr.io/myorg/aws-ecs-dc:v1.0.0
+cldctl dc build . -t ghcr.io/myorg/aws-ecs-dc:v1.0.0
+cldctl dc push ghcr.io/myorg/aws-ecs-dc:v1.0.0
 
 # Deploy with variables
-arcctl dc deploy aws-production \
+cldctl dc deploy aws-production \
   --config ghcr.io/myorg/aws-ecs-dc:v1.0.0 \
   --var cluster_name=prod-cluster \
   --var vpc_id=vpc-12345 \
@@ -498,10 +498,10 @@ arcctl dc deploy aws-production \
 
 ```bash
 # Create staging environment
-arcctl env create staging --datacenter aws-production
+cldctl env create staging --datacenter aws-production
 
 # Deploy components
-arcctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
+cldctl deploy ghcr.io/myorg/my-app:v1.0.0 -e staging
 ```
 
 ## Cost Optimization

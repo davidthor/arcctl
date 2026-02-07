@@ -1,6 +1,6 @@
 # secrets
 
-Secret management for arcctl with a pluggable provider system. Supports multiple backends including environment variables, AWS Secrets Manager, HashiCorp Vault, and file-based storage.
+Secret management for cldctl with a pluggable provider system. Supports multiple backends including environment variables, AWS Secrets Manager, HashiCorp Vault, and file-based storage.
 
 ## Overview
 
@@ -16,12 +16,12 @@ The `secrets` package provides:
 
 ### Available Providers
 
-| Provider | Description | Read | Write | Delete |
-|----------|-------------|------|-------|--------|
-| `env` | Environment variables | ✓ | ✗ | ✗ |
-| `file` | In-memory map | ✓ | ✓ | ✓ |
-| `aws` | AWS Secrets Manager | ✓ | ✓ | ✓ |
-| `vault` | HashiCorp Vault | ✓ | ✓ | ✓ |
+| Provider | Description           | Read | Write | Delete |
+| -------- | --------------------- | ---- | ----- | ------ |
+| `env`    | Environment variables | ✓    | ✗     | ✗      |
+| `file`   | In-memory map         | ✓    | ✓     | ✓      |
+| `aws`    | AWS Secrets Manager   | ✓    | ✓     | ✓      |
+| `vault`  | HashiCorp Vault       | ✓    | ✓     | ✓      |
 
 ### Provider Interface
 
@@ -43,7 +43,7 @@ The manager coordinates multiple providers with priority ordering.
 ### Creating a Manager
 
 ```go
-import "github.com/architect-io/arcctl/pkg/secrets"
+import "github.com/davidthor/arcctl/pkg/secrets"
 
 // Default manager (includes EnvProvider)
 manager := secrets.DefaultManager()
@@ -144,18 +144,19 @@ Reads secrets from environment variables.
 
 ```go
 provider := secrets.NewEnvProvider()
-// Default prefix: ARCCTL_SECRET_
+// Default prefix: CLDCTL_SECRET_
 
 provider := secrets.NewEnvProviderWithPrefix("MYAPP_")
 // Reads MYAPP_DATABASE_PASSWORD for key "database-password"
 ```
 
 Key transformation:
+
 - Converts to uppercase
 - Replaces hyphens with underscores
 - Applies prefix
 
-Example: `database-password` → `ARCCTL_SECRET_DATABASE_PASSWORD`
+Example: `database-password` → `CLDCTL_SECRET_DATABASE_PASSWORD`
 
 ### FileProvider
 
@@ -187,6 +188,7 @@ provider, err := secrets.NewAWSProvider(ctx, secrets.AWSConfig{
 ```
 
 Features:
+
 - Supports JSON secrets with field extraction: `secret-name#field`
 - Uses AWS SDK v2 with default credential chain
 - Supports custom endpoints for testing
@@ -205,6 +207,7 @@ provider, err := secrets.NewVaultProvider(secrets.VaultConfig{
 ```
 
 Features:
+
 - KV v2 engine support
 - Supports JSON secrets with field extraction: `secret-name#field`
 - Reads token from `VAULT_TOKEN` env var or token file
@@ -216,26 +219,26 @@ Features:
 import (
     "context"
     "os"
-    "github.com/architect-io/arcctl/pkg/secrets"
+    "github.com/davidthor/arcctl/pkg/secrets"
 )
 
 func main() {
     ctx := context.Background()
-    
+
     // Create manager
     manager := secrets.NewManager()
-    
+
     // Add providers
     manager.RegisterProvider(secrets.NewEnvProvider())
-    
+
     if os.Getenv("AWS_REGION") != "" {
         aws, _ := secrets.NewAWSProvider(ctx, secrets.AWSConfig{
             Region: os.Getenv("AWS_REGION"),
-            Prefix: "arcctl/",
+            Prefix: "cldctl/",
         })
         manager.RegisterProvider(aws)
     }
-    
+
     if os.Getenv("VAULT_ADDR") != "" {
         vault, _ := secrets.NewVaultProvider(secrets.VaultConfig{
             Address: os.Getenv("VAULT_ADDR"),
@@ -243,16 +246,16 @@ func main() {
         })
         manager.RegisterProvider(vault)
     }
-    
+
     // Set priority (vault first, then aws, then env)
     manager.SetPriority([]string{"vault", "aws", "env"})
-    
+
     // Retrieve secrets
     dbPassword, err := manager.Get(ctx, "database-password")
     if err != nil {
         log.Fatal(err)
     }
-    
+
     // Resolve secret references in config
     config := loadConfig()
     resolved, err := manager.ResolveSecrets(ctx, config)
@@ -270,10 +273,11 @@ ${secret:provider:key}  - Get from specific provider
 ```
 
 Examples:
+
 ```yaml
 database:
   password: ${secret:db-password}
-  
+
 api:
   key: ${secret:vault:api-key}
   aws_key: ${secret:aws:credentials#access_key}

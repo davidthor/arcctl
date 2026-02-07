@@ -1,7 +1,7 @@
 variable "network_name" {
   type        = string
   description = "Name of the Docker network"
-  default     = "arcctl-local"
+  default     = "cldctl-local"
 }
 
 module "network" {

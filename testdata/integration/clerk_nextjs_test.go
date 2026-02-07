@@ -1,6 +1,6 @@
 //go:build integration
 
-// Package integration contains integration tests for arcctl.
+// Package integration contains integration tests for cldctl.
 // These tests require external services and are not run by default.
 // Run with: go test -tags=integration -v ./testdata/integration/...
 package integration
@@ -24,14 +24,14 @@ import (
 // - Clerk authentication
 // - PostgreSQL database
 // - Next.js application
-// - arcctl deployment
+// - cldctl deployment
 //
 // Required environment variables:
 //   - CLERK_PUBLISHABLE_KEY: Clerk publishable key (pk_test_... or pk_live_...)
 //   - CLERK_SECRET_KEY: Clerk secret key (sk_test_... or sk_live_...)
 //
 // Optional environment variables:
-//   - ARCCTL_BINARY: Path to arcctl binary (default: searches PATH or builds)
+//   - CLDCTL_BINARY: Path to cldctl binary (default: searches PATH or builds)
 //   - TEST_TIMEOUT: Maximum time to wait for deployment (default: 5m)
 //
 // Note: Clerk infers the domain from the publishable key, so CLERK_DOMAIN is not required.
@@ -52,9 +52,9 @@ func TestClerkNextJSPostgres(t *testing.T) {
 		t.Fatalf("CLERK_SECRET_KEY should start with 'sk_', got: %s...", clerkSecretKey[:10])
 	}
 
-	// Get or build arcctl binary
-	arcctlBinary := getArcctlBinary(t)
-	t.Logf("Using arcctl binary: %s", arcctlBinary)
+	// Get or build cldctl binary
+	cldctlBinary := getCldctlBinary(t)
+	t.Logf("Using cldctl binary: %s", cldctlBinary)
 
 	// Get test directory
 	testDir := getTestDirectory(t)
@@ -79,12 +79,12 @@ func TestClerkNextJSPostgres(t *testing.T) {
 	// Cleanup on test completion
 	defer func() {
 		t.Log("Cleaning up environment...")
-		cleanupEnvironment(t, arcctlBinary, envName)
+		cleanupEnvironment(t, cldctlBinary, envName)
 	}()
 
 	// Step 1: Deploy the environment
-	t.Log("Step 1: Deploying environment with arcctl...")
-	deployEnvironment(t, ctx, arcctlBinary, testDir, envName, map[string]string{
+	t.Log("Step 1: Deploying environment with cldctl...")
+	deployEnvironment(t, ctx, cldctlBinary, testDir, envName, map[string]string{
 		"CLERK_PUBLISHABLE_KEY": clerkPublishableKey,
 		"CLERK_SECRET_KEY":      clerkSecretKey,
 	})
@@ -108,28 +108,28 @@ func TestClerkNextJSPostgres(t *testing.T) {
 	t.Log("All integration tests passed!")
 }
 
-// getArcctlBinary returns the path to the arcctl binary.
-// It first checks ARCCTL_BINARY env var, then PATH, then builds if needed.
-func getArcctlBinary(t *testing.T) string {
+// getCldctlBinary returns the path to the cldctl binary.
+// It first checks CLDCTL_BINARY env var, then PATH, then builds if needed.
+func getCldctlBinary(t *testing.T) string {
 	t.Helper()
 
 	// Check environment variable first
-	if binary := os.Getenv("ARCCTL_BINARY"); binary != "" {
+	if binary := os.Getenv("CLDCTL_BINARY"); binary != "" {
 		if _, err := os.Stat(binary); err == nil {
 			return binary
 		}
-		t.Fatalf("ARCCTL_BINARY set but file not found: %s", binary)
+		t.Fatalf("CLDCTL_BINARY set but file not found: %s", binary)
 	}
 
-	// Check if arcctl is in PATH
-	if path, err := exec.LookPath("arcctl"); err == nil {
+	// Check if cldctl is in PATH
+	if path, err := exec.LookPath("cldctl"); err == nil {
 		return path
 	}
 
-	// Build arcctl
-	t.Log("Building arcctl binary...")
+	// Build cldctl
+	t.Log("Building cldctl binary...")
 	repoRoot := getRepoRoot(t)
-	binaryPath := filepath.Join(repoRoot, "bin", "arcctl")
+	binaryPath := filepath.Join(repoRoot, "bin", "cldctl")
 
 	cmd := exec.Command("make", "build")
 	cmd.Dir = repoRoot
@@ -137,7 +137,7 @@ func getArcctlBinary(t *testing.T) string {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to build arcctl: %v", err)
+		t.Fatalf("Failed to build cldctl: %v", err)
 	}
 
 	return binaryPath
@@ -172,8 +172,8 @@ func getRepoRoot(t *testing.T) string {
 	}
 }
 
-// deployEnvironment deploys the test environment using arcctl.
-func deployEnvironment(t *testing.T, ctx context.Context, arcctlBinary, testDir, envName string, envVars map[string]string) {
+// deployEnvironment deploys the test environment using cldctl.
+func deployEnvironment(t *testing.T, ctx context.Context, cldctlBinary, testDir, envName string, envVars map[string]string) {
 	t.Helper()
 
 	// Get repository root for datacenter path
@@ -182,7 +182,7 @@ func deployEnvironment(t *testing.T, ctx context.Context, arcctlBinary, testDir,
 
 	// Build command with environment file
 	// Name and datacenter are CLI flags, not part of the config file
-	// New CLI syntax: arcctl update environment <name> <config-file>
+	// New CLI syntax: cldctl update environment <name> <config-file>
 	envFile := filepath.Join(testDir, "environment.yml")
 	args := []string{
 		"update", "environment", envName, envFile,
@@ -190,7 +190,7 @@ func deployEnvironment(t *testing.T, ctx context.Context, arcctlBinary, testDir,
 		"--auto-approve",
 	}
 
-	cmd := exec.CommandContext(ctx, arcctlBinary, args...)
+	cmd := exec.CommandContext(ctx, cldctlBinary, args...)
 	cmd.Dir = testDir
 
 	// Set environment variables
@@ -203,7 +203,7 @@ func deployEnvironment(t *testing.T, ctx context.Context, arcctlBinary, testDir,
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	t.Logf("Running: %s %s", arcctlBinary, strings.Join(args, " "))
+	t.Logf("Running: %s %s", cldctlBinary, strings.Join(args, " "))
 
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Failed to deploy environment:\nstdout: %s\nstderr: %s\nerror: %v",
@@ -333,11 +333,11 @@ func testProtectedEndpointWithAuth(t *testing.T, appURL, clerkSecretKey string) 
 }
 
 // cleanupEnvironment destroys the test environment.
-func cleanupEnvironment(t *testing.T, arcctlBinary, envName string) {
+func cleanupEnvironment(t *testing.T, cldctlBinary, envName string) {
 	t.Helper()
 
-	// New CLI syntax: arcctl destroy environment <name>
-	cmd := exec.Command(arcctlBinary, "destroy", "environment", envName, "--auto-approve")
+	// New CLI syntax: cldctl destroy environment <name>
+	cmd := exec.Command(cldctlBinary, "destroy", "environment", envName, "--auto-approve")
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -361,10 +361,10 @@ func TestClerkNextJSPostgres_EnvironmentValidation(t *testing.T) {
 		t.Fatalf("Environment file not found: %s", envFile)
 	}
 
-	// Check architect.yml exists
-	architectFile := filepath.Join(testDir, "architect.yml")
-	if _, err := os.Stat(architectFile); err != nil {
-		t.Fatalf("architect.yml not found: %s", architectFile)
+	// Check cloud.component.yml exists
+	componentFile := filepath.Join(testDir, "cloud.component.yml")
+	if _, err := os.Stat(componentFile); err != nil {
+		t.Fatalf("cloud.component.yml not found: %s", componentFile)
 	}
 
 	// Check Dockerfile exists
@@ -378,12 +378,12 @@ func TestClerkNextJSPostgres_EnvironmentValidation(t *testing.T) {
 
 // TestClerkNextJSPostgres_ComponentValidation validates the component configuration.
 func TestClerkNextJSPostgres_ComponentValidation(t *testing.T) {
-	arcctlBinary := getArcctlBinary(t)
+	cldctlBinary := getCldctlBinary(t)
 	testDir := getTestDirectory(t)
 
 	// Validate the component
-	// New CLI syntax: arcctl validate component <path>
-	cmd := exec.Command(arcctlBinary, "validate", "component", testDir)
+	// New CLI syntax: cldctl validate component <path>
+	cmd := exec.Command(cldctlBinary, "validate", "component", testDir)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

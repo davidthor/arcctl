@@ -36,7 +36,7 @@ resource "aws_security_group" "alb" {
 
   tags = {
     Name      = "${var.name}-alb"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 
   lifecycle {
@@ -85,7 +85,7 @@ resource "aws_lb" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -105,7 +105,7 @@ resource "aws_lb_listener" "http" {
 
   tags = {
     Name      = "${var.name}-http"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -127,6 +127,6 @@ resource "aws_lb_listener" "https" {
 
   tags = {
     Name      = "${var.name}-https"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

@@ -79,7 +79,7 @@ resource "aws_iam_role" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -105,7 +105,7 @@ resource "aws_iam_role_policy" "self_terminate" {
       Resource = "*"
       Condition = {
         StringEquals = {
-          "ec2:ResourceTag/ManagedBy" = "arcctl"
+          "ec2:ResourceTag/ManagedBy" = "cldctl"
         }
       }
     }]
@@ -130,6 +130,6 @@ resource "aws_instance" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

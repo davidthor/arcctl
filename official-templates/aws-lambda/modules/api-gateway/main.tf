@@ -21,7 +21,7 @@ resource "aws_apigatewayv2_api" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -38,6 +38,6 @@ resource "aws_apigatewayv2_domain_name" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

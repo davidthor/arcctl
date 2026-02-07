@@ -8,7 +8,7 @@ description: "Deploy to DigitalOcean Droplets with managed databases and load ba
 This guide shows how to build a datacenter that deploys components to DigitalOcean Droplets (VMs) with managed databases, Spaces for storage, and a shared load balancer.
 
 <Info>
-This is an officially maintained datacenter template. Source: [`official-templates/do-vms/`](https://github.com/architect-io/arcctl/tree/main/official-templates/do-vms)
+This is an officially maintained datacenter template. Source: [`official-templates/do-vms/`](https://github.com/davidthor/arcctl/tree/main/official-templates/do-vms)
 </Info>
 
 ## Overview
@@ -96,7 +96,7 @@ module "load_balancer" {
   plugin = "opentofu"
   build  = "./modules/do-load-balancer"
   inputs = {
-    name     = "arcctl-lb"
+    name     = "cldctl-lb"
     region   = variable.region
     do_token = variable.do_token
   }
@@ -107,7 +107,7 @@ module "vpc" {
   plugin = "opentofu"
   build  = "./modules/do-vpc"
   inputs = {
-    name     = "arcctl-vpc"
+    name     = "cldctl-vpc"
     region   = variable.region
     do_token = variable.do_token
   }
@@ -564,19 +564,19 @@ observability {
 
 ```bash
 # Build and push
-arcctl build datacenter ./do-vms -t ghcr.io/myorg/do-vms:v1
-arcctl push datacenter ghcr.io/myorg/do-vms:v1
+cldctl build datacenter ./do-vms -t ghcr.io/myorg/do-vms:v1
+cldctl push datacenter ghcr.io/myorg/do-vms:v1
 
 # Deploy datacenter
-arcctl deploy datacenter do-vms ghcr.io/myorg/do-vms:v1 \
+cldctl deploy datacenter do-vms ghcr.io/myorg/do-vms:v1 \
   --var do_token=$DO_TOKEN \
   --var ssh_key_fingerprint=$SSH_FINGERPRINT \
   --var domain=app.example.com \
   --var smtp_password=$SMTP_PASSWORD
 
 # Create environment and deploy
-arcctl create environment staging -d do-vms
-arcctl deploy component ghcr.io/myorg/my-app:v1 -e staging
+cldctl create environment staging -d do-vms
+cldctl deploy component ghcr.io/myorg/my-app:v1 -e staging
 ```
 
 ## Cost Optimization

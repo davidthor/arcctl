@@ -3,18 +3,18 @@ title: "create environment"
 description: "Create a new environment"
 ---
 
-# arcctl create environment
+# cldctl create environment
 
 Create a new environment.
 
 <Note>
-Use `arcctl create env` as shorthand for `arcctl create environment`.
+Use `cldctl create env` as shorthand for `cldctl create environment`.
 </Note>
 
 ## Synopsis
 
 ```bash
-arcctl create environment <name> [options]
+cldctl create environment <name> [options]
 ```
 
 ## Arguments
@@ -27,7 +27,7 @@ arcctl create environment <name> [options]
 
 | Option | Description |
 |--------|-------------|
-| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `ARCCTL_DATACENTER` env var, or CLI config default) |
+| `-d, --datacenter <name>` | Target datacenter (resolved from flag, `CLDCTL_DATACENTER` env var, or CLI config default) |
 | `--if-not-exists` | Don't error if environment already exists |
 | `--backend <type>` | State backend type |
 | `--backend-config <key=value>` | Backend configuration |
@@ -36,22 +36,22 @@ arcctl create environment <name> [options]
 
 ```bash
 # Create an environment
-arcctl create environment staging --datacenter aws-production
+cldctl create environment staging --datacenter aws-production
 
 # Using alias
-arcctl create env staging -d aws-production
+cldctl create env staging -d aws-production
 
 # Create if not exists (idempotent)
-arcctl create environment staging --datacenter aws-production --if-not-exists
+cldctl create environment staging --datacenter aws-production --if-not-exists
 
 # Create preview environment
-arcctl create env preview-123 -d aws-staging
+cldctl create env preview-123 -d aws-staging
 ```
 
 ## Output
 
 ```
-$ arcctl create env staging --datacenter aws-production
+$ cldctl create env staging --datacenter aws-production
 
 Environment: staging
 Datacenter:  aws-production
@@ -62,6 +62,6 @@ Datacenter:  aws-production
 
 ## See Also
 
-- [`arcctl update environment`](/cli/update/environment) - Update an environment
-- [`arcctl destroy environment`](/cli/destroy/environment) - Destroy an environment
-- [`arcctl list environment`](/cli/list/environment) - List environments
+- [`cldctl update environment`](/cli/update/environment) - Update an environment
+- [`cldctl destroy environment`](/cli/destroy/environment) - Destroy an environment
+- [`cldctl list environment`](/cli/list/environment) - List environments

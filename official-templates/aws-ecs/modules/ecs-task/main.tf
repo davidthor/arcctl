@@ -42,7 +42,7 @@ resource "aws_iam_role" "execution" {
 
   tags = {
     Name      = "${local.name}-execution"
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -82,7 +82,7 @@ resource "aws_ecs_task_definition" "this" {
 
   tags = {
     Name      = local.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 

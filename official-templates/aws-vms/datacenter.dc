@@ -66,7 +66,7 @@ module "alb" {
   plugin = "opentofu"
   build  = "./modules/alb"
   inputs = {
-    name            = "arcctl-alb"
+    name            = "cldctl-alb"
     vpc_id          = variable.vpc_id
     certificate_arn = variable.certificate_arn
   }

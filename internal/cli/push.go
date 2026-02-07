@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/architect-io/arcctl/pkg/oci"
-	"github.com/architect-io/arcctl/pkg/schema/datacenter"
+	"github.com/davidthor/arcctl/pkg/oci"
+	"github.com/davidthor/arcctl/pkg/schema/datacenter"
 	"github.com/spf13/cobra"
 )
 
@@ -49,8 +49,8 @@ This command pushes the root component artifact and all associated child
 artifacts (deployments, functions, etc.) to the specified registry.
 
 Examples:
-  arcctl push component ghcr.io/myorg/myapp:v1.0.0
-  arcctl push component myapp:latest -y`,
+  cldctl push component ghcr.io/myorg/myapp:v1.0.0
+  cldctl push component myapp:latest -y`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reference := args[0]
@@ -80,7 +80,7 @@ Examples:
 			}
 
 			if !exists {
-				return fmt.Errorf("artifact %s not found - build it first with 'arcctl build component'", reference)
+				return fmt.Errorf("artifact %s not found - build it first with 'cldctl build component'", reference)
 			}
 
 			fmt.Printf("[push] Pushing %s...\n", reference)
@@ -109,8 +109,8 @@ This command pushes the root datacenter artifact and all associated module
 artifacts to the specified registry.
 
 Examples:
-  arcctl push datacenter ghcr.io/myorg/dc:v1.0.0
-  arcctl push datacenter my-dc:latest -y`,
+  cldctl push datacenter ghcr.io/myorg/dc:v1.0.0
+  cldctl push datacenter my-dc:latest -y`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reference := args[0]
@@ -125,11 +125,11 @@ Examples:
 			}
 
 			if !exists {
-				return fmt.Errorf("artifact %s not found - build it first with 'arcctl build datacenter'", reference)
+				return fmt.Errorf("artifact %s not found - build it first with 'cldctl build datacenter'", reference)
 			}
 
 			// Pull the artifact to a temp directory so we can enumerate modules
-			tmpDir, err := os.MkdirTemp("", "arcctl-push-dc-*")
+			tmpDir, err := os.MkdirTemp("", "cldctl-push-dc-*")
 			if err != nil {
 				return fmt.Errorf("failed to create temp dir: %w", err)
 			}

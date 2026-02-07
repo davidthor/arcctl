@@ -46,7 +46,7 @@ resource "google_secret_manager_secret" "otel_config" {
   }
 
   labels = {
-    managed-by = "arcctl"
+    managed-by = "cldctl"
   }
 }
 

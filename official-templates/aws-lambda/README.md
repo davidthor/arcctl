@@ -56,11 +56,11 @@ Serverless-first AWS template. All compute runs on AWS Lambda with API Gateway f
 
 ```bash
 # Build and push the datacenter
-arcctl dc build . -t ghcr.io/myorg/aws-lambda:v1
-arcctl dc push ghcr.io/myorg/aws-lambda:v1
+cldctl dc build . -t ghcr.io/myorg/aws-lambda:v1
+cldctl dc push ghcr.io/myorg/aws-lambda:v1
 
 # Deploy the datacenter
-arcctl dc deploy aws-serverless \
+cldctl dc deploy aws-serverless \
   --config ghcr.io/myorg/aws-lambda:v1 \
   --var vpc_id=vpc-12345 \
   --var domain=app.example.com \
@@ -68,8 +68,8 @@ arcctl dc deploy aws-serverless \
   --var certificate_arn=arn:aws:acm:us-east-1:123456:certificate/abc
 
 # Create an environment and deploy a component
-arcctl env create staging --datacenter aws-serverless
-arcctl deploy ghcr.io/myorg/my-app:v1 -e staging
+cldctl env create staging --datacenter aws-serverless
+cldctl deploy ghcr.io/myorg/my-app:v1 -e staging
 ```
 
 ## Limitations

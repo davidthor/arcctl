@@ -5,35 +5,35 @@ description: "Best practices for state backends, secrets, and deployment strateg
 
 # CI/CD Best Practices
 
-This guide covers the operational details of running arcctl in CI/CD pipelines: configuring state backends, managing secrets, and implementing reliable deployment strategies.
+This guide covers the operational details of running cldctl in CI/CD pipelines: configuring state backends, managing secrets, and implementing reliable deployment strategies.
 
 ## State Backend Configuration
 
-arcctl needs a shared state backend in CI so that multiple pipeline runs and team members share the same infrastructure state. Configure the backend via environment variables:
+cldctl needs a shared state backend in CI so that multiple pipeline runs and team members share the same infrastructure state. Configure the backend via environment variables:
 
 ### S3 Backend
 
 ```bash
-export ARCCTL_BACKEND=s3
-export ARCCTL_BACKEND_S3_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_S3_REGION=us-east-1
-export ARCCTL_BACKEND_S3_KEY=arcctl
+export CLDCTL_BACKEND=s3
+export CLDCTL_BACKEND_S3_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_S3_REGION=us-east-1
+export CLDCTL_BACKEND_S3_KEY=cldctl
 ```
 
 ### GCS Backend
 
 ```bash
-export ARCCTL_BACKEND=gcs
-export ARCCTL_BACKEND_GCS_BUCKET=my-arcctl-state
-export ARCCTL_BACKEND_GCS_PREFIX=arcctl
+export CLDCTL_BACKEND=gcs
+export CLDCTL_BACKEND_GCS_BUCKET=my-cldctl-state
+export CLDCTL_BACKEND_GCS_PREFIX=cldctl
 ```
 
 ### Azure Blob Storage Backend
 
 ```bash
-export ARCCTL_BACKEND=azurerm
-export ARCCTL_BACKEND_AZURERM_STORAGE_ACCOUNT_NAME=myaccount
-export ARCCTL_BACKEND_AZURERM_CONTAINER_NAME=arcctl-state
+export CLDCTL_BACKEND=azurerm
+export CLDCTL_BACKEND_AZURERM_STORAGE_ACCOUNT_NAME=myaccount
+export CLDCTL_BACKEND_AZURERM_CONTAINER_NAME=cldctl-state
 ```
 
 <Tip>
@@ -50,7 +50,7 @@ Never commit secrets to your repository. Use your CI/CD platform's secret variab
   env:
     API_KEY: ${{ secrets.API_KEY }}
   run: |
-    arcctl deploy component ghcr.io/myorg/my-app:v1.0.0 -e staging \
+    cldctl deploy component ghcr.io/myorg/my-app:v1.0.0 -e staging \
       --var api_key=$API_KEY \
       --auto-approve
 ```
@@ -64,7 +64,7 @@ For AWS-based deployments, use IAM roles with OIDC instead of long-lived access 
 - name: Configure AWS credentials
   uses: aws-actions/configure-aws-credentials@v4
   with:
-    role-to-assume: arn:aws:iam::123456789:role/arcctl-deploy
+    role-to-assume: arn:aws:iam::123456789:role/cldctl-deploy
     aws-region: us-east-1
 ```
 
@@ -74,11 +74,11 @@ Always deploy a specific, immutable version -- never `latest`:
 
 ```bash
 # Good: Deploy specific version (deterministic)
-arcctl deploy component ghcr.io/myorg/my-app:$CI_COMMIT_SHA -e staging \
+cldctl deploy component ghcr.io/myorg/my-app:$CI_COMMIT_SHA -e staging \
   --auto-approve
 
 # Avoid: Deploy latest (non-deterministic)
-arcctl deploy component ghcr.io/myorg/my-app:latest -e staging \
+cldctl deploy component ghcr.io/myorg/my-app:latest -e staging \
   --auto-approve
 ```
 
@@ -86,11 +86,11 @@ Using commit SHAs or semantic version tags ensures every pipeline run deploys ex
 
 ## State Locking
 
-arcctl uses state locking to prevent concurrent modifications to the same environment. If a pipeline job fails mid-deploy, the lock may remain held. To recover:
+cldctl uses state locking to prevent concurrent modifications to the same environment. If a pipeline job fails mid-deploy, the lock may remain held. To recover:
 
 ```bash
 # Force unlock (use with caution)
-arcctl env unlock staging --force
+cldctl env unlock staging --force
 ```
 
 <Warning>
@@ -106,7 +106,7 @@ Implement cleanup for preview environments to avoid resource sprawl:
 cleanup-preview:
   if: github.event.action == 'closed'
   steps:
-    - run: arcctl destroy environment preview-${{ github.event.number }} --auto-approve
+    - run: cldctl destroy environment preview-${{ github.event.number }} --auto-approve
 ```
 
 For an extra safety net, run a scheduled cleanup job that destroys stale previews:
@@ -114,9 +114,9 @@ For an extra safety net, run a scheduled cleanup job that destroys stale preview
 ```bash
 #!/bin/bash
 # cleanup-stale-previews.sh - Run on a nightly schedule
-for env in $(arcctl list environment --output json | jq -r '.[] | select(.name | startswith("preview-")) | .name'); do
+for env in $(cldctl list environment --output json | jq -r '.[] | select(.name | startswith("preview-")) | .name'); do
   echo "Destroying stale preview: $env"
-  arcctl destroy environment "$env" --auto-approve
+  cldctl destroy environment "$env" --auto-approve
 done
 ```
 
@@ -128,14 +128,14 @@ Keep build and deploy as separate pipeline steps so you can re-deploy the same a
 
 ```bash
 # Step 1: Build and push (runs once)
-arcctl build component . -t ghcr.io/myorg/my-app:v1.5.0
-arcctl push component ghcr.io/myorg/my-app:v1.5.0
+cldctl build component . -t ghcr.io/myorg/my-app:v1.5.0
+cldctl push component ghcr.io/myorg/my-app:v1.5.0
 
 # Step 2: Deploy to staging
-arcctl deploy component ghcr.io/myorg/my-app:v1.5.0 -e staging --auto-approve
+cldctl deploy component ghcr.io/myorg/my-app:v1.5.0 -e staging --auto-approve
 
 # Step 3: Deploy to production (same artifact, no rebuild)
-arcctl deploy component ghcr.io/myorg/my-app:v1.5.0 -e production --auto-approve
+cldctl deploy component ghcr.io/myorg/my-app:v1.5.0 -e production --auto-approve
 ```
 
 ### Use Variable Files for Environment-Specific Config
@@ -153,7 +153,7 @@ replicas=3
 ```
 
 ```bash
-arcctl deploy component ghcr.io/myorg/my-app:v1.5.0 -e staging \
+cldctl deploy component ghcr.io/myorg/my-app:v1.5.0 -e staging \
   --var-file ./vars/staging.dcvars --auto-approve
 ```
 

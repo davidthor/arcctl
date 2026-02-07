@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/architect-io/arcctl/pkg/engine"
-	"github.com/architect-io/arcctl/pkg/state"
+	"github.com/davidthor/arcctl/pkg/engine"
+	"github.com/davidthor/arcctl/pkg/state"
 	"github.com/spf13/cobra"
 )
 
@@ -52,10 +52,10 @@ datacenter. This does not destroy any already-deployed instances of the
 component in environments.
 
 Examples:
-  arcctl destroy component my-app -e production
-  arcctl destroy component api -e staging --auto-approve
-  arcctl destroy component shared-db -e staging --force
-  arcctl destroy component myorg/stripe -d my-dc`,
+  cldctl destroy component my-app -e production
+  cldctl destroy component api -e staging --auto-approve
+  cldctl destroy component shared-db -e staging --force
+  cldctl destroy component myorg/stripe -d my-dc`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			componentName := args[0]
@@ -218,8 +218,8 @@ func newDestroyDatacenterCmd() *cobra.Command {
 WARNING: This will destroy all environments in the datacenter. Use with caution.
 
 Examples:
-  arcctl destroy datacenter my-dc
-  arcctl destroy datacenter prod-dc --auto-approve`,
+  cldctl destroy datacenter my-dc
+  cldctl destroy datacenter prod-dc --auto-approve`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dcName := args[0]
@@ -322,8 +322,8 @@ func newDestroyEnvironmentCmd() *cobra.Command {
 WARNING: This will destroy all components and resources in the environment. Use with caution.
 
 Examples:
-  arcctl destroy environment staging
-  arcctl destroy environment production --auto-approve`,
+  cldctl destroy environment staging
+  cldctl destroy environment production --auto-approve`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envName := args[0]

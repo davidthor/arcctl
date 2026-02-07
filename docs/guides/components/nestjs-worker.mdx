@@ -195,7 +195,7 @@ deployments:
 
 ```
 nestjs-worker/
-├── architect.yml
+├── cloud.component.yml
 ├── Dockerfile
 ├── src/
 │   ├── api/
@@ -258,7 +258,7 @@ For cost-effective worker fleets, you can use the `runtime` property instead of 
 The datacenter provisions VMs (EC2, Droplets, etc.) and bootstraps the runtime environment:
 
 ```yaml
-# architect.yml (dev base - runs locally)
+# cloud.component.yml (dev base - runs locally)
 databases:
   queue:
     type: redis:^7
@@ -272,8 +272,8 @@ deployments:
 ```
 
 ```yaml
-# architect.prod.yml (production - runs on VMs)
-extends: architect.yml
+# cloud.component.prod.yml (production - runs on VMs)
+extends: cloud.component.yml
 
 deployments:
   worker:
@@ -296,11 +296,11 @@ that are easier to install on VMs than in containers.
 
 ```bash
 # Build (creates both api and worker images)
-arcctl component build . -t ghcr.io/myorg/nestjs-worker:v1.0.0
-arcctl component push ghcr.io/myorg/nestjs-worker:v1.0.0
+cldctl component build . -t ghcr.io/myorg/nestjs-worker:v1.0.0
+cldctl component push ghcr.io/myorg/nestjs-worker:v1.0.0
 
 # Deploy
-arcctl deploy ghcr.io/myorg/nestjs-worker:v1.0.0 -e production \
+cldctl deploy ghcr.io/myorg/nestjs-worker:v1.0.0 -e production \
   --var worker_concurrency=10
 ```
 

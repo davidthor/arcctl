@@ -68,6 +68,6 @@ resource "aws_cloudfront_distribution" "this" {
 
   tags = {
     Name      = var.domain
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }

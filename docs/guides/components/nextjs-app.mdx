@@ -114,7 +114,7 @@ environment:
 
 ```
 nextjs-app/
-├── architect.yml
+├── cloud.component.yml
 ├── app/
 │   ├── page.tsx
 │   ├── api/
@@ -130,18 +130,18 @@ nextjs-app/
 ### Local Development
 
 ```bash
-arcctl up
+cldctl up
 ```
 
 ### Production
 
 ```bash
 # Build and push
-arcctl component build . -t ghcr.io/myorg/nextjs-app:v1.0.0
-arcctl component push ghcr.io/myorg/nextjs-app:v1.0.0
+cldctl component build . -t ghcr.io/myorg/nextjs-app:v1.0.0
+cldctl component push ghcr.io/myorg/nextjs-app:v1.0.0
 
 # Deploy
-arcctl deploy ghcr.io/myorg/nextjs-app:v1.0.0 -e production \
+cldctl deploy ghcr.io/myorg/nextjs-app:v1.0.0 -e production \
   --var log_level=warn
 ```
 

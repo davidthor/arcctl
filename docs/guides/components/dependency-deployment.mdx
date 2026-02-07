@@ -1,15 +1,15 @@
 ---
 title: "Automatic Dependency Deployment"
-description: "How arcctl recursively deploys component dependencies to power ephemeral environments"
+description: "How cldctl recursively deploys component dependencies to power ephemeral environments"
 ---
 
 # Automatic Dependency Deployment
 
-When you deploy a component, arcctl automatically detects, pulls, and deploys any dependency components that are not already present in the target environment. This recursive resolution is one of the key capabilities that makes ephemeral environments practical -- a single `arcctl deploy` or `arcctl up` brings an entire application stack online, no matter how many services it depends on.
+When you deploy a component, cldctl automatically detects, pulls, and deploys any dependency components that are not already present in the target environment. This recursive resolution is one of the key capabilities that makes ephemeral environments practical -- a single `cldctl deploy` or `cldctl up` brings an entire application stack online, no matter how many services it depends on.
 
 ## How It Works
 
-When arcctl encounters a component with `dependencies`, it:
+When cldctl encounters a component with `dependencies`, it:
 
 1. **Scans** the component's dependency declarations
 2. **Checks** the target environment for each dependency -- if already deployed, it skips it
@@ -22,7 +22,7 @@ All of this happens in a single command.
 
 ```mermaid
 flowchart TD
-    A["arcctl deploy component ./my-app -e preview-42"] --> B[Load my-app]
+    A["cldctl deploy component ./my-app -e preview-42"] --> B[Load my-app]
     B --> C[Scan dependencies]
     C --> D{auth-service in environment?}
     D -- Yes --> E[Skip]
@@ -41,7 +41,7 @@ flowchart TD
 Consider an application with third-party service dependencies:
 
 ```yaml
-# my-app/architect.yml
+# my-app/cloud.component.yml
 dependencies:
   clerk: ghcr.io/myorg/clerk:v1
   stripe: ghcr.io/myorg/stripe:v1
@@ -71,7 +71,7 @@ routes:
 Each dependency is a lightweight pass-through component that centralizes configuration:
 
 ```yaml
-# clerk/architect.yml
+# clerk/cloud.component.yml
 variables:
   publishable_key:
     description: "Clerk publishable key"
@@ -92,7 +92,7 @@ outputs:
 ### Deploying
 
 ```
-$ arcctl deploy component ./my-app -e preview-42
+$ cldctl deploy component ./my-app -e preview-42
 
 Dependencies to deploy:
   clerk (ghcr.io/myorg/clerk:v1)
@@ -139,17 +139,17 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build component
-        run: arcctl build component . -t ghcr.io/myorg/app:pr-${{ github.event.number }}
+        run: cldctl build component . -t ghcr.io/myorg/app:pr-${{ github.event.number }}
 
       - name: Push component
-        run: arcctl push component ghcr.io/myorg/app:pr-${{ github.event.number }}
+        run: cldctl push component ghcr.io/myorg/app:pr-${{ github.event.number }}
 
       - name: Create environment
-        run: arcctl create environment preview-${{ github.event.number }} -d aws-staging
+        run: cldctl create environment preview-${{ github.event.number }} -d aws-staging
 
       - name: Deploy (with all dependencies)
         run: |
-          arcctl deploy component ghcr.io/myorg/app:pr-${{ github.event.number }} \
+          cldctl deploy component ghcr.io/myorg/app:pr-${{ github.event.number }} \
             -e preview-${{ github.event.number }} \
             --var clerk_publishable_key=${{ secrets.CLERK_PK }} \
             --var clerk_secret_key=${{ secrets.CLERK_SK }} \
@@ -160,28 +160,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Destroy preview
-        run: arcctl destroy environment preview-${{ github.event.number }} --auto-approve
+        run: cldctl destroy environment preview-${{ github.event.number }} --auto-approve
 ```
 
 The `deploy` step deploys the PR component **and** all its dependencies in a single command. The `--auto-approve` flag is safe here because all required dependency variables are provided via `--var`. When the PR closes, `destroy environment` tears down everything.
 
 ### Local Development
 
-The `arcctl up` command uses the same recursive resolution:
+The `cldctl up` command uses the same recursive resolution:
 
 ```bash
-arcctl up ./my-app -d local
+cldctl up ./my-app -d local
 ```
 
 This creates a local dev environment, pulls and deploys all missing dependencies, prompts you for any secrets they need, and starts your application with live reload. One command from a fresh clone to a running app.
 
 ## Variable Handling
 
-Dependencies often require configuration -- API keys, secrets, project IDs. arcctl handles this differently depending on context:
+Dependencies often require configuration -- API keys, secrets, project IDs. cldctl handles this differently depending on context:
 
 ### Interactive Mode (Terminal)
 
-When running in a terminal, arcctl prompts for any required variables that the dependency needs and that weren't provided via `--var`:
+When running in a terminal, cldctl prompts for any required variables that the dependency needs and that weren't provided via `--var`:
 
 ```
 Dependency "stripe" requires the following variables:
@@ -194,7 +194,7 @@ Sensitive variables are masked during input.
 
 ### CI / Auto-Approve Mode
 
-In CI pipelines or when `--auto-approve` is set, arcctl cannot prompt. If a dependency has required variables without defaults, the command fails with an actionable error:
+In CI pipelines or when `--auto-approve` is set, cldctl cannot prompt. If a dependency has required variables without defaults, the command fails with an actionable error:
 
 ```
 Error: cannot auto-deploy dependency "stripe": missing required variables: secret_key, publishable_key
@@ -204,7 +204,7 @@ Provide values with --var or deploy the dependency manually first
 To fix this, pass variables for the dependency explicitly:
 
 ```bash
-arcctl deploy component ghcr.io/myorg/app:v1.0.0 -e preview-42 \
+cldctl deploy component ghcr.io/myorg/app:v1.0.0 -e preview-42 \
   --var stripe_secret_key=$STRIPE_SK \
   --auto-approve
 ```
@@ -213,11 +213,11 @@ Or deploy the dependency once with its variables, and subsequent deployments of 
 
 ```bash
 # Deploy dependency once
-arcctl deploy component ghcr.io/myorg/stripe:v1 -e preview-42 \
+cldctl deploy component ghcr.io/myorg/stripe:v1 -e preview-42 \
   --var secret_key=$STRIPE_SK --auto-approve
 
 # Now deploy the main app -- stripe is already in the environment, skipped
-arcctl deploy component ghcr.io/myorg/app:v1.0.0 -e preview-42 --auto-approve
+cldctl deploy component ghcr.io/myorg/app:v1.0.0 -e preview-42 --auto-approve
 ```
 
 ### Variables with Defaults
@@ -225,7 +225,7 @@ arcctl deploy component ghcr.io/myorg/app:v1.0.0 -e preview-42 --auto-approve
 If all of a dependency's required variables have default values, no prompting or explicit `--var` flags are needed. The dependency deploys silently. This is common for configuration like feature flags or optional analytics:
 
 ```yaml
-# posthog/architect.yml
+# posthog/cloud.component.yml
 variables:
   key:
     description: "PostHog project API key"
@@ -240,7 +240,7 @@ variables:
 A common pattern for third-party SaaS dependencies is the **pass-through component** -- a component with no deployments, databases, or infrastructure. It exists solely to centralize configuration and expose it as outputs:
 
 ```yaml
-# anthropic/architect.yml
+# anthropic/cloud.component.yml
 variables:
   api_key:
     description: "Anthropic API key"
@@ -264,10 +264,10 @@ Common pass-through components include authentication providers (Clerk, Auth0), 
 
 ## Destroy Protection
 
-When components are deployed with their dependency chain, arcctl records the relationships in state. This enables **destroy protection** -- if you try to destroy a component that other components depend on, arcctl blocks it:
+When components are deployed with their dependency chain, cldctl records the relationships in state. This enables **destroy protection** -- if you try to destroy a component that other components depend on, cldctl blocks it:
 
 ```
-$ arcctl destroy component clerk -e preview-42
+$ cldctl destroy component clerk -e preview-42
 
 Error: cannot destroy component "clerk" because the following components depend on it: my-app
 Destroy those components first, or use --force to override
@@ -277,19 +277,19 @@ This prevents accidentally breaking a running environment by removing shared inf
 
 ## Transitive Dependencies
 
-Dependencies can themselves have dependencies. arcctl resolves the full transitive closure:
+Dependencies can themselves have dependencies. cldctl resolves the full transitive closure:
 
 ```yaml
-# app/architect.yml
+# app/cloud.component.yml
 dependencies:
   api: ghcr.io/myorg/api:v1
 
-# api/architect.yml
+# api/cloud.component.yml
 dependencies:
   shared-db: ghcr.io/myorg/shared-db:v1
   auth: ghcr.io/myorg/auth:v1
 
-# auth/architect.yml
+# auth/cloud.component.yml
 dependencies:
   clerk: ghcr.io/myorg/clerk:v1
 ```
@@ -317,7 +317,7 @@ Optional dependencies also do not participate in destroy protection -- destroyin
 
 ## Skipping Existing Dependencies
 
-arcctl never updates a dependency that is already deployed. If `clerk` is already in the environment from a previous deployment, it is skipped entirely -- even if a newer version is available in the OCI registry. This is intentional:
+cldctl never updates a dependency that is already deployed. If `clerk` is already in the environment from a previous deployment, it is skipped entirely -- even if a newer version is available in the OCI registry. This is intentional:
 
 - Ephemeral environments get fresh dependencies every time (they start empty)
 - Long-lived environments maintain stability -- dependency upgrades are explicit
@@ -326,7 +326,7 @@ arcctl never updates a dependency that is already deployed. If `clerk` is alread
 To update a dependency, deploy it explicitly:
 
 ```bash
-arcctl deploy component ghcr.io/myorg/clerk:v2.0.0 -e staging
+cldctl deploy component ghcr.io/myorg/clerk:v2.0.0 -e staging
 ```
 
 ## Next Steps

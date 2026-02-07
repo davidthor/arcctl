@@ -1,12 +1,12 @@
 ---
-description: Guidelines for authoring arcctl component configurations (architect.yml)
-globs: "**/architect.yml,**/architect.yaml,**/components/**/*.yml,**/components/**/*.yaml"
+description: Guidelines for authoring cldctl component configurations (cloud.component.yml)
+globs: "**/cloud.component.yml,**/cloud.component.yaml,**/components/**/*.yml,**/components/**/*.yaml"
 alwaysApply: false
 ---
 
 # Component Authoring Guidelines
 
-Components are developer-focused application bundles in `architect.yml` files that describe what an application needs without specifying infrastructure details.
+Components are developer-focused application bundles in `cloud.component.yml` files that describe what an application needs without specifying infrastructure details.
 
 ## File Structure
 
@@ -152,7 +152,7 @@ Deployments without `image` run as host processes (no Docker required):
 deployments:
   api:
     command: ["npm", "run", "dev"]
-    workingDirectory: ./backend  # optional, defaults to architect.yml dir
+    workingDirectory: ./backend  # optional, defaults to cloud.component.yml dir
     environment:
       DATABASE_URL: ${{ databases.main.url }}
 ```
@@ -186,7 +186,7 @@ Datacenters route deployments with `runtime` (and no `image`) to VM provisioning
 Use `extends` to inherit from a base component and override specific fields:
 
 ```yaml
-# architect.yml (dev base - process-based)
+# cloud.component.yml (dev base - process-based)
 deployments:
   api:
     command: ["npm", "run", "dev"]
@@ -195,8 +195,8 @@ deployments:
 ```
 
 ```yaml
-# architect.prod.yml (production - extends dev)
-extends: ./architect.yml
+# cloud.component.prod.yml (production - extends dev)
+extends: ./cloud.component.yml
 
 builds:
   api:
@@ -278,14 +278,14 @@ Auto-injected vars: `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`
 
 ### Viewing Logs
 
-`arcctl logs` requires observability to be enabled in the component and the datacenter's observability hook to provide `query_type` and `query_endpoint` outputs. The local Docker datacenter uses Loki (backed by `grafana/otel-lgtm`). Container stdout is automatically forwarded to the OTel collector via Docker's fluentd logging driver, so even applications without OTel SDK instrumentation have queryable logs.
+`cldctl logs` requires observability to be enabled in the component and the datacenter's observability hook to provide `query_type` and `query_endpoint` outputs. The local Docker datacenter uses Loki (backed by `grafana/otel-lgtm`). Container stdout is automatically forwarded to the OTel collector via Docker's fluentd logging driver, so even applications without OTel SDK instrumentation have queryable logs.
 
 ```bash
-arcctl logs -e staging                            # All logs in the environment
-arcctl logs -e staging my-app                     # Logs from one component
-arcctl logs -e staging my-app/deployment          # All deployments in a component
-arcctl logs -e staging my-app/deployment/api -f   # Stream a specific deployment
-arcctl observability dashboard -e staging         # Open Grafana (or other UI) in browser
+cldctl logs -e staging                            # All logs in the environment
+cldctl logs -e staging my-app                     # Logs from one component
+cldctl logs -e staging my-app/deployment          # All deployments in a component
+cldctl logs -e staging my-app/deployment/api -f   # Stream a specific deployment
+cldctl observability dashboard -e staging         # Open Grafana (or other UI) in browser
 ```
 
 ## Supported Database Types

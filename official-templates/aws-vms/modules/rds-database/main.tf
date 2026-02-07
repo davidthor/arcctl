@@ -42,7 +42,7 @@ resource "aws_db_subnet_group" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -57,7 +57,7 @@ resource "aws_db_instance" "this" {
   allocated_storage = var.allocated_storage
 
   db_name  = local.is_postgres || local.is_mysql ? local.db_name : null
-  username = local.is_postgres ? "arcctl_admin" : "admin"
+  username = local.is_postgres ? "cldctl_admin" : "admin"
   password = random_password.this[0].result
 
   db_subnet_group_name   = aws_db_subnet_group.this[0].name
@@ -69,7 +69,7 @@ resource "aws_db_instance" "this" {
   tags = {
     Name        = var.name
     Environment = var.name
-    ManagedBy   = "arcctl"
+    ManagedBy   = "cldctl"
   }
 }
 
@@ -81,7 +81,7 @@ resource "aws_elasticache_subnet_group" "this" {
 
   tags = {
     Name      = var.name
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
 
@@ -111,7 +111,7 @@ resource "aws_elasticache_replication_group" "this" {
   tags = {
     Name        = var.name
     Environment = var.name
-    ManagedBy   = "arcctl"
+    ManagedBy   = "cldctl"
   }
 }
 

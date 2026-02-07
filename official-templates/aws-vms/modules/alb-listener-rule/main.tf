@@ -33,6 +33,6 @@ resource "aws_lb_listener_rule" "this" {
 
   tags = {
     Name      = var.domain
-    ManagedBy = "arcctl"
+    ManagedBy = "cldctl"
   }
 }
