@@ -539,7 +539,7 @@ func TestParse(t *testing.T) {
 | `docs/datacenters/` | Datacenter schema reference (one page per hook type, plus expressions, variables, modules) |
 | `docs/cli/` | CLI command reference (one page per command, organized by action) |
 | `docs/environments/` | Environment configuration reference |
-| `docs/guides/components/` | Step-by-step component authoring guides (Next.js, microservices, etc.) |
+| `docs/guides/components/` | Step-by-step component authoring guides (Next.js, microservices, dependency deployment, etc.) |
 | `docs/guides/datacenters/` | Step-by-step datacenter authoring guides (local Docker, AWS ECS, etc.) |
 | `docs/concepts/` | High-level conceptual documentation |
 | `examples/` | Example component configurations |

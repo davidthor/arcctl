@@ -93,6 +93,20 @@ deployments:
       FRONTEND_URL: ${{ dependents.frontend.routes.main.url }}
 ```
 
+## Automatic Deployment
+
+When you deploy a component, arcctl automatically deploys any missing dependencies into the target environment. This recursive resolution means a single `arcctl deploy` or `arcctl up` command brings up an entire application stack -- including all transitive dependencies.
+
+- **Already deployed?** Dependencies that are already present in the environment are skipped.
+- **Variables required?** In interactive mode, arcctl prompts for any required variables. In CI or `--auto-approve` mode, missing variables cause a clear error.
+- **Transitive?** If a dependency has its own dependencies, those are resolved recursively.
+
+This is the foundation that makes ephemeral environments practical -- one command from zero to a running multi-service application.
+
+<Card title="Automatic Dependency Deployment Guide" icon="diagram-project" href="/guides/components/dependency-deployment">
+  In-depth guide on recursive dependency deployment, ephemeral environments, pass-through components, and CI/CD patterns
+</Card>
+
 ## Dependency Graph
 
 arcctl automatically manages the dependency graph:

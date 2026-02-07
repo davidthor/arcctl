@@ -184,6 +184,16 @@ environment:
 
 Expressions use the syntax `${{ resource_type.name.property }}` and are evaluated at deployment time after resources are provisioned.
 
+## Automatic Dependency Deployment
+
+When you deploy a component, arcctl recursively resolves its dependency tree. Any dependency not already present in the target environment is pulled and deployed automatically. This means a single `arcctl deploy` or `arcctl up` command brings up an entire multi-service application -- including transitive dependencies -- without manual orchestration.
+
+This is the capability that makes ephemeral environments practical: one command from zero to a running preview environment.
+
+<Card title="Dependency Deployment Guide" icon="diagram-project" href="/guides/components/dependency-deployment">
+  Learn how recursive dependency deployment powers ephemeral environments
+</Card>
+
 ## State Management
 
 arcctl maintains state to track:

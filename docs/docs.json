@@ -87,7 +87,8 @@
           {
             "group": "Getting Started",
             "pages": [
-              "guides/developer-workflow"
+              "guides/developer-workflow",
+              "guides/components/dependency-deployment"
             ]
           },
           {
